@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { sessionStore } from '../state/session';
 import { loadSettings, mergeSettings, saveSettings, type BoothSettings } from '../config/settings';
 import { PAPER_DOTS } from '../layouts/engine';
-import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, type DitherMode, type PrinterKind, type ThermalSettings } from '../print';
+import { getPrinterManager, PRINTER_MESSAGES, THERMAL_PRESETS, TONE_KEYS, toPrinterError, type DitherMode, type PrinterKind, type ThermalSettings } from '../print';
 import { makeTestPage } from '../print/testpage';
 import { bitmapToCanvas } from '../print/browser';
 import { canvasToBlob } from '../render/render';
 import { PinGate } from './PinGate';
+import { Icon } from '../components/Icon';
 
 const DITHERS: DitherMode[] = ['atkinson', 'floyd-steinberg', 'ordered', 'threshold'];
 /** Selectable printers. */
@@ -21,6 +22,8 @@ const PRINTER_CHOICES: { kind: PrinterKind; name: string; hint: string }[] = [
 /** Owner-facing failure text: the plain title plus the technical reason (customers never see this screen). */
 const why = (e: unknown) => { const p = toPrinterError(e), t = PRINTER_MESSAGES[p.code].title; return p.message && p.message !== p.code ? `${t} \u2014 ${p.message}` : t; };
 const next = <T,>(list: T[], v: T) => list[(list.indexOf(v) + 1) % list.length];
+/** Which tone preset the current thermal tuning equals (CUSTOM once any value is nudged). */
+const presetOf = (t: ThermalSettings) => THERMAL_PRESETS.find((p) => TONE_KEYS.every((k) => t[k] === p.tone[k]));
 
 function Row({ label, value, onMinus, onPlus }: { label: string; value: string; onMinus?: () => void; onPlus?: () => void }) {
   return (
@@ -110,10 +113,16 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
             </div>
           )}
           <Row label="PAPER" value={`${s.paperWidthMm} MM`} onPlus={() => set({ paperWidthMm: s.paperWidthMm === 58 ? 80 : 58 })} />
+          <Row label="PRESET" value={presetOf(t)?.name ?? 'CUSTOM'} onPlus={() => {
+            const cur = presetOf(t), pick = THERMAL_PRESETS[(cur ? THERMAL_PRESETS.indexOf(cur) + 1 : 0) % THERMAL_PRESETS.length];
+            tune(Object.fromEntries(TONE_KEYS.map((k) => [k, pick.tone[k]])) as Partial<ThermalSettings>); // tone only: margins/feed/cut stay
+          }} />
           <Row label="DITHER" value={t.dither.toUpperCase()} onPlus={() => tune({ dither: next(DITHERS, t.dither) })} />
           <Row label="BRIGHTNESS" value={String(t.brightness)} onMinus={() => tune({ brightness: t.brightness - 10 })} onPlus={() => tune({ brightness: t.brightness + 10 })} />
           <Row label="CONTRAST" value={String(t.contrast)} onMinus={() => tune({ contrast: t.contrast - 10 })} onPlus={() => tune({ contrast: t.contrast + 10 })} />
           <Row label="DENSITY" value={String(t.density)} onMinus={() => tune({ density: t.density - 1 })} onPlus={() => tune({ density: t.density + 1 })} />
+          <Row label="SHARPEN" value={String(t.sharpen)} onMinus={() => tune({ sharpen: t.sharpen - 5 })} onPlus={() => tune({ sharpen: t.sharpen + 5 })} />
+          <Row label="AUTO LEVEL" value={String(t.autoLevel)} onMinus={() => tune({ autoLevel: t.autoLevel - 10 })} onPlus={() => tune({ autoLevel: t.autoLevel + 10 })} />
           <Row label="THRESHOLD" value={String(t.threshold)} onMinus={() => tune({ threshold: t.threshold - 8 })} onPlus={() => tune({ threshold: t.threshold + 8 })} />
           <Row label="SIDE MARGIN" value={String(t.marginX)} onMinus={() => tune({ marginX: t.marginX - 8 })} onPlus={() => tune({ marginX: t.marginX + 8 })} />
           <Row label="FEED LINES" value={String(t.feedLines)} onMinus={() => tune({ feedLines: t.feedLines - 1 })} onPlus={() => tune({ feedLines: t.feedLines + 1 })} />
@@ -125,7 +134,7 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
       </div>
       {note && <p className="edit-hint" aria-live="polite">{note}</p>}
       <div className="cam-bar">
-        <button className="btn ghost" onClick={() => sessionStore.reset()}>EXIT</button>
+        <button className="btn ghost" onClick={() => sessionStore.reset()}><Icon name="close" />EXIT</button>
         <button className="btn ghost" disabled={busy} onClick={onChangePin}>CHANGE PIN</button>
         {(s.printer === 'usb' || s.printer === 'bluetooth') && <button className="btn ghost" disabled={busy} onClick={pair}>PAIR PRINTER</button>}
         {(s.printer === 'network' || s.printer === 'windows') && <button className="btn ghost" disabled={busy} onClick={pair}>CHECK PRINTER</button>}

@@ -3,6 +3,7 @@ import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
 import { makeCtx } from '../frames/prims';
 import { canvasToBlob, renderPreview } from '../render/render';
+import { Icon } from '../components/Icon';
 
 /** Final look of the receipt, drawn by the same renderer that will feed the printer. */
 export function PreviewScreen() {
@@ -30,8 +31,8 @@ export function PreviewScreen() {
           : <p className="loading">PREPARING YOUR RECEIPT</p>}
       </div>
       <div className="cam-bar">
-        <button className="btn ghost" onClick={back}>{editor ? 'BACK TO EDIT' : 'BACK'}</button>
-        <button className="btn big" disabled={!url} onClick={() => sessionStore.go('print')}>PRINT</button>
+        <button className="btn ghost" onClick={back}><Icon name="back" />{editor ? 'BACK TO EDIT' : 'BACK'}</button>
+        <button className="btn big" disabled={!url} onClick={() => sessionStore.go('print')}><Icon name="print" />PRINT</button>
       </div>
     </main>
   );

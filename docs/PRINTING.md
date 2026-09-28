@@ -26,3 +26,11 @@ Built and unit-tested: pipeline, encoder, mock, manager, generic `EscPosAdapter`
 Owner: Android tablet + "Officom XPT80A" (likely Xprinter XP-T80A, 80mm, 576 dots, ESC/POS, auto-cutter). USB on the bench, Bluetooth in deployment.
 - USB = `WebUsbTransport` (Chrome Android, HTTPS, OTG). Bluetooth = `WebBluetoothTransport` (BLE GATT ONLY; Bluetooth Classic/SPP printers are invisible to Chrome).
 - See HANDOFF.md "FIRST-RUN CHECKLIST" for the bench procedure and the BLE-vs-Classic decision test.
+
+## Photobooth Face preset (image quality)
+Pipeline (`src/print/pipeline.ts`, `toThermalBitmap`): grayscale → resize to paper dots → **adaptive levels** → tone curve (brightness/contrast/density) → **unsharp mask** → dither → 1-bit → margins. The layout, frames and printer adapters are untouched.
+- Presets live in `src/print/types.ts` (`PHOTOBOOTH_FACE` = default, `LEGACY_THERMAL` = old look). ADMIN → PRESET switches tone only (margins/feed/cut stay). Nudging any value shows CUSTOM.
+- Photobooth Face: brightness 15, contrast 35, density 2, dither floyd-steinberg, threshold 128, sharpen 65 (=0.65), autoLevel 60.
+- `autoLevels` measures only photographic pixels (1..254), so paper white / ink black of the template never skew it. `sharpenGray` is a σ≈1 dot unsharp mask with the detail term capped at ±48 (no halos); paper white and ink black clamp and stay pinned.
+- Old saved settings that still equal the untouched old defaults are upgraded on load (`upgradeThermal` in `config/settings.ts`); tuned settings are left alone.
+- Tuning: face too dark → BRIGHTNESS +5 (or DENSITY 1); face too white → BRIGHTNESS −5 / DENSITY 3 / lower AUTO LEVEL; noisy → SHARPEN −10 or dither ATKINSON/ORDERED; hair loses detail → BRIGHTNESS −5 or CONTRAST −5; background too dark → AUTO LEVEL +10 / BRIGHTNESS +5.

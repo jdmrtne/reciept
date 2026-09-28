@@ -14,6 +14,7 @@ import {
 } from '../editor/model';
 import { isPhoto, isSticker, type EditorObject, type EditorState, type PhotoObject, type Snapshot, type StickerObject } from '../editor/types';
 import { Preview } from './Layout';
+import { Icon } from '../components/Icon';
 
 type Pt = { x: number; y: number };
 type Gesture = { id: string; kind: 'photo' | 'sticker' | 'handle'; start: Pt; d0: number; a0: number; base: EditorObject; ptrs: Map<number, Pt> };
@@ -181,7 +182,7 @@ export function Edit() {
         <svg ref={svg} viewBox={`0 0 ${L.width} ${L.height}`} className="edit-svg"
           onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
           <FilterDefs prefix="ed" />
-          <rect width={L.width} height={L.height} fill="#fff" />
+          <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={2} />
           {snap.objects.filter(isPhoto).filter((o) => o.visible).sort((a, b) => a.layer - b.layer).map((o) => {
             const r = photoRect(o);
             return (
@@ -215,7 +216,8 @@ export function Edit() {
                   <rect x={sel.x} y={sel.y} width={sel.w} height={sel.h} fill="none" stroke="#fff" strokeWidth={5} />
                   <rect x={sel.x} y={sel.y} width={sel.w} height={sel.h} fill="none" stroke="#000" strokeWidth={2} strokeDasharray="8 5" />
                 </g>
-                <circle cx={k.x} cy={k.y} r={16} fill="#000" stroke="#fff" strokeWidth={3} />
+                <circle cx={k.x} cy={k.y} r={16} fill="#fff" stroke="#111" strokeWidth={3.5} />
+                <circle cx={k.x} cy={k.y} r={5} fill="#111" />
               </g>
             );
           })()}
@@ -245,35 +247,35 @@ export function Edit() {
       {swapping ? (
         <>
           <p className="edit-hint">{swapFrom ? 'NOW TAP THE PHOTO TO SWAP WITH' : 'TAP A PHOTO TO MOVE'}</p>
-          <div className="cam-bar"><button className="btn big" onClick={stopSwap}>CANCEL</button></div>
+          <div className="cam-bar"><button className="btn big" onClick={stopSwap}><Icon name="close" />CANCEL</button></div>
         </>
       ) : sel ? (
         <>
           <p className="edit-hint">DRAG · PINCH · TWIST · OR DRAG THE DOT TO SIZE + ROTATE</p>
           <div className="cam-bar">
-            <button className="btn ghost" onClick={() => { set(commit(editor, deleteObject(editor.present, sel.id))); setSelId(null); }}>DELETE</button>
-            <button className="btn ghost" onClick={() => { const r = duplicateObject(editor.present, sel.id); set(commit(editor, r.snap)); setSelId(r.id); }}>DUPLICATE</button>
-            <button className="btn ghost" onClick={() => set(commit(editor, moveLayer(editor.present, sel.id, 1)))}>FORWARD</button>
-            <button className="btn ghost" onClick={() => set(commit(editor, moveLayer(editor.present, sel.id, -1)))}>BACK</button>
-            <button className="btn big" onClick={() => setSelId(null)}>DONE</button>
+            <button className="btn ghost" onClick={() => { set(commit(editor, deleteObject(editor.present, sel.id))); setSelId(null); }}><Icon name="trash" />DELETE</button>
+            <button className="btn ghost" onClick={() => { const r = duplicateObject(editor.present, sel.id); set(commit(editor, r.snap)); setSelId(r.id); }}><Icon name="copy" />DUPLICATE</button>
+            <button className="btn ghost" onClick={() => set(commit(editor, moveLayer(editor.present, sel.id, 1)))}><Icon name="up" />FORWARD</button>
+            <button className="btn ghost" onClick={() => set(commit(editor, moveLayer(editor.present, sel.id, -1)))}><Icon name="down" />BACK</button>
+            <button className="btn big" onClick={() => setSelId(null)}><Icon name="check" />DONE</button>
           </div>
         </>
       ) : (
         <>
           <p className="edit-hint">DRAG TO MOVE · PINCH TO ZOOM</p>
           <div className="cam-bar">
-            <button className={`btn ghost${tray === 'layout' ? ' on' : ''}`} onClick={trayBtn('layout')}>LAYOUT</button>
-            <button className={`btn ghost${tray === 'frame' ? ' on' : ''}`} onClick={trayBtn('frame')}>FRAME</button>
-            <button className={`btn ghost${tray === 'filter' ? ' on' : ''}`} onClick={trayBtn('filter')}>FILTER</button>
-            <button className={`btn ghost${tray === 'sticker' ? ' on' : ''}`} onClick={trayBtn('sticker')}>STICKERS</button>
-            <button className="btn ghost" disabled={photoCount < 2} onClick={startSwap}>SWAP</button>
-            <button className="btn ghost" onClick={retake}>RETAKE</button>
+            <button className={`btn ghost${tray === 'layout' ? ' on' : ''}`} onClick={trayBtn('layout')}><Icon name="layout" />LAYOUT</button>
+            <button className={`btn ghost${tray === 'frame' ? ' on' : ''}`} onClick={trayBtn('frame')}><Icon name="frame" />FRAME</button>
+            <button className={`btn ghost${tray === 'filter' ? ' on' : ''}`} onClick={trayBtn('filter')}><Icon name="filter" />FILTER</button>
+            <button className={`btn ghost${tray === 'sticker' ? ' on' : ''}`} onClick={trayBtn('sticker')}><Icon name="sticker" />STICKERS</button>
+            <button className="btn ghost" disabled={photoCount < 2} onClick={startSwap}><Icon name="swap" />SWAP</button>
+            <button className="btn ghost" onClick={retake}><Icon name="camera" />RETAKE</button>
           </div>
           <div className="cam-bar">
-            <button className="btn ghost" disabled={!editor.past.length} onClick={() => set(undo(editor))}>UNDO</button>
-            <button className="btn ghost" disabled={!editor.future.length} onClick={() => set(redo(editor))}>REDO</button>
-            <button className="btn ghost" disabled={!editor.past.length} onClick={() => { setSelId(null); set(resetEditor(editor)); }}>RESET</button>
-            <button className="btn big" onClick={() => sessionStore.go('preview')}>PREVIEW</button>
+            <button className="btn ghost" disabled={!editor.past.length} onClick={() => set(undo(editor))}><Icon name="undo" />UNDO</button>
+            <button className="btn ghost" disabled={!editor.future.length} onClick={() => set(redo(editor))}><Icon name="redo" />REDO</button>
+            <button className="btn ghost" disabled={!editor.past.length} onClick={() => { setSelId(null); set(resetEditor(editor)); }}><Icon name="reset" />RESET</button>
+            <button className="btn big" onClick={() => sessionStore.go('preview')}><Icon name="eye" />PREVIEW</button>
           </div>
         </>
       )}

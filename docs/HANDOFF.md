@@ -1,6 +1,16 @@
 # HANDOFF
 
-## Session 4 summary (latest)
+## Session 7: Phase 11 (UX polish + tablet responsive) — DONE (latest)
+Verified: `npm install` WORKED this time. typecheck clean, **145 tests pass** (139 + 6 new in `print/health.test.ts`), `npm run build` OK. Headless Chromium (fake camera + mock printer): Edit screen checked for toolbar overlap at 320×640, 390×844, 844×390, 800×1280, 1280×800; the full flow (standby → layout → camera → edit → preview → print → success → auto-reset) run at 800×1280 and 844×390; no console errors.
+- **Real bug fixed (Camera.tsx):** the `alive` ref was set false on unmount cleanup and never re-armed, so under React StrictMode (dev) the multi-photo sequence stalled after photo 1 (the 650 ms follow-up timer bailed out). Now re-armed in the effect body. Production builds were unaffected, but `npm run dev` was broken for any layout with 2+ photos.
+- **Edit toolbar:** the phone-width overlap from Session 3 no longer reproduces (Session 5's restyle fixed it; automated overlap check clean at all sizes above). The real remaining problem was **phone landscape**: controls ate ~60% of the height and the receipt shrank to a sliver. Now `@media (orientation: landscape) and (max-height: 560px)` puts the controls in a right-hand column and the stage takes the full height (stage 147 px → 374 px at 844×390). Pure CSS at the end of `global.css`.
+- **Printer status dot (Standby, top-left):** `PrinterManager.health()` → `{level: ready | attention | offline}`. Connections are lazy, so plain `status()` says "disconnected" for every idle printer; `health()` quietly tries `connect()` (4 s timeout, never opens a chooser) then reads status. Mock = always ready and is never opened (keeps its simulated failures for real prints); returns ready without touching the printer while a print is in flight. `hooks/usePrinterHealth.ts` polls every 15 s while Standby is mounted. UI: `.pdot` — filled dot + PRINTER READY, triangle + CHECK PAPER (paper low / out), dashed ring + PRINTER OFFLINE. Black/white only, `pointer-events: none` so it never blocks TAP TO START. Still needs a real-hardware look: BLE `open()` on Standby idle, and whether repeated silent `connect()` is polite for the XP-T80A over USB.
+- **Success screen:** hand-drawn check stamp that draws itself, "PICK IT UP AT THE PRINTER", live "NEXT GUEST IN N" + draining bar (driven by `successSeconds`), DONE unchanged. Phone landscape variant tightened so DONE is never clipped. All motion respects the existing reduced-motion rule.
+- **Not touched:** printer transports/pipeline, editor model, render plan, PIN/admin.
+- **Phase 10 is STILL OPEN** (needs the owner's FIRST-RUN CHECKLIST results from the real tablet + XP-T80A). Print-quality tuning from Session 6 is also still unverified on paper.
+- **Next: Phase 12 (Offline/PWA hardening).** Ideas noted while here: layout thumbnails show no frame; photo rotation not implemented; PWA install/update behaviour on the tablet unchecked.
+
+## Session 4 summary
 - ADMIN printer picker (SYSTEM PRINT / USB / NETWORK / BLUETOOTH / TEST PRINTER). SYSTEM PRINT = browser print dialog (`adapters/system.ts`). NETWORK = `npm run bridge` + `HttpBridgeTransport` (see docs/BRIDGE.md); the old `adapters/hardware.ts` placeholder is gone. Owner printer is on the LAN as Windows printer "POS80" at 10.0.0.11. Tests: 124.
 - Printer is USB on the owner's Windows PC (Device Manager: "Printer POS-80"; queue "POS80 10.0.0.11"). Added PrinterKind `windows` (bridge sends RAW to the Windows queue) — UNVERIFIED on real Windows. Tests: 129. `npm run find-printer` / `list-printers` helpers.
 - WebUSB cannot see the printer on Windows (the OS driver owns it) — use NETWORK or SYSTEM PRINT there.
@@ -103,4 +113,14 @@ Read:
 - /docs/ARCHITECTURE.md
 - /docs/HANDOFF.md (start with "Session 3 summary")
 
-Run `npm install && npm run typecheck && npm test && npm run build` first (expect 117 tests; if the node-canvas render tests fail, fix them). Do not redo completed work. Phase 10 stays open until the owner reports the FIRST-RUN CHECKLIST results from the real Android tablet + Officom XPT80A (USB on the bench, Bluetooth BLE-vs-Classic test for deployment): fix whatever they report and tune the printer defaults. If the owner has no results yet, start Phase 11 (UX polish + tablet responsive: Edit toolbar overlap at phone width, printer status dot on Standby, success screen polish). Test it (headless Chromium is available via Playwright), fix issues, update HANDOFF.md for the next Claude. Keep the minimalist black-and-white UI, receipt-style frames, tablet-first design, and no custom text tools.
+Run `npm install && npm run typecheck && npm test && npm run build` first (expect 145 tests). Do not redo completed work. Phase 10 stays open until the owner reports the FIRST-RUN CHECKLIST results from the real Android tablet + Officom XPT80A (USB on the bench, Bluetooth BLE-vs-Classic test for deployment): fix whatever they report and tune the printer defaults. Phase 11 (UX polish + tablet responsive) is DONE (see "Session 7"). If the owner has no hardware results yet, start Phase 12 (Offline/PWA hardening). Test it (headless Chromium is available via Playwright), fix issues, update HANDOFF.md for the next Claude. Keep the minimalist black-and-white UI, receipt-style frames, tablet-first design, and no custom text tools.
+
+## Session 5: white outline theme (visual only)
+- UI restyled as a white-background, black-outline sketchbook look. No gradients. Ink `#111`, text `#2b2b2b`, one very subtle `#f5f5f5` fill. Tokens in `styles/tokens.css`, everything else in `styles/global.css`.
+- New: `components/Icon.tsx` (line icons), `components/Doodles.tsx` (standby doodles, scribble underline, scalloped tear), `frames/art.ts` (hand-drawn ornaments, wobbly `sketchRect`, ragged `tornRect`).
+- Frames: new renderer-independent `path` Prim (M/L/Q/C/Z) drawn by both `FrameLayer` (SVG) and `drawPrims` (canvas). Frame data gained `ornaments` and decor `torn | nails | sketch-border`. Wanted frame = torn poster edge, nails, outlined stars, crossed bones. Stars are now outlines.
+- Stickers are outlined (white fill, black ink) via `ink()` in `stickers/registry.ts`.
+- Untouched: printer code, capture flow, editor model, render plan/pipeline logic. Tests: 129 pass, typecheck + build clean.
+
+## Session 6: print image quality only
+- New thermal stages `autoLevels` + `sharpenGray`, settings `sharpen` / `autoLevel`, presets `PHOTOBOOTH_FACE` (default) and `LEGACY_THERMAL`, ADMIN rows PRESET / SHARPEN / AUTO LEVEL, settings upgrade for untouched old defaults. See docs/PRINTING.md. Tests: 139 pass. NOT yet verified on the real XP-T80A: tune on paper.

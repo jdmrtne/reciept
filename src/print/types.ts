@@ -17,6 +17,16 @@ export interface ThermalSettings {
   threshold: number;
   /** 1..5 (3 = neutral). Software darkness bias for printers that burn light/dark; Phase 10 may also map it to a heat command. */
   density: number;
+  /**
+   * 0..100 (percent). Unsharp-mask amount applied at PRINTER resolution just before dithering (0 = off, 65 = 0.65).
+   * Restores the eye/brow/lip/jaw edges that resampling and the camera softened; capped so it cannot make halos.
+   */
+  sharpen: number;
+  /**
+   * 0..100 (percent). Adaptive levels: stretches the photo pixels' own tonal range to the full range before the
+   * tone curve, so a dim or over-bright booth still lands on the same face tones. 0 = off (fixed curve only).
+   */
+  autoLevel: number;
   /** Blank dots left and right of the picture (paper is white there). Content is resized to fit. */
   marginX: number;
   /** Blank dots above the picture. */
@@ -29,15 +39,39 @@ export interface ThermalSettings {
   cut: boolean;
 }
 
-export const DEFAULT_THERMAL: ThermalSettings = {
-  brightness: 0, contrast: 0, dither: 'atkinson', threshold: 128, density: 3,
-  marginX: 0, marginTop: 0, marginBottom: 8, feedLines: 4, cut: false
+/** Non-tone settings shared by every preset (paper handling, not image look). */
+const PAPER_DEFAULTS = { marginX: 0, marginTop: 0, marginBottom: 8, feedLines: 4, cut: false } as const;
+
+/** The pre-preset behaviour, kept selectable so nothing that worked before is lost. */
+export const LEGACY_THERMAL: ThermalSettings = {
+  brightness: 0, contrast: 0, dither: 'atkinson', threshold: 128, density: 3, sharpen: 0, autoLevel: 0, ...PAPER_DEFAULTS
 };
+
+/**
+ * Photobooth Face: tuned so faces stay recognisable as 1-bit thermal dots. Order and values are explained in
+ * pipeline.ts (toThermalBitmap). Start here; nudge brightness / contrast / sharpen / autoLevel to taste.
+ */
+export const PHOTOBOOTH_FACE: ThermalSettings = {
+  brightness: 15, contrast: 35, dither: 'floyd-steinberg', threshold: 128, density: 2, sharpen: 65, autoLevel: 60, ...PAPER_DEFAULTS
+};
+
+/** Tone-only presets the owner can pick in ADMIN. Applying one never touches margins/feed/cut. */
+export const THERMAL_PRESETS = [
+  { id: 'photobooth-face', name: 'PHOTOBOOTH FACE', tone: PHOTOBOOTH_FACE },
+  { id: 'legacy', name: 'LEGACY', tone: LEGACY_THERMAL }
+] as const;
+export const TONE_KEYS = ['brightness', 'contrast', 'dither', 'threshold', 'density', 'sharpen', 'autoLevel'] as const;
+
+export const DEFAULT_THERMAL: ThermalSettings = PHOTOBOOTH_FACE;
 
 export type PrinterKind = 'mock' | 'system' | 'windows' | 'bluetooth' | 'usb' | 'network';
 
 export type PrinterState = 'disconnected' | 'ready' | 'busy' | 'error';
 export interface PrinterStatus { state: PrinterState; detail?: string }
+
+/** Customer-facing summary for the Standby dot: ready to print, needs attention (paper low/out, cover open), or not reachable. */
+export type PrinterHealthLevel = 'ready' | 'attention' | 'offline';
+export interface PrinterHealth { level: PrinterHealthLevel; detail?: string }
 
 export interface PrintOptions {
   thermal: ThermalSettings;

@@ -1,13 +1,22 @@
 :root {
-  --black: #000;
+  --black: #111;
   --white: #fff;
+  --ink: #111;
+  --text: #2b2b2b;
+  --gray-1: #f5f5f5;   /* very subtle fill accent */
   --gray-3: #b5b5b5;
   --gray-5: #6b6b6b;
-  --line: 1px solid var(--black);
+  --line: 2.5px solid var(--ink);
+  --line-thin: 1.5px solid var(--ink);
+  --radius: 14px;
+  --radius-s: 8px;
+  --shadow: 3px 3px 0 var(--ink); /* hard offset "ink" shadow, no blur, no gradient */
   --font: 'Courier Prime', 'Courier New', ui-monospace, monospace;
   --fs-body: clamp(14px, 1.6vmin, 18px);
-  --fs-xl: clamp(44px, 12vmin, 132px);
-  --tap-min: 64px; /* minimum touch target */
+  --fs-xl: clamp(40px, 11vmin, 120px);
+  --tap-min: 56px; /* minimum touch target */
   --ease: cubic-bezier(.2, .7, .2, 1);
   --t-fast: 160ms;
 }
+@font-face { font-family: 'Courier Prime'; font-weight: 400; font-style: normal; font-display: swap; src: url('../assets/fonts/courier-prime-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Courier Prime'; font-weight: 700; font-style: normal; font-display: swap; src: url('../assets/fonts/courier-prime-latin-700-normal.woff2') format('woff2'); }

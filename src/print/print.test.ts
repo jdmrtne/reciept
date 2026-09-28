@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { blackRatio, bitmapToRGBA, createBitmap, getDot, padBitmap, setDot } from './bitmap';
-import { ditherToBitmap, normalizeThermal, resizeGray, toGray, toneLut, toThermalBitmap } from './pipeline';
+import { autoLevels, ditherToBitmap, normalizeThermal, resizeGray, sharpenGray, toGray, toneLut, toThermalBitmap } from './pipeline';
 import { chunkBytes, decodeRaster, encodeRaster } from './escpos';
 import { PrinterError, PRINTER_MESSAGES, toPrinterError } from './errors';
 import { MockPrinterAdapter } from './adapters/mock';
@@ -604,5 +604,62 @@ describe('EscPosAdapter pacing + lazy options + manager pairing', () => {
   it('bluetooth settings are clamped', () => {
     expect(mergeSettings({ bluetooth: { chunkSize: 5000, chunkDelayMs: -4 } }).bluetooth).toEqual({ chunkSize: 512, chunkDelayMs: 0 });
     expect(mergeSettings(null).bluetooth).toEqual({ chunkSize: 128, chunkDelayMs: 20 });
+  });
+});
+
+describe('Photobooth Face preset stages', () => {
+  const ramp = (w: number, h: number, lo: number, hi: number) => { const g = new Uint8Array(w * h); for (let i = 0; i < g.length; i++) g[i] = Math.round(lo + ((hi - lo) * (i % w)) / (w - 1)); return g; };
+  const mean = (g: Uint8Array) => g.reduce((a, v) => a + v, 0) / g.length;
+
+  it('is the default look, and LEGACY reproduces the old one', async () => {
+    const { DEFAULT_THERMAL, PHOTOBOOTH_FACE, LEGACY_THERMAL } = await import('./types');
+    expect(DEFAULT_THERMAL).toEqual(PHOTOBOOTH_FACE);
+    expect(PHOTOBOOTH_FACE).toMatchObject({ brightness: 15, contrast: 35, density: 2, dither: 'floyd-steinberg', threshold: 128, sharpen: 65 });
+    expect(LEGACY_THERMAL).toMatchObject({ brightness: 0, contrast: 0, density: 3, dither: 'atkinson', sharpen: 0, autoLevel: 0 });
+  });
+  it('sharpen 0 + autoLevel 0 is byte-identical to the old pipeline (no hidden change)', () => {
+    const g = ramp(64, 32, 20, 230), rgba = { width: 64, height: 32, data: new Uint8ClampedArray(64 * 32 * 4) };
+    for (let i = 0; i < g.length; i++) rgba.data.set([g[i], g[i], g[i], 255], i * 4);
+    const t = { brightness: 10, contrast: 20, density: 3, dither: 'atkinson' as const, marginBottom: 0 };
+    const lut = toneLut(normalizeThermal(t)), toned = g.map((v) => lut[v]);
+    const old = ditherToBitmap(toned, 64, 32, 'atkinson', 128);
+    const now = toThermalBitmap(rgba, { ...t, sharpen: 0, autoLevel: 0 }, 64);
+    expect(Buffer.compare(Buffer.from(now.data), Buffer.from(old.data))).toBe(0);
+  });
+  it('autoLevels lifts a dim photo, pulls down a bright one, and never touches paper white / ink black', () => {
+    const dim = ramp(64, 8, 20, 120), bright = ramp(64, 8, 150, 254);
+    expect(mean(autoLevels(dim, 1))).toBeGreaterThan(mean(dim) + 20);
+    expect(mean(autoLevels(bright, 1))).toBeLessThan(mean(bright) - 20);
+    const mixed = new Uint8Array(64 * 8); mixed.set(dim.subarray(0, 64 * 6)); mixed.fill(255, 64 * 6, 64 * 7); mixed.fill(0, 64 * 7);
+    const out = autoLevels(mixed, 1);
+    expect([...out.subarray(64 * 6, 64 * 7)].every((v) => v === 255)).toBe(true);
+    expect([...out.subarray(64 * 7)].every((v) => v === 0)).toBe(true);
+  });
+  it('autoLevels is off at 0 and ignores pages with (almost) no photo pixels', () => {
+    const g = ramp(32, 8, 30, 90);
+    expect(autoLevels(g, 0)).toBe(g);
+    const text = new Uint8Array(1000).fill(255); text[3] = 90;
+    expect(autoLevels(text, 1)).toBe(text);
+  });
+  it('sharpenGray: flat stays flat, an edge steepens without leaving 0..255, paper/ink stay pinned', () => {
+    expect([...sharpenGray(new Uint8Array(25).fill(120), 5, 5, 1)].every((v) => v === 120)).toBe(true);
+    const edge = new Uint8Array(12 * 3); for (let y = 0; y < 3; y++) for (let x = 0; x < 12; x++) edge[y * 12 + x] = x < 6 ? 100 : 160;
+    const s = sharpenGray(edge, 12, 3, 0.65);
+    expect(s[5]).toBeLessThan(100); expect(s[6]).toBeGreaterThan(160);           // edge contrast up
+    expect(s[0]).toBe(100); expect(s[11]).toBe(160);                              // far from the edge: unchanged
+    expect(Math.abs(s[6] - 160)).toBeLessThanOrEqual(Math.ceil(0.65 * 48));      // capped: no halo blow-up
+    const bw = new Uint8Array(12 * 3); for (let y = 0; y < 3; y++) for (let x = 0; x < 12; x++) bw[y * 12 + x] = x < 6 ? 0 : 255;
+    expect(Buffer.compare(Buffer.from(sharpenGray(bw, 12, 3, 1)), Buffer.from(bw))).toBe(0);
+    expect(sharpenGray(edge, 12, 3, 0)).toBe(edge);
+  });
+  it('normalizeThermal clamps the new fields', () => {
+    expect(normalizeThermal({ sharpen: 999, autoLevel: -5 })).toMatchObject({ sharpen: 100, autoLevel: 0 });
+    expect(normalizeThermal({ sharpen: NaN as any }).sharpen).toBe(65);
+  });
+  it('pipeline stays deterministic and exact-width with the preset', () => {
+    const g = ramp(96, 48, 10, 240), rgba = { width: 96, height: 48, data: new Uint8ClampedArray(96 * 48 * 4) };
+    for (let i = 0; i < g.length; i++) rgba.data.set([g[i], g[i], g[i], 255], i * 4);
+    const a = toThermalBitmap(rgba, {}, 96), b = toThermalBitmap(rgba, {}, 96);
+    expect(a.width).toBe(96); expect(Buffer.compare(Buffer.from(a.data), Buffer.from(b.data))).toBe(0);
   });
 });

@@ -63,6 +63,16 @@ export function drawPrims(g: CanvasRenderingContext2D, prims: Prim[]): void {
         if (p.fill) { g.fillStyle = p.fill; g.fill(); }
         if (p.stroke) { g.strokeStyle = p.stroke; g.lineWidth = p.sw ?? 1; g.stroke(); }
         break;
+      case 'path':
+        g.beginPath();
+        for (const c of p.cmds) {
+          if (c[0] === 'M') g.moveTo(c[1], c[2]); else if (c[0] === 'L') g.lineTo(c[1], c[2]);
+          else if (c[0] === 'Q') g.quadraticCurveTo(c[1], c[2], c[3], c[4]);
+          else if (c[0] === 'C') g.bezierCurveTo(c[1], c[2], c[3], c[4], c[5], c[6]); else g.closePath();
+        }
+        if (p.fill) { g.fillStyle = p.fill; g.fill(); }
+        g.strokeStyle = p.stroke ?? '#000'; g.lineWidth = p.sw ?? 1; g.lineJoin = 'round'; g.lineCap = 'round'; g.stroke();
+        break;
       case 'poly':
         g.beginPath(); p.pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath();
         g.fillStyle = p.fill ?? '#000'; g.fill();

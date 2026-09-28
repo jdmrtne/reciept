@@ -11,9 +11,9 @@ const star = (n: number, R: number, r: number) =>
   }).join(' ');
 const face = (extra: string) => `<circle cx="50" cy="50" r="42" fill="#fff" stroke="#000" stroke-width="6"/>${extra}`;
 const smile = '<path d="M30 60 Q50 82 70 60" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>';
-const W = 'fill="none" stroke="#fff" stroke-linecap="round"';
+const W = 'fill="none" stroke="#111" stroke-linecap="round"';
 
-export const STICKERS: StickerDef[] = [
+const RAW: StickerDef[] = [
   { id: 'heart', category: 'Hearts', name: 'Heart', svg: `<path d="${H}"/>` },
   { id: 'heart-outline', category: 'Hearts', name: 'Heart outline', svg: `<path d="${H}" fill="#fff" stroke="#000" stroke-width="7" stroke-linejoin="round"/>` },
   { id: 'hearts-two', category: 'Hearts', name: 'Two hearts', svg: `<g transform="translate(0 20) scale(.62)"><path d="${H}"/></g><g transform="translate(40 2) scale(.55)"><path d="${H}" fill="#fff" stroke="#000" stroke-width="10" stroke-linejoin="round"/></g>` },
@@ -46,6 +46,14 @@ export const STICKERS: StickerDef[] = [
   { id: 'pumpkin', category: 'Seasonal', name: 'Pumpkin', svg: `<ellipse cx="50" cy="58" rx="40" ry="32"/><path d="M46 28 Q46 14 60 10" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/><path d="M36 46 L44 58 L28 58Z M64 46 L72 58 L56 58Z" fill="#fff"/><path d="M34 70 Q50 84 66 70" ${W} stroke-width="5"/>` },
   { id: 'leaf', category: 'Seasonal', name: 'Leaf', svg: `<path d="M12 88 Q8 30 50 12 Q92 10 88 50 Q80 88 12 88Z"/><path d="M14 86 Q44 56 70 34" ${W} stroke-width="4"/>` }
 ];
+
+/**
+ * Outline treatment for every sticker: white paper fill + black ink line, so they read like sketchbook doodles.
+ * Shapes with their own stroke keep it; details drawn in white are re-inked in black.
+ */
+const ink = (svg: string) =>
+  `<g fill="#fff" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${svg.replace(/stroke="#fff"/g, 'stroke="#111"').replace(/stroke="#000"/g, 'stroke="#111"')}</g>`;
+export const STICKERS: StickerDef[] = RAW.map((s) => ({ ...s, svg: ink(s.svg) }));
 
 export const getSticker = (id: string) => STICKERS.find((s) => s.id === id) ?? STICKERS[0];
 

@@ -63,3 +63,6 @@ Settings (`config/settings.ts`): `printer`, `thermal` (deep-merged + normalised 
 
 ## PWA
 `vite-plugin-pwa` (autoUpdate) generates manifest + Workbox SW precaching the app shell; `navigateFallback` = index.html. Icons in `public/icons` (192, 512, maskable).
+
+## Phase 11 additions
+`PrinterManager.health()` (`print/manager.ts`) is the pre-flight check behind the Standby status dot: it quietly opens the link if idle (lazy connect means `status()` alone reads 'disconnected'), maps to `PrinterHealth {level: ready|attention|offline}` (types in `print/types.ts`), never opens the mock, never touches a print in flight. `hooks/usePrinterHealth.ts` polls it every 15 s on Standby; `.pdot` in `global.css`. Success screen = stamp + countdown (`SuccessScreen.tsx`). Phone-landscape editor: CSS grid side column at the end of `global.css` (`.edit` children other than `.edit-stage` go to column 2).

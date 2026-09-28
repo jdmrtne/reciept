@@ -6,6 +6,7 @@ import { canvasToBlob, renderPrint } from '../render/render';
 import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
 import { bitmapToCanvas, canvasToRGBA } from '../print/browser';
+import { Icon } from '../components/Icon';
 
 type Phase = 'preparing' | 'ready' | 'printing' | 'error';
 
@@ -22,6 +23,7 @@ export function PrintScreen() {
   const [prepFailed, setPrepFailed] = useState(false);
   const image = useRef<RGBAImage | null>(null);
   const alive = useRef(true);
+  const autoStarted = useRef(false);
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
@@ -59,11 +61,18 @@ export function PrintScreen() {
     }
   };
 
+  // The person already tapped PRINT on the preview screen: start printing as soon as the bitmap is ready (once only,
+  // so a failed job waits for RETRY instead of looping).
+  useEffect(() => {
+    if (phase === 'ready' && !autoStarted.current) { autoStarted.current = true; void print(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   const msg = code ? PRINTER_MESSAGES[code] : null;
   const printing = phase === 'printing';
   return (
     <main className="prev">
-      <p className="edit-hint">{printing ? 'PRINTING' : 'PRINT PREVIEW \u2014 THIS IS HOW IT WILL PRINT'}</p>
+      <p className="edit-hint">{printing ? 'PRINTING' : phase === 'error' ? 'PRINT FAILED' : 'PREPARING TO PRINT'}</p>
       <div className="prev-stage">
         {prepFailed ? <p className="err">Could not prepare your receipt. Go back and try again.</p>
           : url ? (
@@ -78,12 +87,17 @@ export function PrintScreen() {
           </div>
         )}
       </div>
-      {printing && <p className="edit-hint loading" aria-live="polite">{Math.round(progress * 100)}%</p>}
+      {printing && (
+        <div aria-live="polite">
+          <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
+          <p className="edit-hint loading">{Math.round(progress * 100)}%</p>
+        </div>
+      )}
       <div className="cam-bar">
-        <button className="btn ghost" disabled={printing} onClick={() => sessionStore.go(prepFailed ? 'edit' : 'preview')}>BACK</button>
+        <button className="btn ghost" disabled={printing} onClick={() => sessionStore.go(prepFailed ? 'edit' : 'preview')}><Icon name="back" />BACK</button>
         {phase === 'error'
-          ? <button className="btn big" onClick={print}>RETRY</button>
-          : <button className="btn big" disabled={phase !== 'ready'} onClick={print}>{printing ? 'PRINTING' : 'PRINT NOW'}</button>}
+          ? <button className="btn big" onClick={print}><Icon name="retry" />RETRY</button>
+          : <button className="btn big" disabled={phase !== 'ready'} onClick={print}><Icon name="print" />{printing ? 'PRINTING' : 'PRINT NOW'}</button>}
       </div>
     </main>
   );

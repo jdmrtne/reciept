@@ -5,6 +5,7 @@ import { sessionStore, useSession } from '../state/session';
 import { getLayout } from '../layouts/registry';
 import { slotCount } from '../layouts/engine';
 import { loadSettings } from '../config/settings';
+import { Icon } from '../components/Icon';
 
 type Phase = 'live' | 'countdown' | 'review';
 
@@ -25,7 +26,7 @@ export function Camera() {
   const [error, setError] = useState('');
   const target = useRef<number | null>(null); // index being retaken, null = sequential
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-arm on mount: StrictMode's dev remount would otherwise leave it false
 
   const begin = (retakeIdx: number | null = null) => {
     target.current = retakeIdx;
@@ -74,10 +75,11 @@ export function Camera() {
         <video ref={cam.videoRef} playsInline muted className={cam.facing === 'user' ? 'mirror' : ''} />
         {phase === 'countdown' && count > 0 && <div key={count} className="count">{count}</div>}
         {flash && <div className="flash" />}
+        <div className="vf" aria-hidden="true"><i /><i /><i /><i /></div>
         {problem && (
           <div className="cam-msg">
             <p>{problem}</p>
-            <button className="btn" onClick={cam.retry}>TRY AGAIN</button>
+            <button className="btn" onClick={cam.retry}><Icon name="retry" />TRY AGAIN</button>
           </div>
         )}
         {phase !== 'review' && <div className="shots">PHOTO {Math.min(shown + 1, shotsPerSession)} / {shotsPerSession}</div>}
@@ -85,11 +87,11 @@ export function Camera() {
 
       {phase === 'live' && (
         <div className="cam-bar">
-          <button className="btn ghost" onClick={() => sessionStore.update({ photos: [], editor: null, carry: null, screen: 'layout' })}>BACK</button>
+          <button className="btn ghost" onClick={() => sessionStore.update({ photos: [], editor: null, carry: null, screen: 'layout' })}><Icon name="back" />BACK</button>
           <button className="btn big" disabled={cam.status !== 'ready'} onClick={() => begin(null)}>
-            {shown ? 'CONTINUE' : 'START'}
+            <Icon name="camera" />{shown ? 'CONTINUE' : 'START'}
           </button>
-          {cam.canSwitch ? <button className="btn ghost" onClick={cam.flip}>FLIP</button> : <span />}
+          {cam.canSwitch ? <button className="btn ghost" onClick={cam.flip}><Icon name="flip" />FLIP</button> : <span />}
         </div>
       )}
 
@@ -104,8 +106,8 @@ export function Camera() {
           </div>
           {error && <p className="err">{error}</p>}
           <div className="cam-bar">
-            <button className="btn ghost" onClick={() => { photos.forEach((u) => URL.revokeObjectURL(u)); sessionStore.update({ photos: [], editor: null }); setPhase('live'); }}>START OVER</button>
-            <button className="btn big" onClick={() => sessionStore.go('edit')}>LOOKS GOOD</button>
+            <button className="btn ghost" onClick={() => { photos.forEach((u) => URL.revokeObjectURL(u)); sessionStore.update({ photos: [], editor: null }); setPhase('live'); }}><Icon name="reset" />START OVER</button>
+            <button className="btn big" onClick={() => sessionStore.go('edit')}><Icon name="check" />LOOKS GOOD</button>
           </div>
         </div>
       )}

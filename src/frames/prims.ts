@@ -1,5 +1,6 @@
-import type { Block, FrameCtx, FrameDef, Prim } from './types';
+import type { Block, FrameCtx, FrameDef, PathCmd, Prim } from './types';
 import type { Rect as Rect0 } from '../layouts/types';
+import { ornament, sketchRect, tornRect } from './art';
 import type { ResolvedLayout } from '../layouts/types';
 
 const REF = 384;
@@ -32,12 +33,12 @@ export function barcodeRects(seed: string, x: number, y: number, w: number, h: n
   return bars.map((b) => ({ k: 'rect', x: x + b.x * s, y, w: Math.max(1, b.w * s), h, fill: '#000' }));
 }
 
-const star = (cx: number, cy: number, r: number): Prim => ({
-  k: 'poly', fill: '#000',
-  pts: Array.from({ length: 10 }, (_, i) => {
+const star = (cx: number, cy: number, r: number, sw: number): Prim => ({
+  k: 'path', stroke: '#000', sw, // outlined 5-point star (ink line, not a solid blob)
+  cmds: [...Array.from({ length: 10 }, (_, i) => {
     const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r;
-    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)] as [number, number];
-  })
+    return [i ? 'L' : 'M', cx + rr * Math.cos(a), cy + rr * Math.sin(a)] as PathCmd;
+  }), ['Z'] as PathCmd]
 });
 
 const dashOf = (k: number) => `${8 * k} ${6 * k}`;
@@ -69,15 +70,21 @@ export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[
   const k = L.width / REF, out: Prim[] = [];
   const W = L.width, H = L.height, off = 8 * k;
   const { style, width, inset } = f.border;
+  const sketchy = f.decor?.includes('sketch-border') || style === 'solid' || style === 'double';
+  if (f.decor?.includes('torn')) out.push({ k: 'path', cmds: tornRect(3.5 * k, 3.5 * k, W - 7 * k, H - 7 * k, 9 * k, 2.2 * k, 7), stroke: '#000', sw: 2 * k });
   if (style !== 'none') {
-    const rc = (i: number, sw: number): Prim => ({ k: 'rect', x: i, y: i, w: W - 2 * i, h: H - 2 * i, stroke: '#000', sw, dash: style === 'dashed' ? dashOf(k) : undefined });
-    out.push(rc(inset * k, width * k));
-    if (style === 'double') out.push(rc((inset + width * 3) * k, 1 * k));
+    const rc = (i: number, sw: number, n: number): Prim => sketchy && style !== 'dashed'
+      ? { k: 'path', cmds: sketchRect(i, i, W - 2 * i, H - 2 * i, 8 * k, 0.9 * k, n), stroke: '#000', sw }
+      : { k: 'rect', x: i, y: i, w: W - 2 * i, h: H - 2 * i, stroke: '#000', sw, dash: style === 'dashed' ? dashOf(k) : undefined };
+    out.push(rc(inset * k, width * k, 1));
+    if (style === 'double') out.push(rc((inset + width * 3) * k, 1 * k, 2));
   }
+  if (f.decor?.includes('nails')) for (const [nx, ny] of [[11, 11], [W / k - 11, 11], [11, H / k - 11], [W / k - 11, H / k - 11]])
+    out.push({ k: 'circle', cx: nx * k, cy: ny * k, r: 2.4 * k, fill: '#fff', stroke: '#000', sw: 1.3 * k });
   if (L.header) {
     block(f.header, L.header, ctx, k, out);
     if (f.header.rule) out.push(...rule(L.header.y + L.header.h + off, L.header.x, L.header.w, f.header.rule, k));
-    if (f.decor?.includes('stars')) [-2, -1, 0, 1, 2].forEach((i) => out.push(star(W / 2 + i * 26 * k, L.header!.y + L.header!.h * 0.9, 5 * k)));
+    if (f.decor?.includes('stars')) [-2, -1, 0, 1, 2].forEach((i) => out.push(star(W / 2 + i * 26 * k, L.header!.y + L.header!.h * 0.9, 6 * k, 1.3 * k)));
   }
   if (L.footer) {
     block(f.footer, L.footer, ctx, k, out);
@@ -91,6 +98,13 @@ export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[
     const s = 14 * k, m = 12 * k;
     for (const [cx, cy, dx, dy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]])
       out.push({ k: 'line', x1: cx, y1: cy, x2: cx + dx * s, y2: cy, sw: 2 * k }, { k: 'line', x1: cx, y1: cy, x2: cx, y2: cy + dy * s, sw: 2 * k });
+  }
+  for (const o of f.ornaments ?? []) {
+    const r = o.at === 'header' ? L.header : L.footer;
+    if (!r) continue;
+    const size = o.size * k, cy = r.y + o.y * r.h, m = size / 2 + 12 * k;
+    if (o.left) out.push(...ornament(o.left, r.x + m, cy, size, 2 * k, -8));
+    if (o.right) out.push(...ornament(o.right, r.x + r.w - m, cy, size, 2 * k, 8));
   }
   for (const [name, offs] of [['slot-border', [4]], ['slot-border-double', [4, 7]]] as const)
     if (f.decor?.includes(name)) for (const s of L.slots) for (const o of offs)

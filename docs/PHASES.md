@@ -1,5 +1,6 @@
 # Phases
 Status: [x] done, [ ] todo. Adjust only with a note here.
+Note (Phase 11, session 7): DONE. Camera StrictMode stall fixed, phone-landscape editor side column, printer status dot (PrinterManager.health), success screen polish. 145 tests, build OK.
 Note (Phase 10, session 3): ADMIN now has an owner PIN; Preview/Print image-fit CSS bug fixed; app run end-to-end in headless Chromium (esbuild bundle, fake camera, mock printer) at tablet landscape/portrait + phone with no errors. `npm install` was blocked again, so real `npm test` still unrun (106 tests passed via a throwaway shim; expect 115 with the 9 render tests).
 Note (Phase 9): `npm test` adds `src/print/print.test.ts` (52 tests, pure). Phase 9 could NOT be run through `npm install` in the authoring sandbox (registry blocked) — see HANDOFF.
 Note (Phase 8): `npm test` now has 24 tests incl. real-pixel render tests (node-canvas).
@@ -15,7 +16,7 @@ Note (Phase 7): Phases 1–7 now install, typecheck, build and pass `npm test`; 
 - [x] 8  Rendering/export engine (pure plan + canvas renderer + real PREVIEW screen; verified in node-canvas, untested in a real browser)
 - [x] 9  Printer abstraction + print preview (PrinterManager, adapters incl. mock, thermal pipeline, ESC/POS raster encoder, print + success screens; tested in node, untested in a browser)
 - [ ] 10 Real thermal printer integration (IN PROGRESS: USB + Bluetooth(BLE) transports, status decoding, test page, ADMIN screen + owner PIN written and tested with fakes / in headless Chromium; awaiting first run on the real Android tablet + printer)
-- [ ] 11 UX polish + tablet responsive
+- [x] 11 UX polish + tablet responsive (phone-landscape editor layout, Standby printer status dot, success screen polish, Camera StrictMode fix; verified in headless Chromium)
 - [ ] 12 Offline/PWA hardening
 - [ ] 13 Testing + bug fixing
 - [ ] 14 Production prep

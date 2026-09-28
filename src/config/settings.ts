@@ -1,5 +1,5 @@
 import type { PrinterErrorCode } from '../print/errors';
-import { DEFAULT_THERMAL, type PrinterKind, type ThermalSettings } from '../print/types';
+import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
 
 export interface BoothSettings {
@@ -44,6 +44,19 @@ const KINDS: PrinterKind[] = ['mock', 'system', 'windows', 'bluetooth', 'usb', '
 const clampInt = (v: unknown, lo: number, hi: number, d: number) =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d;
 
+/**
+ * Settings saved before the Photobooth Face preset existed have no sharpen/autoLevel. If their tone values are still
+ * the untouched old defaults, move them to the new default look (paper margins/feed/cut are kept). Anything the owner
+ * actually tuned is left alone; LEGACY in ADMIN restores the old look on demand.
+ */
+function upgradeThermal(t: unknown): unknown {
+  if (!t || typeof t !== 'object') return t;
+  const o = t as Record<string, unknown>;
+  if ('sharpen' in o || 'autoLevel' in o) return t;
+  const untouched = (['brightness', 'contrast', 'dither', 'threshold', 'density'] as const).every((k) => o[k] === LEGACY_THERMAL[k]);
+  return untouched ? { ...o, ...Object.fromEntries(TONE_KEYS.map((k) => [k, PHOTOBOOTH_FACE[k]])) } : t;
+}
+
 /** Merge stored values over defaults and repair anything invalid (old versions, hand edits). */
 export function mergeSettings(raw: unknown): BoothSettings {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<BoothSettings>;
@@ -52,7 +65,7 @@ export function mergeSettings(raw: unknown): BoothSettings {
     ...r,
     paperWidthMm: r.paperWidthMm === 80 ? 80 : 58,
     printer: KINDS.includes(r.printer as PrinterKind) ? (r.printer as PrinterKind) : DEFAULT_SETTINGS.printer,
-    thermal: normalizeThermal(r.thermal),
+    thermal: normalizeThermal(upgradeThermal(r.thermal) as Partial<ThermalSettings>),
     bluetooth: {
       chunkSize: clampInt(r.bluetooth?.chunkSize, 20, 512, DEFAULT_SETTINGS.bluetooth.chunkSize),
       chunkDelayMs: clampInt(r.bluetooth?.chunkDelayMs, 0, 200, DEFAULT_SETTINGS.bluetooth.chunkDelayMs)

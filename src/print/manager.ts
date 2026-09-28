@@ -1,6 +1,6 @@
 import { PrinterError, toPrinterError } from './errors';
 import { normalizeThermal, toThermalBitmap } from './pipeline';
-import type { PrintOptions, PrintResult, PrinterAdapter, PrinterKind, PrinterStatus, RGBAImage } from './types';
+import type { PrintOptions, PrintResult, PrinterAdapter, PrinterHealth, PrinterKind, PrinterStatus, RGBAImage } from './types';
 import { encodeRaster } from './escpos';
 
 export type AdapterFactory = () => PrinterAdapter;
@@ -35,6 +35,30 @@ export class PrinterManager {
   async status(): Promise<PrinterStatus> {
     try { return await this.current().status(); }
     catch (e) { return { state: 'error', detail: toPrinterError(e).code }; }
+  }
+
+  /**
+   * Pre-flight check for the Standby dot. Connections are lazy (nothing opens until the first print), so a plain
+   * `status()` would call every idle printer 'disconnected'. This quietly tries to open the link first (no chooser,
+   * no tap needed; a printer that was never paired simply reads as offline). Never touches a print in flight, and
+   * never opens the mock (so its simulated failures are kept for real prints).
+   */
+  async health(connectTimeoutMs = 4000): Promise<PrinterHealth> {
+    if (this.inflight || this.kind === 'mock') return { level: 'ready' };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      let st = await this.status();
+      if (st.state === 'disconnected') {
+        const timeout = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new PrinterError('unavailable', 'connect timed out')), connectTimeoutMs); });
+        await Promise.race([this.current().connect(), timeout]);
+        st = await this.status();
+      }
+      if (st.state === 'error') return { level: st.detail === 'paper' ? 'attention' : 'offline', detail: st.detail };
+      if (st.state === 'disconnected') return { level: 'offline' };
+      return st.detail === 'paper low' ? { level: 'attention', detail: st.detail } : { level: 'ready' };
+    } catch {
+      return { level: 'offline' };
+    } finally { clearTimeout(timer); }
   }
 
   /** Owner pairing step (call from a tap). No-op for adapters that don't need it. */
