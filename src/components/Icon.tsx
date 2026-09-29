@@ -23,7 +23,9 @@ const P: Record<string, ReactNode> = {
   close: <path d="M5 5l14 14M19 5L5 19" />,
   home: <path d="M4 11l8-7 8 7M6 9.5V20h12V9.5" />,
   retry: <path d="M20 12a8 8 0 11-2.4-5.7M20 4v5h-5" />,
-  play: <path d="M8 5l11 7-11 7z" />
+  play: <path d="M8 5l11 7-11 7z" />,
+  photo: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M3.5 17l5-4.5 4 3.5 3-2.5 5 4" /></>,
+  film: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9h4M3.5 14.5h4M16.5 9h4M16.5 14.5h4" /></>
 };
 
 export function Icon({ name }: { name: keyof typeof P | string }) {

@@ -262,6 +262,8 @@ h1, h2 { color: var(--ink); }
 .qr { width: 100%; height: 100%; display: block; }
 .qr-fail { border: var(--line-thin); border-radius: var(--radius-s); padding: 1.4vmin; }
 .qr-label { margin: 0; letter-spacing: .14em; font-size: clamp(15px, 2.4vmin, 26px); }
+.qr-label { display: inline-flex; align-items: center; justify-content: center; gap: .5em; }
+.qr-label .ic { width: 1.3em; height: 1.3em; flex: none; }
 .qr-hint { margin: 0; color: var(--gray-5); letter-spacing: .12em; font-size: .85em; }
 @media (orientation: portrait) {
   .share-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 28vh) auto; }

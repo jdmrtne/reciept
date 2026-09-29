@@ -25,7 +25,7 @@ const PHASE_TEXT: Record<SharePhase, string> = { preparing: 'Preparing your digi
 const PHASE_ORDER: SharePhase[] = ['preparing', 'uploading', 'qr'];
 const hoursText = (ms: number) => { const h = Math.round(ms / 3600000); return h >= 48 ? `${Math.round(h / 24)} DAYS` : h === 1 ? '1 HOUR' : `${h} HOURS`; };
 
-function QrCard({ part, emoji, label, hint, onRetry }: { part: Part; emoji: string; label: string; hint: string; onRetry: () => void }) {
+function QrCard({ part, icon, label, hint, onRetry }: { part: Part; icon: string; label: string; hint: string; onRetry: () => void }) {
   return (
     <section className="qr-card" aria-live="polite">
       {part.s === 'loading' ? <div className="qr-box"><p className="loading">MAKING QR</p></div>
@@ -35,7 +35,7 @@ function QrCard({ part, emoji, label, hint, onRetry }: { part: Part; emoji: stri
             {part.code !== 'config' && part.code !== 'missing' && <button className="btn ghost" onClick={onRetry}><Icon name="retry" />RETRY</button>}
           </div>
         ) : <div className="qr-box"><QrCode matrix={part.matrix} label={`${label} QR code`} /></div>}
-      <h2 className="qr-label"><span aria-hidden="true">{emoji}</span> {label}</h2>
+      <h2 className="qr-label"><Icon name={icon} />{label}</h2>
       <p className="qr-hint">{hint}</p>
     </section>
   );
@@ -119,8 +119,8 @@ export function ShareScreen() {
         <div className="share-prev">
           {preview ? <img src={preview} alt="Your photo" className="prev-img" /> : <p className="loading">PREPARING</p>}
         </div>
-        <QrCard part={photo} emoji="📷" label="COLOR PHOTO" hint="Scan to download" onRetry={() => void run('photo.jpg')} />
-        <QrCard part={gif} emoji="🎞" label="GIF VERSION" hint="Scan to view/download" onRetry={() => void run('photo.gif')} />
+        <QrCard part={photo} icon="photo" label="COLOR PHOTO" hint="Scan to download" onRetry={() => void run('photo.jpg')} />
+        <QrCard part={gif} icon="film" label="GIF VERSION" hint="Scan to view/download" onRetry={() => void run('photo.gif')} />
       </div>
       {ttl && <p className="edit-hint">LINKS WORK FOR {ttl}</p>}
       <div className="cam-bar">
