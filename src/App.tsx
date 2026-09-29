@@ -11,6 +11,7 @@ import { AdminScreen } from './screens/AdminScreen';
 import { Placeholder } from './screens/Placeholder';
 import { sessionStore, useSession } from './state/session';
 import { useInactivity } from './hooks/useInactivity';
+import { useWakeLock } from './hooks/useWakeLock';
 import { loadSettings } from './config/settings';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const { inactivitySeconds } = loadSettings();
   const onIdle = useCallback(() => sessionStore.reset(), []);
   useInactivity(screen !== 'standby', inactivitySeconds, onIdle);
+  useWakeLock();
 
   // Leaving ADMIN (EXIT / idle reset) also leaves the /admin URL, so a reload boots to standby.
   useEffect(() => {

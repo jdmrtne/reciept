@@ -244,3 +244,9 @@ h1, h2 { color: var(--ink); }
   .done .done-timer p { margin-top: .3em !important; }
   .done .btn { margin-top: .6em !important; min-height: 42px; }
 }
+
+/* Crash-recovery card (ErrorBoundary): plain black-on-white, no motion, no buttons. */
+.crash { display: grid; place-content: center; justify-items: center; gap: 1em; background: var(--white); color: var(--ink); text-align: center; animation: none; }
+.crash-head { font-size: var(--fs-xl); font-weight: 700; letter-spacing: .12em; line-height: 1; }
+.crash .dash { width: min(70vmin, 420px); }
+.crash-sub { letter-spacing: .3em; }

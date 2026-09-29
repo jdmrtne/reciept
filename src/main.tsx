@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
+import { ErrorBoundary } from './ErrorBoundary';
 import { sessionStore } from './state/session';
 import { isAdminPath } from './config/route';
 import { armUpdate } from './pwa/updateGate';
@@ -19,4 +20,4 @@ if (navigator.storage?.persist) void navigator.storage.persist().catch(() => {})
 if (isAdminPath(location.pathname)) sessionStore.go('admin');
 // Kiosk hygiene: no context menu, no pinch-zoom of the page itself.
 document.addEventListener('contextmenu', (e) => e.preventDefault());
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><ErrorBoundary><App /></ErrorBoundary></StrictMode>);

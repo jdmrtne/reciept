@@ -1,6 +1,30 @@
 # HANDOFF
 
-## Session 9: Phase 13 (Testing + bug fixing) — IN PROGRESS (latest)
+## Session 10: Phase 14 (Production prep) — IN PROGRESS: prep written and browser-checked, release gate NOT run (latest)
+**Sandbox again had no registry access** (`npm install` -> 403). So `npm test`, `npm run typecheck` (real React types) and `npm run build` did NOT run, for the third session in a row. Nothing here is claimed as passing that was not run. Phases 10, 13 and 14 all stay open on the same blocker: a machine with a working `npm install` and the owner's real tablet + printer. **`docs/RELEASE-CHECKLIST.md` is the Phase 14 gate**; work through it.
+What I added (all small, all optional to keep):
+- **Crash recovery (`src/ErrorBoundary.tsx`, `src/recovery.ts`, wired in `main.tsx`, CSS `.crash` at the end of `global.css`).** A screen that throws now shows a black-and-white "ONE MOMENT / RESTARTING THE BOOTH" card for 1.5 s, then `sessionStore.reset()` (photos wiped, new session id, standby). A second crash within 15 s reloads the page instead (`recoveryAction`). Text is fixed copy, no text tools.
+- **Screen wake lock (`src/hooks/useWakeLock.ts`, used in `App.tsx`).** Requests `navigator.wakeLock` 'screen' at boot, re-requests on `visibilitychange`, releases on unmount; silently does nothing when unsupported or denied. The owner is still told to set the tablet's own screen timeout (OWNER-GUIDE).
+- **Manifest**: added `id: '/'`, `scope: '/'`, `lang: 'en'` in `vite.config.ts` (root-domain hosting is assumed; sub-path hosting is not supported without changing base/start_url/scope/id).
+- **Hosting files**: `public/_headers` (security headers, `no-cache` on index/sw/manifest, immutable `/assets/*`; deliberately NO CSP) and `public/_redirects` (SPA fallback so `/admin` works) for Netlify / Cloudflare Pages. Equivalents for Vercel/nginx are in DEPLOYMENT.md.
+- **Print bridge origin allow-list**: `ALLOW_ORIGIN=https://booth.example.com npm run bridge` restricts which pages may call it (`corsOrigin()` in `bridge/server.mjs`, typings in `server.d.mts`). Unset = `*` exactly as before.
+- **Docs**: `DEPLOYMENT.md`, `OWNER-GUIDE.md`, `RELEASE-CHECKLIST.md` (new). Owner-facing wording was checked against the code (ADMIN labels, PIN lockout = 5 tries / 60 s, PIN salted+hashed).
+- **Tests added (unrun under vitest):** `src/recovery.test.ts` (3), `src/print/bridge-cors.test.ts` (2). Expected total = **157** (152 + 5).
+What WAS verified, for real, in this sandbox:
+- The whole app (`src/main.tsx`, with the PWA register call stubbed) was bundled with the esbuild that ships inside the global `tsx` (`/home/claude/.npm-global/lib/node_modules/tsx/node_modules/esbuild`) and run in headless Chromium (Playwright): boots to standby with **no console errors**; standby -> CHOOSE YOUR STRIP renders 5+ layout cards each with frame art (**first real-browser confirmation of the Session 9 frame-preview fix**); wake lock requested once per live mount (StrictMode double mount leaves exactly one live lock), re-acquired after a simulated release + visibilitychange; app still boots when `navigator.wakeLock` is missing.
+- Real React ErrorBoundary test (throwing component): crash card appears, session wiped to standby with a new id and no photos, page NOT reloaded on the first crash; an immediate second crash reloads to a clean standby. Card checked visually.
+- Bridge: origin allow-list checked against a live `createBridge` server in node (`*` default, echo for listed origin, no header for others).
+- `tsc --strict` over `recovery.ts`, `useWakeLock.ts`, `bridge/server.d.mts` (React stubbed). tsx smoke of `ErrorBoundary` logic with fake globals.
+NOT verified: `npm test` (157 expected), `tsc -b` with the real React/Vite types (`ErrorBoundary.tsx` and the `App.tsx`/`main.tsx` edits are only bundle-checked, not type-checked; `WakeLockSentinel`/`navigator.wakeLock` are in the TS DOM lib, but confirm), `vite build` output (`_headers`/`_redirects` landing in `dist/`, manifest fields), the real service-worker path, any real tablet/printer behaviour, tablet wake-lock behaviour, and the ADMIN corner behaviour below.
+Things noticed, NOT changed:
+- **Docs said ADMIN opens by holding the top-right corner for 2.5 s; the code (`Standby.tsx` -> `Doodles onHeart`) opens it by tapping the heart doodle** (also `/admin`). Not a bug (PIN-gated), but a guest can reach the keypad. OWNER-GUIDE describes the heart. Decide whether to restore the hidden hold.
+- **No ADMIN control for event name or inactivity timeout** (only in `booth.settings.v1` localStorage). Defaults: `PHOTOBOOTH`, 60 s. Worth a small ADMIN row before a real event.
+- Defaults a real deployment must change in ADMIN: printer is `mock` (prints nothing) and paper is 58 mm (the XP-T80A is 80 mm). Left as is because the owner's tuned values are still unknown.
+- `package.json` version is still `0.1.0`; bump at release (checklist gate 4).
+- Photo rotation still deliberately not implemented.
+- Session 9's claim "no esbuild anywhere" was wrong: the global `tsx` install carries one. Handy when `npm install` is blocked (bundle + Playwright, as above; build script and harness were throwaway, not in the zip).
+
+## Session 9: Phase 13 (Testing + bug fixing) — IN PROGRESS
 **Sandbox had no network at all this session** (not just the registry 403 seen before — `bash_tool` networking was off entirely). No `npm install`, so no vitest/vite/esbuild available anywhere, and no way to run Playwright against a real build. Could not run `npm test`, `npm run build`, or a browser sweep. Did not fabricate results for any of these — they're still owed.
 What I did instead:
 - **Manual code-review sweep** of the core flow (state, inactivity, editor model, PIN/lockout, session store, App.tsx routing) looking for real bugs.
@@ -117,7 +141,7 @@ Sandbox had no registry. Ran `src/print/print.test.ts` (52 tests, all pass) with
 Phase 10 (real hardware) stays open pending the owner. Otherwise, keep going on Phase 13: testing + bug fixing — this session got one real fix in but owes the actual test/build/browser run.
 
 ## Instructions for Next Claude
-1. `npm install && npm run typecheck && npm test && npm run build` — confirm green (expect 152 tests; this session could not run this at all, see Session 9 — do it first, before anything else, since it's unverified since Session 8).
+1. `npm install && npm run typecheck && npm test && npm run build` — confirm green (expect 157 tests; Sessions 9 and 10 could not run this at all — do it first, before anything else, it is unverified since Session 8). Then work through docs/RELEASE-CHECKLIST.md.
 2. If the owner has since bench-tested the real printer/tablet: get their FIRST-RUN CHECKLIST results (see "Current Phase" below) and fix what they report before anything else. Do not redesign the transports before hearing what the real printer does.
 3. If not, continue Phase 13 (testing + bug fixing): Session 9 fixed the layout-thumbnail-shows-no-frame bug (see Session 9 note) but only verified it with an import-smoke-test, not the real suite or a browser. Re-verify that fix for real, then sweep the app end-to-end in headless Chromium (Playwright is preinstalled) across the tablet sizes already used in Session 7/8, looking for anything broken rather than adding features. Photo rotation is still deliberately not implemented (feature, not a bug).
 4. Map real printer status to `PrinterError` codes (`paper`, `disconnected`, `connection-lost`) once real hardware feedback exists; tune `bandRows/chunkSize/feed/cut/density` and default thermal settings on the real printer.
@@ -129,9 +153,10 @@ Continue the PWA Photobooth project.
 Read:
 - /docs/PROJECT.md
 - /docs/ARCHITECTURE.md
-- /docs/HANDOFF.md (start with "Session 9", then "Session 3 summary" for Phase 10 hardware context)
+- /docs/HANDOFF.md (start with "Session 10", then "Session 3 summary" for Phase 10 hardware context)
+- /docs/RELEASE-CHECKLIST.md, /docs/DEPLOYMENT.md, /docs/OWNER-GUIDE.md
 
-Run `npm install && npm run typecheck && npm test && npm run build` first (expect 152 tests) — Session 9's sandbox had no network at all, so this is unverified since Session 8 and should happen before anything else. Do not redo completed work. Phase 10 stays open until the owner reports the FIRST-RUN CHECKLIST results from the real Android tablet + Officom XPT80A (USB on the bench, Bluetooth BLE-vs-Classic test for deployment): fix whatever they report and tune the printer defaults. Phase 11 (UX polish) and Phase 12 (Offline/PWA hardening) are DONE. Phase 13 (testing + bug fixing) is IN PROGRESS: Session 9 fixed the layout-thumbnail-no-frame bug by reusing the existing `FramePreview` component but couldn't run the real test/build/browser pipeline (no network in that sandbox) — re-verify it for real, then keep sweeping for bugs (headless Chromium via Playwright is available) rather than adding scope; photo rotation stays deliberately unimplemented. Keep the minimalist black-and-white UI, receipt-style frames, tablet-first design, and no custom text tools.
+Run `npm install && npm run typecheck && npm test && npm run build` first (expect 157 tests) — Sessions 9 and 10 had no registry access, so this is unverified since Session 8 and should happen before anything else. Do not redo completed work. Phases 1-9, 11 and 12 are DONE. Phases 10 (real printer), 13 (testing + bug fixing) and 14 (production prep) are OPEN for the same reason: they need a working `npm install` and the owner's real Android tablet + Officom XPT80A. Phase 14's code and docs are written (crash-recovery boundary, screen wake lock, manifest id/scope, `public/_headers` + `_redirects`, bridge `ALLOW_ORIGIN`, DEPLOYMENT / OWNER-GUIDE / RELEASE-CHECKLIST) and browser-checked via an esbuild bundle in headless Chromium, but the release gate itself (RELEASE-CHECKLIST gates 1-4) has not been run. Next: run the gates; fix what breaks; get the owner's FIRST-RUN CHECKLIST results and tune printer defaults; consider small ADMIN rows for event name and inactivity timeout (noted in Session 10); only then mark 10/13/14 done and bump the version. Keep the minimalist black-and-white UI, receipt-style frames, tablet-first design, and no custom text tools. Update HANDOFF.md, PHASES.md and give a continuation prompt at the end of every session.
 
 ## Session 5: white outline theme (visual only)
 - UI restyled as a white-background, black-outline sketchbook look. No gradients. Ink `#111`, text `#2b2b2b`, one very subtle `#f5f5f5` fill. Tokens in `styles/tokens.css`, everything else in `styles/global.css`.

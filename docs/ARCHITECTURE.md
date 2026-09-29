@@ -66,3 +66,10 @@ Settings (`config/settings.ts`): `printer`, `thermal` (deep-merged + normalised 
 
 ## Phase 11 additions
 `PrinterManager.health()` (`print/manager.ts`) is the pre-flight check behind the Standby status dot: it quietly opens the link if idle (lazy connect means `status()` alone reads 'disconnected'), maps to `PrinterHealth {level: ready|attention|offline}` (types in `print/types.ts`), never opens the mock, never touches a print in flight. `hooks/usePrinterHealth.ts` polls it every 15 s on Standby; `.pdot` in `global.css`. Success screen = stamp + countdown (`SuccessScreen.tsx`). Phone-landscape editor: CSS grid side column at the end of `global.css` (`.edit` children other than `.edit-stage` go to column 2).
+
+## Production prep (Phase 14, built; release gate not yet run)
+- `src/ErrorBoundary.tsx` wraps `<App/>` in `main.tsx`. A render crash shows the `.crash` card (fixed copy), then `sessionStore.reset()` after `RECOVER_DELAY_MS` (1.5 s); a second crash within `RELOAD_WINDOW_MS` (15 s) does `location.reload()`. Policy is the pure `recoveryAction(now, lastCrashAt)` in `src/recovery.ts` (tested). `lastCrashAt` is module-level so it survives the boundary re-rendering its children. Only render-time errors are caught (React's rule); event-handler and async errors are not.
+- `src/hooks/useWakeLock.ts` (called from `App`): best-effort screen wake lock, re-acquired on `visibilitychange`, released on unmount, no-op when unsupported.
+- `vite.config.ts` manifest: `id`, `scope`, `start_url` all `/` (root-domain hosting). `public/_headers` + `public/_redirects` are copied to `dist/` by Vite (Netlify / Cloudflare Pages); `sw.js`, `index.html`, `manifest.webmanifest` are `no-cache`, `/assets/*` immutable. No CSP on purpose (blob:/data: images, inline SVG/styles).
+- `bridge/server.mjs`: `corsOrigin(allowOrigins, requestOrigin)`; `ALLOW_ORIGIN` env (comma list) restricts callers, unset = `*`.
+- Ops docs: `DEPLOYMENT.md` (hosting, printer-vs-HTTPS matrix, updates, rollback), `OWNER-GUIDE.md`, `RELEASE-CHECKLIST.md`.
