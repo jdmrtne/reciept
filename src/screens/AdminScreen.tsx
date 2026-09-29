@@ -7,6 +7,9 @@ import { makeTestPage } from '../print/testpage';
 import { bitmapToCanvas } from '../print/browser';
 import { canvasToBlob } from '../render/render';
 import { PinGate } from './PinGate';
+import { checkShare, type ShareFailure } from '../share/service';
+import { newShareId } from '../share/id';
+import { normalizePublicBase } from '../share/url';
 import { Icon } from '../components/Icon';
 
 const DITHERS: DitherMode[] = ['atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'halftone'];
@@ -21,6 +24,12 @@ const PRINTER_CHOICES: { kind: PrinterKind; name: string; hint: string }[] = [
 ];
 /** Owner-facing failure text: the plain title plus the technical reason (customers never see this screen). */
 const why = (e: unknown) => { const p = toPrinterError(e), t = PRINTER_MESSAGES[p.code].title; return p.message && p.message !== p.code ? `${t} \u2014 ${p.message}` : t; };
+const SHARE_CHECK: Record<ShareFailure, string> = {
+  config: 'PUBLIC URL MISSING OR NOT REACHABLE FROM PHONES (NO localhost)',
+  upload: 'CANNOT UPLOAD TO THE BRIDGE \u2014 IS `npm run bridge` RUNNING? CHECK BRIDGE URL',
+  unreachable: 'UPLOAD OK BUT THE PUBLIC URL DOES NOT SERVE IT \u2014 CHECK THE TUNNEL / PORT (SHARE_PORT, 9102)',
+  missing: 'TEST FILE MISSING', render: 'TEST FILE FAILED', qr: 'QR FAILED'
+};
 const next = <T,>(list: T[], v: T) => list[(list.indexOf(v) + 1) % list.length];
 /** Which tone preset the current thermal tuning equals (CUSTOM once any value is nudged). */
 const presetOf = (t: ThermalSettings) => THERMAL_PRESETS.find((p) => TONE_KEYS.every((k) => t[k] === p.tone[k]));
@@ -68,6 +77,14 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
     finally { setBusy(false); }
   };
 
+  const testShare = async () => {
+    setBusy(true); setNote('CHECKING PHOTO SHARING');
+    try {
+      const code = await checkShare(newShareId(), { fetch: (i, o) => fetch(i, o), bridgeUrl: s.network.bridgeUrl, publicBase: normalizePublicBase(s.share.publicBaseUrl) });
+      setNote(code ? SHARE_CHECK[code] : 'PHOTO SHARING WORKS \u2014 QR CODES WILL APPEAR AFTER PRINTING');
+    } finally { setBusy(false); }
+  };
+
   const test = async () => {
     setBusy(true); setNote(s.printer === 'mock' ? 'TEST PRINTER SELECTED \u2014 NOTHING WILL COME OUT. PICK A REAL PRINTER ABOVE' : 'PRINTING TEST PAGE');
     try {
@@ -112,6 +129,17 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
                 onChange={(e) => set({ network: { ...s.network, bridgeUrl: e.target.value } })} /></label>
             </div>
           )}
+          <Row label="SHARE QR" value={s.share.enabled ? 'ON' : 'OFF'} onPlus={() => set({ share: { ...s.share, enabled: !s.share.enabled } })} />
+          {s.share.enabled && (
+            <div className="adm-net">
+              <label>PUBLIC URL (WHAT PHONES OPEN)<input className="adm-in" inputMode="url" value={s.share.publicBaseUrl} placeholder="https://photos.example.com" disabled={busy}
+                onChange={(e) => set({ share: { ...s.share, publicBaseUrl: e.target.value } })} /></label>
+              {s.printer !== 'network' && s.printer !== 'windows' && (
+                <label>BRIDGE URL (UPLOADS)<input className="adm-in" inputMode="url" value={s.network.bridgeUrl} placeholder="http://localhost:9101" disabled={busy}
+                  onChange={(e) => set({ network: { ...s.network, bridgeUrl: e.target.value } })} /></label>
+              )}
+            </div>
+          )}
           <Row label="PAPER" value={`${s.paperWidthMm} MM`} onPlus={() => set({ paperWidthMm: s.paperWidthMm === 58 ? 80 : 58 })} />
           <Row label="PRESET" value={presetOf(t)?.name ?? 'CUSTOM'} onPlus={() => {
             const cur = presetOf(t), pick = THERMAL_PRESETS[(cur ? THERMAL_PRESETS.indexOf(cur) + 1 : 0) % THERMAL_PRESETS.length];
@@ -139,6 +167,7 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
         <button className="btn ghost" disabled={busy} onClick={onChangePin}>CHANGE PIN</button>
         {(s.printer === 'usb' || s.printer === 'bluetooth') && <button className="btn ghost" disabled={busy} onClick={pair}>PAIR PRINTER</button>}
         {(s.printer === 'network' || s.printer === 'windows') && <button className="btn ghost" disabled={busy} onClick={pair}>CHECK PRINTER</button>}
+        {s.share.enabled && <button className="btn ghost" disabled={busy} onClick={testShare}>CHECK SHARE</button>}
         <button className="btn big" disabled={busy} onClick={test}>TEST PRINT</button>
       </div>
     </main>

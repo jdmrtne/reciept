@@ -4,7 +4,7 @@ import type { FrameCtx } from '../frames/types';
 
 export type Screen =
   | 'standby' | 'layout' | 'camera' | 'countdown' | 'capture'
-  | 'edit' | 'preview' | 'print' | 'success' | 'admin';
+  | 'edit' | 'preview' | 'print' | 'share' | 'success' | 'admin';
 
 /** Everything belonging to ONE customer. Never persisted. */
 export interface Session {

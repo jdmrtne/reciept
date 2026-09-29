@@ -55,7 +55,7 @@ export function PrintScreen() {
         thermal, paperDots: PAPER_DOTS[paperWidthMm],
         onProgress: (p) => alive.current && setProgress(p)
       });
-      if (alive.current) sessionStore.go('success');
+      if (alive.current) sessionStore.go(loadSettings().share.enabled ? 'share' : 'success'); // print succeeded: QR codes next (when the owner enabled them), else straight to the receipt screen
     } catch (e) {
       if (alive.current) { setCode(toPrinterError(e).code); setPhase('error'); }
     }
