@@ -4,7 +4,7 @@ export interface RGBAImage { width: number; height: number; data: Uint8ClampedAr
 /** 1-bit image, rows packed MSB-first (bit 7 = leftmost dot), 1 = BLACK (burned). rowBytes = ceil(width/8). */
 export interface Bitmap1 { width: number; height: number; rowBytes: number; data: Uint8Array }
 
-export type DitherMode = 'threshold' | 'floyd-steinberg' | 'atkinson' | 'ordered';
+export type DitherMode = 'threshold' | 'floyd-steinberg' | 'atkinson' | 'ordered' | 'halftone';
 
 /** Owner-facing print tuning. Stored in BoothSettings (settings only, never photos). */
 export interface ThermalSettings {
@@ -13,6 +13,8 @@ export interface ThermalSettings {
   /** -100..100. */
   contrast: number;
   dither: DitherMode;
+  /** 3..12. Distance in printer dots between halftone dot centres (`halftone` mode only). Bigger = chunkier, more visible dots. */
+  dotSize: number;
   /** 0..255. Cut-off for `threshold` mode (error diffusion / ordered ignore it). */
   threshold: number;
   /** 1..5 (3 = neutral). Software darkness bias for printers that burn light/dark; Phase 10 may also map it to a heat command. */
@@ -44,7 +46,7 @@ const PAPER_DEFAULTS = { marginX: 0, marginTop: 0, marginBottom: 8, feedLines: 4
 
 /** The pre-preset behaviour, kept selectable so nothing that worked before is lost. */
 export const LEGACY_THERMAL: ThermalSettings = {
-  brightness: 0, contrast: 0, dither: 'atkinson', threshold: 128, density: 3, sharpen: 0, autoLevel: 0, ...PAPER_DEFAULTS
+  brightness: 0, contrast: 0, dither: 'atkinson', dotSize: 6, threshold: 128, density: 3, sharpen: 0, autoLevel: 0, ...PAPER_DEFAULTS
 };
 
 /**
@@ -52,15 +54,21 @@ export const LEGACY_THERMAL: ThermalSettings = {
  * pipeline.ts (toThermalBitmap). Start here; nudge brightness / contrast / sharpen / autoLevel to taste.
  */
 export const PHOTOBOOTH_FACE: ThermalSettings = {
-  brightness: 15, contrast: 35, dither: 'floyd-steinberg', threshold: 128, density: 2, sharpen: 65, autoLevel: 60, ...PAPER_DEFAULTS
+  brightness: 15, contrast: 35, dither: 'floyd-steinberg', dotSize: 6, threshold: 128, density: 2, sharpen: 65, autoLevel: 60, ...PAPER_DEFAULTS
+};
+
+/** Halftone: photos become a regular 45° screen of round dots (newspaper / pop-art look); text and frame lines stay crisp. */
+export const HALFTONE: ThermalSettings = {
+  brightness: 10, contrast: 25, dither: 'halftone', dotSize: 6, threshold: 128, density: 3, sharpen: 0, autoLevel: 60, ...PAPER_DEFAULTS
 };
 
 /** Tone-only presets the owner can pick in ADMIN. Applying one never touches margins/feed/cut. */
 export const THERMAL_PRESETS = [
   { id: 'photobooth-face', name: 'PHOTOBOOTH FACE', tone: PHOTOBOOTH_FACE },
+  { id: 'halftone', name: 'HALFTONE', tone: HALFTONE },
   { id: 'legacy', name: 'LEGACY', tone: LEGACY_THERMAL }
 ] as const;
-export const TONE_KEYS = ['brightness', 'contrast', 'dither', 'threshold', 'density', 'sharpen', 'autoLevel'] as const;
+export const TONE_KEYS = ['brightness', 'contrast', 'dither', 'dotSize', 'threshold', 'density', 'sharpen', 'autoLevel'] as const;
 
 export const DEFAULT_THERMAL: ThermalSettings = PHOTOBOOTH_FACE;
 

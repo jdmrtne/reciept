@@ -8,7 +8,7 @@ import { DEFAULT_THERMAL, type Bitmap1, type DitherMode, type RGBAImage, type Th
  * PrintScreen previews this exact output, so what you see there is what burns.
  */
 
-const DITHERS: DitherMode[] = ['threshold', 'floyd-steinberg', 'atkinson', 'ordered'];
+const DITHERS: DitherMode[] = ['threshold', 'floyd-steinberg', 'atkinson', 'ordered', 'halftone'];
 const num = (v: unknown, lo: number, hi: number, d: number) =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d;
 
@@ -19,6 +19,7 @@ export function normalizeThermal(p: Partial<ThermalSettings> | undefined | null)
     brightness: num(s.brightness, -100, 100, d.brightness),
     contrast: num(s.contrast, -100, 100, d.contrast),
     dither: DITHERS.includes(s.dither as DitherMode) ? (s.dither as DitherMode) : d.dither,
+    dotSize: num(s.dotSize, 3, 12, d.dotSize),
     threshold: num(s.threshold, 0, 255, d.threshold),
     density: num(s.density, 1, 5, d.density),
     sharpen: num(s.sharpen, 0, 100, d.sharpen),
@@ -164,8 +165,57 @@ const KERNELS = {
   atkinson: { div: 8, k: [[1, 0, 1], [2, 0, 1], [-1, 1, 1], [0, 1, 1], [1, 1, 1], [0, 2, 1]] }
 } as const;
 
-/** Grayscale → 1-bit. 1 = black. Deterministic. */
-export function ditherToBitmap(gray: Uint8Array, w: number, h: number, mode: DitherMode, threshold = 128): Bitmap1 {
+/** Separable box blur (edge-clamped), radius in dots. */
+function boxBlur(gray: Uint8Array, w: number, h: number, r: number): Float32Array {
+  const tmp = new Float32Array(gray.length), out = new Float32Array(gray.length), n = 2 * r + 1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w; let acc = 0;
+    for (let k = -r; k <= r; k++) acc += gray[row + Math.min(w - 1, Math.max(0, k))];
+    for (let x = 0; x < w; x++) {
+      tmp[row + x] = acc / n;
+      acc += gray[row + Math.min(w - 1, x + r + 1)] - gray[row + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (let k = -r; k <= r; k++) acc += tmp[Math.min(h - 1, Math.max(0, k)) * w + x];
+    for (let y = 0; y < h; y++) {
+      out[y * w + x] = acc / n;
+      acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x];
+    }
+  }
+  return out;
+}
+
+/**
+ * Halftone: an AM screen of round dots on a 45° grid, `dot` printer-dots apart. Dot size follows the (lightly blurred)
+ * tone, so shadows become fat merged dots and highlights tiny ones. Only PHOTO areas get the screen: a window is "photo"
+ * when at least half its pixels are mid-tones (1..254). Everywhere else (paper, solid ink, text and frame lines,
+ * whose pixels are pinned to 0/255) uses a plain threshold, so lettering and the barcode stay sharp.
+ */
+function halftone(gray: Uint8Array, w: number, h: number, dot: number, threshold: number): Bitmap1 {
+  const out = createBitmap(w, h);
+  const blurred = boxBlur(gray, w, h, Math.max(1, Math.round(dot * 0.35)));
+  const W = w + 1, sat = new Uint32Array(W * (h + 1)); // summed-area table of mid-tone pixels
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) { const v = gray[y * w + x]; row += v > 0 && v < 255 ? 1 : 0; sat[(y + 1) * W + x + 1] = sat[y * W + x + 1] + row; }
+  }
+  const half = dot, TAU = Math.PI * 2, c = Math.SQRT1_2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const x0 = Math.max(0, x - half), x1 = Math.min(w, x + half + 1), y0 = Math.max(0, y - half), y1 = Math.min(h, y + half + 1);
+    const mid = sat[y1 * W + x1] - sat[y0 * W + x1] - sat[y1 * W + x0] + sat[y0 * W + x0];
+    if (mid * 2 < (x1 - x0) * (y1 - y0)) { if (gray[y * w + x] < threshold) setDot(out, x, y, true); continue; }
+    const u = ((x + 0.5) * c + (y + 0.5) * c) / dot, v = ((y + 0.5) * c - (x + 0.5) * c) / dot;
+    const cut = 1 + 127 * (1 + (Math.cos(TAU * u) + Math.cos(TAU * v)) / 2); // 1..255, highest at the dot centre
+    if (blurred[y * w + x] < cut) setDot(out, x, y, true);
+  }
+  return out;
+}
+
+/** Grayscale → 1-bit. 1 = black. Deterministic. `dotSize` only matters for `halftone`. */
+export function ditherToBitmap(gray: Uint8Array, w: number, h: number, mode: DitherMode, threshold = 128, dotSize = 6): Bitmap1 {
+  if (mode === 'halftone') return halftone(gray, w, h, dotSize, threshold);
   const out = createBitmap(w, h);
   if (mode === 'threshold') {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (gray[y * w + x] < threshold) setDot(out, x, y, true);
@@ -206,6 +256,6 @@ export function toThermalBitmap(img: RGBAImage, settings: Partial<ThermalSetting
   const lut = toneLut(t), toned = new Uint8Array(gray.length);
   for (let i = 0; i < gray.length; i++) toned[i] = lut[gray[i]];
   const sharp = sharpenGray(toned, cw, ch, t.sharpen / 100);
-  const bits = ditherToBitmap(sharp, cw, ch, t.dither, t.threshold);
+  const bits = ditherToBitmap(sharp, cw, ch, t.dither, t.threshold, t.dotSize);
   return padBitmap(bits, mx, mx, t.marginTop, t.marginBottom);
 }

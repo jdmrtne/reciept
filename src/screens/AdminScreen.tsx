@@ -9,7 +9,7 @@ import { canvasToBlob } from '../render/render';
 import { PinGate } from './PinGate';
 import { Icon } from '../components/Icon';
 
-const DITHERS: DitherMode[] = ['atkinson', 'floyd-steinberg', 'ordered', 'threshold'];
+const DITHERS: DitherMode[] = ['atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'halftone'];
 /** Selectable printers. */
 const PRINTER_CHOICES: { kind: PrinterKind; name: string; hint: string }[] = [
   { kind: 'system', name: 'SYSTEM PRINT', hint: 'Any printer installed on this device, via the print dialog' },
@@ -118,6 +118,7 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
             tune(Object.fromEntries(TONE_KEYS.map((k) => [k, pick.tone[k]])) as Partial<ThermalSettings>); // tone only: margins/feed/cut stay
           }} />
           <Row label="DITHER" value={t.dither.toUpperCase()} onPlus={() => tune({ dither: next(DITHERS, t.dither) })} />
+          {t.dither === 'halftone' && <Row label="DOT SIZE" value={String(t.dotSize)} onMinus={() => tune({ dotSize: t.dotSize - 1 })} onPlus={() => tune({ dotSize: t.dotSize + 1 })} />}
           <Row label="BRIGHTNESS" value={String(t.brightness)} onMinus={() => tune({ brightness: t.brightness - 10 })} onPlus={() => tune({ brightness: t.brightness + 10 })} />
           <Row label="CONTRAST" value={String(t.contrast)} onMinus={() => tune({ contrast: t.contrast - 10 })} onPlus={() => tune({ contrast: t.contrast + 10 })} />
           <Row label="DENSITY" value={String(t.density)} onMinus={() => tune({ density: t.density - 1 })} onPlus={() => tune({ density: t.density + 1 })} />

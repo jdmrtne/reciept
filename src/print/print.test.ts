@@ -110,6 +110,31 @@ describe('pipeline: dithering', () => {
       expect([...a.data]).toEqual([...b.data]);
     });
   }
+  it('halftone: white stays white, black stays black, mid-gray ≈ half ink, darker → more ink, deterministic', () => {
+    const ht = (v: number, n = 48) => ditherToBitmap(flat(v, n, n), n, n, 'halftone', 128, 6);
+    expect(blackRatio(ht(255))).toBe(0);
+    expect(blackRatio(ht(0))).toBe(1);
+    const mid = blackRatio(ht(128, 64)); expect(mid).toBeGreaterThan(0.4); expect(mid).toBeLessThan(0.6);
+    const rs = [220, 160, 100, 40].map((v) => blackRatio(ht(v)));
+    for (let i = 1; i < rs.length; i++) expect(rs[i]).toBeGreaterThan(rs[i - 1]);
+    expect([...ht(90).data]).toEqual([...ht(90).data]);
+  });
+  it('halftone: a mid-tone area becomes a regular dot screen (pattern repeats), while pure ink/paper text stays crisp', () => {
+    const w = 64, h = 32, g = new Uint8Array(w * h).fill(255);
+    for (let y = 2; y < 6; y++) for (let x = 2; x < 30; x++) g[y * w + x] = 0;      // solid "text" bar, no mid-tones
+    for (let y = 12; y < h; y++) for (let x = 0; x < w; x++) g[y * w + x] = 140;   // photo area
+    const b = ditherToBitmap(g, w, h, 'halftone', 128, 6);
+    for (let y = 2; y < 6; y++) for (let x = 2; x < 30; x++) expect(getDot(b, x, y)).toBe(1);
+    expect(getDot(b, 40, 8)).toBe(0);
+    let ink = 0; for (let y = 16; y < 28; y++) for (let x = 8; x < 56; x++) ink += getDot(b, x, y);
+    expect(ink).toBeGreaterThan(0); expect(ink).toBeLessThan(12 * 48);              // dots, neither blank nor solid
+  });
+  it('halftone: dotSize is clamped and larger dots give a coarser screen', () => {
+    expect(normalizeThermal({ dotSize: 99 }).dotSize).toBe(12);
+    expect(normalizeThermal({ dotSize: 0 }).dotSize).toBe(3);
+    const runs = (d: number) => { const b = ditherToBitmap(new Uint8Array(96 * 96).fill(128), 96, 96, 'halftone', 128, d); let n = 0; for (let x = 1; x < 96; x++) n += getDot(b, x, 48) !== getDot(b, x - 1, 48) ? 1 : 0; return n; };
+    expect(runs(10)).toBeLessThan(runs(4));
+  });
   it('Floyd–Steinberg matches a hand-computed 2×1 case', () => {
     // 100 → black (err 100), pushes 7/16*100 = 43.75 to the right: 100+43.75 = 143.75 → white
     expect(show(ditherToBitmap(Uint8Array.from([100, 100]), 2, 1, 'floyd-steinberg'))).toEqual(['#.']);
