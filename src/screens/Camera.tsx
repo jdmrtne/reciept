@@ -6,6 +6,7 @@ import { getLayout } from '../layouts/registry';
 import { slotCount } from '../layouts/engine';
 import { loadSettings } from '../config/settings';
 import { Icon } from '../components/Icon';
+import { ClipRecorder, makeClip } from '../share/footage';
 
 type Phase = 'live' | 'countdown' | 'review';
 
@@ -24,19 +25,25 @@ export function Camera() {
   const [count, setCount] = useState(countdownSeconds);
   const [flash, setFlash] = useState(false);
   const [error, setError] = useState('');
+  const rec = useRef<ClipRecorder | null>(null); // records the countdown preview for the GIF; never affects the capture
+  const countRef = useRef(countdownSeconds);
   const target = useRef<number | null>(null); // index being retaken, null = sequential
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-arm on mount: StrictMode's dev remount would otherwise leave it false
+  useEffect(() => { alive.current = true; return () => { alive.current = false; rec.current?.stop(false); rec.current = null; }; }, []); // re-arm on mount: StrictMode's dev remount would otherwise leave it false
 
   const begin = (retakeIdx: number | null = null) => {
     target.current = retakeIdx;
     setError('');
     setCount(countdownSeconds);
+    countRef.current = countdownSeconds;
+    rec.current?.stop(false); rec.current = null;
+    try { const v = cam.videoRef.current; if (v) rec.current = new ClipRecorder(v, cam.facing === 'user', () => countRef.current); } catch { rec.current = null; }
     setPhase('countdown');
   };
 
   useEffect(() => {
     if (phase !== 'countdown') return;
+    countRef.current = count;
     if (count > 0) {
       const t = setTimeout(() => setCount((c) => c - 1), 1000);
       return () => clearTimeout(t);
@@ -47,11 +54,15 @@ export function Camera() {
         if (!video) throw new Error('no-video');
         setFlash(true);
         const url = await grabFrame(video, cam.facing === 'user');
+        let clip: ReturnType<typeof makeClip> = null;
+        try { clip = makeClip(url, rec.current?.stop() ?? []); } catch { clip = null; } // footage is optional: the photo never depends on it
+        rec.current = null;
         const list = [...sessionStore.get().photos];
         const idx = target.current ?? list.length;
         if (list[idx]) URL.revokeObjectURL(list[idx]);
         list[idx] = url;
-        sessionStore.update({ photos: list, editor: null });
+        // Footage follows its photo: a retake drops the old photo's clip, the new one is stored under the new photo's URL.
+        sessionStore.update({ photos: list, editor: null, footage: [...sessionStore.get().footage.filter((c) => list.includes(c.src)), ...(clip ? [clip] : [])] });
         setTimeout(() => {
           if (!alive.current) return;
           setFlash(false);
@@ -59,6 +70,7 @@ export function Camera() {
           else setPhase('review');
         }, 650);
       } catch {
+        rec.current?.stop(false); rec.current = null;
         setFlash(false);
         setError('Could not take the photo. Please try again.');
         setPhase(sessionStore.get().photos.length ? 'review' : 'live');
@@ -87,7 +99,7 @@ export function Camera() {
 
       {phase === 'live' && (
         <div className="cam-bar">
-          <button className="btn ghost" onClick={() => sessionStore.update({ photos: [], editor: null, carry: null, screen: 'layout' })}><Icon name="back" />BACK</button>
+          <button className="btn ghost" onClick={() => sessionStore.update({ photos: [], footage: [], editor: null, carry: null, screen: 'layout' })}><Icon name="back" />BACK</button>
           <button className="btn big" disabled={cam.status !== 'ready'} onClick={() => begin(null)}>
             <Icon name="camera" />{shown ? 'CONTINUE' : 'START'}
           </button>
@@ -106,7 +118,7 @@ export function Camera() {
           </div>
           {error && <p className="err">{error}</p>}
           <div className="cam-bar">
-            <button className="btn ghost" onClick={() => { photos.forEach((u) => URL.revokeObjectURL(u)); sessionStore.update({ photos: [], editor: null }); setPhase('live'); }}><Icon name="reset" />START OVER</button>
+            <button className="btn ghost" onClick={() => { photos.forEach((u) => URL.revokeObjectURL(u)); sessionStore.update({ photos: [], footage: [], editor: null }); setPhase('live'); }}><Icon name="reset" />START OVER</button>
             <button className="btn big" onClick={() => sessionStore.go('edit')}><Icon name="check" />LOOKS GOOD</button>
           </div>
         </div>

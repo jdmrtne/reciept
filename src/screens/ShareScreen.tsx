@@ -15,7 +15,7 @@ const LOADING: Part = { s: 'loading' };
 const MESSAGES: Record<ShareFailure, string> = {
   missing: 'We could not find this file.',
   config: 'Digital copies are not set up on this booth.',
-  render: 'Could not create this file.',
+  render: 'Could not create this file. Your printed photo is unaffected.',
   upload: 'Could not save it online. Check the connection.',
   unreachable: 'Could not save it online. Check the connection.',
   qr: 'Could not make the QR code.',
@@ -47,7 +47,7 @@ function QrCard({ part, emoji, label, hint, onRetry }: { part: Part; emoji: stri
  * The two QR codes succeed or fail independently, each with its own RETRY; the printed receipt is never touched.
  */
 export function ShareScreen() {
-  const { editor, stamp } = useSession();
+  const { editor, stamp, footage } = useSession();
   const [cfg] = useState(() => { const s = loadSettings(); return { bridge: s.network.bridgeUrl, base: normalizePublicBase(s.share.publicBaseUrl), eventName: s.eventName, paper: s.paperWidthMm }; });
   const idRef = useRef(makeSessionId()); // one per session; replaced (for BOTH files) only if storage reports a collision
   const collided = useRef(false);
@@ -58,7 +58,7 @@ export function ShareScreen() {
   const [preview, setPreview] = useState<string | null>(null);
   const alive = useRef(true);
   const abort = useRef(new AbortController());
-  const color = useRef<ReturnType<typeof renderColorPhoto> | null>(null); // one render feeds both the photo and the GIF
+  const color = useRef<ReturnType<typeof renderColorPhoto> | null>(null); // the colour photo render (also the on-screen preview)
 
   const getColor = () => {
     if (!editor) return Promise.reject(new Error('no-editor'));
@@ -77,8 +77,9 @@ export function ShareScreen() {
     const signal = abort.current.signal; // a StrictMode remount / unmount aborts this run; its late result must not overwrite a newer one
     const make = async () => {
       if (!editor) return null; // no photo at all
-      const c = await getColor();
-      return file === 'photo.jpg' ? c.asset : renderGifVersion(editor.present, c.canvas);
+      if (file === 'photo.jpg') return (await getColor()).asset;
+      // The GIF is its own render of the same layout (independent of the JPEG, so one failing never blocks the other).
+      return renderGifVersion(editor.present, stamp ?? makeCtx(cfg.eventName), footage);
     };
     phases.current[file] = 'preparing';
     const onPhase = (p: SharePhase) => { phases.current[file] = p; if (alive.current) setPhase(PHASE_ORDER[Math.min(PHASE_ORDER.indexOf(phases.current['photo.jpg']), PHASE_ORDER.indexOf(phases.current['photo.gif']))]); };

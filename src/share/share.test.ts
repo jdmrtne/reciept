@@ -10,9 +10,13 @@ import type { Server } from 'node:http';
 import { createBridge } from '../../bridge/server.mjs';
 import { createShareServer, createShareStore } from '../../bridge/share.mjs';
 import { buildSnapshot } from '../editor/model';
+import { buildPlan } from '../render/plan';
+import { LAYOUTS } from '../layouts/registry';
+import { slotCount } from '../layouts/engine';
 import { makeCtx } from '../frames/prims';
 import type { RenderEnv } from '../render/render';
-import { renderColorPhoto, renderGifVersion, GIF_SIZE, type JpegEncoder } from './assets';
+import { renderColorPhoto, renderGifVersion, resampleClip, GIF_WIDTH, GIF_MAX_HEIGHT, type JpegEncoder } from './assets';
+import type { FootageClip } from './footage';
 import { newShareId } from './id';
 import { qrMatrix, QUIET } from './qr';
 import { checkShare, prepareShare, type ShareEnv } from './service';
@@ -31,6 +35,16 @@ const env: RenderEnv = {
   canvas: (w, h) => createCanvas(w, h) as unknown as HTMLCanvasElement,
   image: (s) => loadImage(s.startsWith('data:image/svg+xml;utf8,') ? Buffer.from(decodeURIComponent(s.slice('data:image/svg+xml;utf8,'.length))) : s) as unknown as Promise<CanvasImageSource>
 };
+/** A fake recorded countdown for the photo at `src`: `n` frames whose brightness ramps, so every clip is distinguishable. */
+const clipFor = (src: string, tone: number, n = 24): FootageClip => ({
+  src, width: 160, height: 90,
+  frames: Array.from({ length: n }, (_, i) => {
+    const c = createCanvas(160, 90), g = c.getContext('2d');
+    g.fillStyle = `rgb(${tone},${(i * 10) % 256},${255 - tone})`; g.fillRect(0, 0, 160, 90);
+    return { t: i * 125, canvas: c as unknown as HTMLCanvasElement };
+  })
+});
+const gifFrames = (gb: Buffer) => [...gb.toString('latin1').matchAll(/\x21\xf9\x04/g)].length; // graphic control extension per frame
 const jpeg: JpegEncoder = async (c) => new Uint8Array((c as any).toBuffer('image/jpeg', 90));
 const ctx = makeCtx('PHOTOBOOTH', new Date(2026, 8, 29, 10, 0));
 
@@ -155,7 +169,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     const color = await renderColorPhoto(snap, ctx, 58, env, jpeg);
     const results = await Promise.all([
       prepareShare('photo.jpg', id, async () => color.asset, senv()),
-      prepareShare('photo.gif', id, () => renderGifVersion(snap, color.canvas, env), senv())
+      prepareShare('photo.gif', id, () => renderGifVersion(snap, ctx, [clipFor(RED, 10), clipFor(GREEN, 120), clipFor(BLUE, 240)], env), senv())
     ]);
     const [p, g] = results;
     if (!p.ok || !g.ok) throw new Error('flow failed: ' + JSON.stringify(results.map((r) => (r.ok ? 'ok' : r.code))));
@@ -182,18 +196,49 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     const gb = Buffer.from(await gifRes.arrayBuffer());
     expect(gifRes.headers.get('content-type')).toBe('image/gif');
     expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
-    expect(gb.readUInt16LE(6)).toBe(GIF_SIZE); expect(gb.readUInt16LE(8)).toBe(GIF_SIZE);
+    const plan = buildPlan(snap, ctx, gb.readUInt16LE(6));
+    expect(gb.readUInt16LE(6)).toBeLessThanOrEqual(GIF_WIDTH);
+    expect(gb.readUInt16LE(8)).toBe(plan.height);              // same aspect ratio as the printed layout
+    expect(gb.readUInt16LE(8)).toBeLessThanOrEqual(GIF_MAX_HEIGHT);
     expect(gb.includes(Buffer.from('NETSCAPE2.0'))).toBe(true); // loops forever
-    const frames = [...gb.toString('latin1').matchAll(/\x21\xf9\x04/g)].length; // graphic control extension per frame
-    expect(frames).toBe(4); // 3 distinct photos + the finished composition
+    expect(gifFrames(gb)).toBeGreaterThan(3 * 20);             // 3 countdowns (~24 frames each) + reveals, not a 4-frame slideshow
+    expect(gb.length).toBeLessThan(2_000_000);                 // delta frames keep it small
     await loadImage(gb); // decodes as an image
   });
 
-  it('a one-photo layout still animates (photo + finished composition)', async () => {
+  it('a one-photo layout: countdown then the photo, then loops', async () => {
     const snap = buildSnapshot('single', sources(RED));
-    const { canvas } = await renderColorPhoto(snap, ctx, 58, env, jpeg);
-    const gif = await renderGifVersion(snap, canvas, env);
-    expect([...Buffer.from(gif.bytes).toString('latin1').matchAll(/\x21\xf9\x04/g)].length).toBe(2);
+    const gif = await renderGifVersion(snap, ctx, [clipFor(RED, 50)], env);
+    expect(gifFrames(Buffer.from(gif.bytes))).toBeGreaterThan(20);
+  });
+
+  it('a photo with no footage still gets a valid GIF (no countdown, it just appears)', async () => {
+    const snap = buildSnapshot('strip-2', sources(RED, GREEN));
+    const gif = await renderGifVersion(snap, ctx, [], env);
+    const gb = Buffer.from(gif.bytes);
+    expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
+    expect(gifFrames(gb)).toBe(2); // slot 1 lands, slot 2 lands (+ hold)
+  });
+
+  it('ignores a previous session\'s footage and works for every layout', async () => {
+    const OLD = clipFor('blob:old-session-photo', 99);
+    for (const l of LAYOUTS) {
+      const n = slotCount(l), srcs = [RED, GREEN, BLUE, RED].slice(0, n);
+      const snap = buildSnapshot(l.id, sources(...srcs));
+      const own = srcs.map((src, i) => clipFor(src, 30 * i));
+      const gb = Buffer.from((await renderGifVersion(snap, ctx, [OLD, ...own], env)).bytes);
+      expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
+      expect(gifFrames(gb)).toBeGreaterThan(n * 15);
+    }
+  });
+
+  it('resampleClip picks a steady rhythm from uneven samples and ends on the capture moment', () => {
+    const f = (t: number) => ({ t, canvas: null as never });
+    const frames = [0, 90, 260, 300, 610, 1000, 1400, 2000, 2990].map(f);
+    const out = resampleClip(frames, 8);
+    expect(out[0]).toBe(frames[0]);
+    expect(out[out.length - 1]).toBe(frames[frames.length - 1]);
+    expect(out.length).toBeGreaterThanOrEqual(23);
   });
 
   it('QR from an old session never opens a newer session, and old files stay theirs', async () => {
@@ -213,7 +258,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     for (let i = 0; i < 4; i++) {
       const snap = buildSnapshot('strip-2', sources(i % 2 ? RED : GREEN, BLUE)), id = newShareId();
       const { canvas, asset } = await renderColorPhoto(snap, ctx, 58, env, jpeg);
-      const [p, g] = await Promise.all([prepareShare('photo.jpg', id, async () => asset, senv()), prepareShare('photo.gif', id, () => renderGifVersion(snap, canvas, env), senv())]);
+      const [p, g] = await Promise.all([prepareShare('photo.jpg', id, async () => asset, senv()), prepareShare('photo.gif', id, () => renderGifVersion(snap, ctx, [], env), senv())]);
       expect(p.ok && g.ok).toBe(true);
       if (p.ok && g.ok) for (const r of [p, g]) { expect(seen.has(r.url)).toBe(false); seen.add(r.url); expect((await fetch(scan(r.matrix)!)).status).toBe(200); }
     }
@@ -230,8 +275,7 @@ describe('failure handling (each QR fails on its own, never throws)', () => {
   });
   it('missing GIF source (no photos in the layout) → "missing"', async () => {
     const snap = buildSnapshot('strip-2', []);
-    const canvas = createCanvas(10, 10) as unknown as HTMLCanvasElement;
-    expect(await prepareShare('photo.gif', id(), () => renderGifVersion(snap, canvas, env), senv())).toEqual({ ok: false, code: 'missing' });
+    expect(await prepareShare('photo.gif', id(), () => renderGifVersion(snap, ctx, [], env), senv())).toEqual({ ok: false, code: 'missing' });
   });
   it('renderer crash → "render"', async () => {
     expect(await prepareShare('photo.jpg', id(), async () => { throw new Error('canvas exploded'); }, senv())).toEqual({ ok: false, code: 'render' });

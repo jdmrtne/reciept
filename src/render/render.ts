@@ -95,6 +95,54 @@ export function drawPrims(g: CanvasRenderingContext2D, prims: Prim[]): void {
 const stickerSvgUrl = (id: string, px: number) =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}">${getSticker(id).svg}</svg>`);
 
+
+type PhotoCmd = Extract<Cmd, { op: 'photo' }>;
+type StickerCmd = Extract<Cmd, { op: 'sticker' }>;
+
+/**
+ * One photo slot's pixels (crop/zoom/pan applied, filter applied to PHOTO pixels only) for a source of srcW×srcH.
+ * The print/preview path and the animated GIF both call this, so a slot looks identical in both. `srcW/srcH` are the
+ * source's own pixel size (the GIF passes countdown-footage frames, which share the photo's aspect ratio).
+ */
+export function photoTile(env: RenderEnv, img: CanvasImageSource, srcW: number, srcH: number, c: PhotoCmd, k: number, filterId: string = c.filterId) {
+  const s = srcW / c.img.w; // source px per unit
+  const sx = Math.max(0, (c.slot.x - c.img.x) * s), sy = Math.max(0, (c.slot.y - c.img.y) * s);
+  const sw = Math.min(srcW - sx, c.slot.w * s), sh = Math.min(srcH - sy, c.slot.h * s);
+  const dx = Math.round(c.slot.x * k), dy = Math.round(c.slot.y * k);
+  const dw = Math.max(1, Math.round(c.slot.w * k)), dh = Math.max(1, Math.round(c.slot.h * k));
+  const tile = scaledCrop(env, img, sx, sy, sw, sh, dw, dh);
+  if (filterId !== 'original') {
+    const tg = ctx2d(tile), data = tg.getImageData(0, 0, dw, dh);
+    applyFilter(data.data, filterId);
+    tg.putImageData(data, 0, 0);
+  }
+  return { tile, dx, dy, dw, dh };
+}
+
+function drawSticker(g: CanvasRenderingContext2D, c: StickerCmd, img: CanvasImageSource, k: number) {
+  g.save();
+  g.translate(c.cx * k, c.cy * k); g.rotate((c.rotation * Math.PI) / 180);
+  g.drawImage(img, (-c.size * k) / 2, (-c.size * k) / 2, c.size * k, c.size * k);
+  g.restore();
+}
+
+/**
+ * Everything that is drawn ABOVE the photos, on a transparent canvas: the slot borders, the frame and the stickers,
+ * in the same order/geometry as renderPlan. Compositing this over the photo layer equals renderPlan's output, which is
+ * what lets the GIF re-use the exact layout while only the photo slots change from frame to frame.
+ */
+export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEnv): Promise<HTMLCanvasElement> {
+  await env.ready?.();
+  const { k } = plan;
+  const out = env.canvas(plan.width, plan.height), g = ctx2d(out);
+  for (const c of plan.cmds) {
+    if (c.op === 'photo') { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); }
+    else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
+    else drawSticker(g, c, await env.image(stickerSvgUrl(c.stickerId, Math.max(8, Math.ceil(c.size * k)))), k);
+  }
+  return out;
+}
+
 /** Runs a plan on a canvas. Sources are only read, never modified. */
 export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv): Promise<HTMLCanvasElement> {
   await env.ready?.();
@@ -113,27 +161,13 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
   for (const c of plan.cmds) {
     if (c.op === 'photo') {
       const img = await load(c.src);
-      const s = c.iw / c.img.w; // source px per unit
-      const sx = Math.max(0, (c.slot.x - c.img.x) * s), sy = Math.max(0, (c.slot.y - c.img.y) * s);
-      const sw = Math.min(c.iw - sx, c.slot.w * s), sh = Math.min(c.ih - sy, c.slot.h * s);
-      const dx = Math.round(c.slot.x * k), dy = Math.round(c.slot.y * k);
-      const dw = Math.max(1, Math.round(c.slot.w * k)), dh = Math.max(1, Math.round(c.slot.h * k));
-      const tile = scaledCrop(env, img, sx, sy, sw, sh, dw, dh);
-      if (c.filterId !== 'original') { // filter is applied to PHOTO pixels only
-        const tg = ctx2d(tile), data = tg.getImageData(0, 0, dw, dh);
-        applyFilter(data.data, c.filterId);
-        tg.putImageData(data, 0, 0);
-      }
+      const { tile, dx, dy } = photoTile(env, img, c.iw, c.ih, c, k);
       g.drawImage(tile, dx, dy);
       g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); // same slot border as the editor
     } else if (c.op === 'frame') {
       g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore();
     } else {
-      const img = await load(stickerSvgUrl(c.stickerId, stickerPx(c)));
-      g.save();
-      g.translate(c.cx * k, c.cy * k); g.rotate((c.rotation * Math.PI) / 180);
-      g.drawImage(img, (-c.size * k) / 2, (-c.size * k) / 2, c.size * k, c.size * k);
-      g.restore();
+      drawSticker(g, c, await load(stickerSvgUrl(c.stickerId, stickerPx(c))), k);
     }
   }
   return out;
