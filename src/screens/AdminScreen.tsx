@@ -8,7 +8,7 @@ import { bitmapToCanvas } from '../print/browser';
 import { canvasToBlob } from '../render/render';
 import { PinGate } from './PinGate';
 import { checkShare, type ShareFailure } from '../share/service';
-import { newShareId } from '../share/id';
+import { getShareStore, makeSessionId } from '../share/backend';
 import { normalizePublicBase } from '../share/url';
 import { Icon } from '../components/Icon';
 
@@ -26,8 +26,9 @@ const PRINTER_CHOICES: { kind: PrinterKind; name: string; hint: string }[] = [
 const why = (e: unknown) => { const p = toPrinterError(e), t = PRINTER_MESSAGES[p.code].title; return p.message && p.message !== p.code ? `${t} \u2014 ${p.message}` : t; };
 const SHARE_CHECK: Record<ShareFailure, string> = {
   config: 'PUBLIC URL MISSING OR NOT REACHABLE FROM PHONES (NO localhost)',
-  upload: 'CANNOT UPLOAD TO THE BRIDGE \u2014 IS `npm run bridge` RUNNING? CHECK BRIDGE URL',
+  upload: getShareStore() ? 'CANNOT UPLOAD TO SUPABASE \u2014 CHECK INTERNET, BUCKET photobooth-media AND ITS POLICIES (docs/SUPABASE.md)' : 'CANNOT UPLOAD TO THE BRIDGE \u2014 IS `npm run bridge` RUNNING? CHECK BRIDGE URL',
   unreachable: 'UPLOAD OK BUT THE PUBLIC URL DOES NOT SERVE IT \u2014 CHECK THE TUNNEL / PORT (SHARE_PORT, 9102)',
+  collision: 'TEST FILE ID ALREADY EXISTS \u2014 TRY AGAIN',
   missing: 'TEST FILE MISSING', render: 'TEST FILE FAILED', qr: 'QR FAILED'
 };
 const next = <T,>(list: T[], v: T) => list[(list.indexOf(v) + 1) % list.length];
@@ -80,7 +81,7 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
   const testShare = async () => {
     setBusy(true); setNote('CHECKING PHOTO SHARING');
     try {
-      const code = await checkShare(newShareId(), { fetch: (i, o) => fetch(i, o), bridgeUrl: s.network.bridgeUrl, publicBase: normalizePublicBase(s.share.publicBaseUrl) });
+      const code = await checkShare(makeSessionId(), { fetch: (i, o) => fetch(i, o), bridgeUrl: s.network.bridgeUrl, publicBase: normalizePublicBase(s.share.publicBaseUrl), store: getShareStore() ?? undefined });
       setNote(code ? SHARE_CHECK[code] : 'PHOTO SHARING WORKS \u2014 QR CODES WILL APPEAR AFTER PRINTING');
     } finally { setBusy(false); }
   };
@@ -130,7 +131,8 @@ function AdminPanel({ onChangePin }: { onChangePin: () => void }) {
             </div>
           )}
           <Row label="SHARE QR" value={s.share.enabled ? 'ON' : 'OFF'} onPlus={() => set({ share: { ...s.share, enabled: !s.share.enabled } })} />
-          {s.share.enabled && (
+          {s.share.enabled && getShareStore() && <p className="edit-hint">STORAGE: SUPABASE (photobooth-media)</p>}
+          {s.share.enabled && !getShareStore() && (
             <div className="adm-net">
               <label>PUBLIC URL (WHAT PHONES OPEN)<input className="adm-in" inputMode="url" value={s.share.publicBaseUrl} placeholder="https://photos.example.com" disabled={busy}
                 onChange={(e) => set({ share: { ...s.share, publicBaseUrl: e.target.value } })} /></label>
