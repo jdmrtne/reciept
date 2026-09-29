@@ -26,33 +26,43 @@ export async function renderColorPhoto(snap: Snapshot, ctx: FrameCtx, paperMm: 5
 
 /** GIF size: same layout as the print, drawn narrower so it stays light on a phone. */
 export const GIF_WIDTH = 320, GIF_MAX_HEIGHT = 720;
-const CAPTURE_HOLD_MS = 500;   // the moment a photo lands, while the next slot starts its countdown
-const FINAL_HOLD_MS = 2500;    // the finished layout, before the loop restarts
-const PLACEHOLDER = '#d9d9d9'; // a slot whose photo has not been taken yet
+const FINAL_HOLD_MS = 1800;    // the finished layout (all captured photos) before the loop restarts
+const MAX_CLIP_MS = 4000;      // footage longer than this is not stretched into the GIF
 const yieldUi = () => new Promise<void>((r) => setTimeout(r, 0));
 
-/** Picks frames at a steady rate (latest frame at or before each tick) so an uneven sampling rhythm doesn't make the GIF stutter. */
-export function resampleClip(frames: FootageFrame[], fps: number): FootageFrame[] {
-  if (frames.length < 2) return frames;
-  const step = 1000 / fps, end = frames[frames.length - 1].t - frames[0].t, out: FootageFrame[] = [];
-  let j = 0;
-  for (let t = 0; t <= end + 1; t += step) {
-    while (j + 1 < frames.length && frames[j + 1].t - frames[0].t <= t) j++;
-    out.push(frames[j]);
-  }
-  if (out[out.length - 1] !== frames[frames.length - 1]) out.push(frames[frames.length - 1]); // always end on the capture moment
-  return out;
+/** Index of the latest frame at or before `t` ms after the clip's start (holds the last frame once the clip has ended). */
+export function frameIndexAt(frames: FootageFrame[], t: number): number {
+  const t0 = frames[0].t;
+  let lo = 0, hi = frames.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (frames[mid].t - t0 <= t) lo = mid; else hi = mid - 1; }
+  return lo;
 }
 
-type Content = { k: 'blank' } | { k: 'photo' } | { k: 'clip'; frame: FootageFrame; clip: FootageClip };
-interface Step { changes: [number, Content][]; delay: number }
+/**
+ * THE shared timeline: one clock for every slot. Tick n is at n × step ms; at each tick EVERY slot shows the frame of its
+ * own clip at that same time, so all slots play together from 0 to D (D = the longest clip). A shorter clip holds its
+ * last frame; a slot with no footage (-1) just shows its photo. Returns, per tick, the frame index for each slot.
+ */
+export function syncTimeline(clips: (FootageFrame[] | null)[], fps: number): { stepMs: number; ticks: number[][] } {
+  const stepMs = 1000 / fps;
+  const D = Math.min(MAX_CLIP_MS, Math.max(0, ...clips.map((c) => (c && c.length > 1 ? c[c.length - 1].t - c[0].t : 0))));
+  const n = D > 0 ? Math.ceil(D / stepMs) : 0;
+  const ticks: number[][] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = Math.min(i * stepMs, D);
+    ticks.push(clips.map((c) => (c && c.length > 1 ? frameIndexAt(c, t) : -1)));
+  }
+  return { stepMs, ticks };
+}
+
+type Rect = { x: number; y: number; w: number; h: number };
 
 /**
  * Animated recreation of THE PRINTED LAYOUT. Same plan (slots, frame, header/footer, stickers, filter, crops) as the
- * print and the colour photo, drawn at GIF size. Only the photo slots change: slot 1 plays ITS countdown then becomes
- * photo 1 while slot 2 plays ITS countdown, and so on; the last frame is the finished layout, then it loops.
- * Countdown clips are paired to slots by photo (clip.src === slot's photo src), so swaps and retakes stay correct.
- * A photo with no footage just appears. Sources are only read.
+ * print and the colour photo, drawn at GIF size. Only the photo slots change: ALL slots play their own clean camera
+ * footage at the same time on one shared clock, end together, then the last frame shows the captured photos in every
+ * slot (held briefly) and it loops. Footage is paired to slots by photo (clip.src === the slot's photo src), so swaps
+ * and retakes stay correct. A photo with no footage just shows its photo. Sources are only read.
  */
 export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[] = [], env: RenderEnv = browserEnv): Promise<ShareAsset> {
   await env.ready?.();
@@ -63,70 +73,46 @@ export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: F
   const W = Math.max(64, Math.min(GIF_WIDTH, Math.floor((GIF_MAX_HEIGHT * 384) / ref.height)) & ~1);
   const plan = buildPlan(snap, ctx, W), { k } = plan, H = plan.height;
   const slots = plan.cmds.flatMap((c) => (c.op === 'photo' ? [c] : []))
-    .sort((a, b) => a.slot.y - b.slot.y || a.slot.x - b.slot.x); // reading order = the order the photos were taken
+    .sort((a, b) => a.slot.y - b.slot.y || a.slot.x - b.slot.x);
   const N = slots.length;
-  const fps = N > 4 ? 6 : 8;
+  const fps = N > 4 ? 8 : 10;
 
   const g2 = (c: HTMLCanvasElement) => c.getContext('2d', { willReadFrequently: true })!;
   const photoImg = new Map<string, CanvasImageSource>();
   for (const s of slots) if (!photoImg.has(s.src)) photoImg.set(s.src, await env.image(s.src));
   const overlay = await renderOverlay(plan, env);
-
-  // Final (captured) tile per slot.
   const finals = slots.map((s) => photoTile(env, photoImg.get(s.src)!, s.iw, s.ih, s, k));
-  const clipFor = (s: typeof slots[number]) => footage.find((c) => c.src === s.src && c.frames.length > 1);
+  const clips = slots.map((s) => footage.find((c) => c.src === s.src && c.frames.length > 1) ?? null);
 
-  // Layers: `base` = white paper + what each slot currently shows; `work` = base + overlay (what the GIF shows).
+  // Layers: `base` = white paper + what each slot shows now; `work` = base + overlay (the GIF picture).
   const base = env.canvas(W, H), bg = g2(base), work = env.canvas(W, H), wg = g2(work);
-  const paint = (i: number, c: Content) => {
-    const s = slots[i], f = finals[i];
-    if (c.k === 'blank') { bg.fillStyle = PLACEHOLDER; bg.fillRect(f.dx, f.dy, f.dw, f.dh); }
-    else if (c.k === 'photo') bg.drawImage(f.tile, f.dx, f.dy);
-    else bg.drawImage(photoTile(env, c.frame.canvas, c.clip.width, c.clip.height, s, k).tile, f.dx, f.dy);
+  const paintPhoto = (i: number) => bg.drawImage(finals[i].tile, finals[i].dx, finals[i].dy);
+  const paintFrame = (i: number, fi: number) => {
+    const clip = clips[i]!;
+    bg.drawImage(photoTile(env, clip.frames[fi].canvas, clip.width, clip.height, slots[i], k).tile, finals[i].dx, finals[i].dy);
   };
-  const reset = (c: Content) => { bg.fillStyle = '#fff'; bg.fillRect(0, 0, W, H); slots.forEach((_, i) => paint(i, c)); };
-  const compose = (r: { x: number; y: number; w: number; h: number }) => {
+  const compose = (r: Rect) => {
     wg.drawImage(base, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
     wg.drawImage(overlay, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
   };
   const FULL = { x: 0, y: 0, w: W, h: H };
-  const region = (i: number) => { // slot + a little margin for its border
+  const region = (i: number): Rect => { // slot + a little margin for its border
     const f = finals[i], x = Math.max(0, f.dx - 2), y = Math.max(0, f.dy - 2);
     return { x, y, w: Math.min(W, f.dx + f.dw + 2) - x, h: Math.min(H, f.dy + f.dh + 2) - y };
   };
-  const union = (rs: { x: number; y: number; w: number; h: number }[]) => {
+  const union = (rs: Rect[]): Rect => {
     const x0 = Math.min(...rs.map((r) => r.x)), y0 = Math.min(...rs.map((r) => r.y));
     return { x: x0, y: y0, w: Math.max(...rs.map((r) => r.x + r.w)) - x0, h: Math.max(...rs.map((r) => r.y + r.h)) - y0 };
   };
 
-  // Timeline: (countdown i → photo i lands while countdown i+1 starts) … → all photos → loop.
-  const steps: Step[] = [];
-  const tick = 1000 / fps;
-  let pending: [number, Content][] = [];
-  for (let i = 0; i < N; i++) {
-    const clip = clipFor(slots[i]);
-    const frames = clip ? resampleClip(clip.frames, fps) : [];
-    frames.forEach((frame, n) => {
-      const change: [number, Content] = [i, { k: 'clip', frame, clip: clip! }];
-      steps.push({ changes: n === 0 ? [...pending, change] : [change], delay: n === 0 && pending.length ? CAPTURE_HOLD_MS : tick });
-      if (n === 0) pending = [];
-    });
-    pending.push([i, { k: 'photo' }]);
-    if (i === N - 1 || !clipFor(slots[i + 1])) { // nothing to start alongside: show the photo on its own for a beat
-      steps.push({ changes: pending, delay: i === N - 1 ? FINAL_HOLD_MS : CAPTURE_HOLD_MS });
-      pending = [];
-    }
-  }
-
-  // Shared palette from the finished layout + a few countdown frames per slot.
-  reset({ k: 'photo' }); compose(FULL);
+  // Shared palette from the finished layout + a few footage frames per slot.
+  bg.fillStyle = '#fff'; bg.fillRect(0, 0, W, H); slots.forEach((_, i) => paintPhoto(i)); compose(FULL);
   const finalPx = wg.getImageData(0, 0, W, H).data;
   const extra: Uint8ClampedArray[] = [];
   slots.forEach((s, i) => {
-    const clip = clipFor(s); if (!clip) return;
-    for (const n of [0, 0.35, 0.7]) {
-      const frame = clip.frames[Math.min(clip.frames.length - 1, Math.floor(clip.frames.length * n))];
-      const t = photoTile(env, frame.canvas, clip.width, clip.height, s, k).tile;
+    const clip = clips[i]; if (!clip) return;
+    for (const n of [0, 0.4, 0.8]) {
+      const t = photoTile(env, clip.frames[Math.min(clip.frames.length - 1, Math.floor(clip.frames.length * n))].canvas, clip.width, clip.height, s, k).tile;
       extra.push(g2(t).getImageData(0, 0, finals[i].dw, finals[i].dh).data);
     }
   });
@@ -134,17 +120,28 @@ export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: F
   sample.set(finalPx); let off = finalPx.length; for (const e of extra) { sample.set(e, off); off += e.length; }
   const gif = new DeltaGif(W, H, sample);
 
-  // Play the timeline: before Stage 1, every slot is empty.
-  reset({ k: 'blank' });
-  let first = true, n = 0;
-  for (const st of steps) {
-    for (const [i, c] of st.changes) paint(i, c);
-    const r = first ? FULL : union(st.changes.map(([i]) => region(i)));
-    compose(r);
-    const px = wg.getImageData(r.x, r.y, r.w, r.h).data;
-    if (first) { gif.addFull(px, st.delay); first = false; } else gif.addRegion(r, px, st.delay);
-    if (++n % 6 === 0) await yieldUi(); // keep the booth UI responsive while encoding
+  // Play the shared timeline: at every tick ALL slots move to the same moment of their own footage.
+  const { stepMs, ticks } = syncTimeline(clips.map((c) => c?.frames ?? null), fps);
+  bg.fillStyle = '#fff'; bg.fillRect(0, 0, W, H);
+  let prev: number[] | null = null;
+  for (let n = 0; n < ticks.length; n++) {
+    const cur = ticks[n], dirty: Rect[] = [];
+    slots.forEach((_, i) => {
+      if (prev && prev[i] === cur[i]) return;
+      if (cur[i] < 0) paintPhoto(i); else paintFrame(i, cur[i]);
+      dirty.push(region(i));
+    });
+    prev = cur;
+    if (n === 0) { compose(FULL); gif.addFull(wg.getImageData(0, 0, W, H).data, stepMs); }
+    else if (dirty.length) { const r = union(dirty); compose(r); gif.addRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, stepMs); }
+    else gif.addRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, stepMs); // nothing moved: hold (keeps the timing)
+    if (n % 6 === 5) await yieldUi(); // keep the booth UI responsive while encoding
   }
-  if (first) throw new Error('gif-empty');
+
+  // End state: every slot shows its captured photo (held), then the GIF loops back to the start.
+  const changed: Rect[] = [];
+  slots.forEach((_, i) => { if (clips[i]) { paintPhoto(i); changed.push(region(i)); } });
+  if (changed.length) { const r = union(changed); compose(r); gif.addRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, FINAL_HOLD_MS); }
+  else gif.addRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, FINAL_HOLD_MS);
   return { bytes: gif.finish(), type: 'image/gif' };
 }

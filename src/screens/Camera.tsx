@@ -26,7 +26,6 @@ export function Camera() {
   const [flash, setFlash] = useState(false);
   const [error, setError] = useState('');
   const rec = useRef<ClipRecorder | null>(null); // records the countdown preview for the GIF; never affects the capture
-  const countRef = useRef(countdownSeconds);
   const target = useRef<number | null>(null); // index being retaken, null = sequential
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; rec.current?.stop(false); rec.current = null; }; }, []); // re-arm on mount: StrictMode's dev remount would otherwise leave it false
@@ -35,15 +34,13 @@ export function Camera() {
     target.current = retakeIdx;
     setError('');
     setCount(countdownSeconds);
-    countRef.current = countdownSeconds;
     rec.current?.stop(false); rec.current = null;
-    try { const v = cam.videoRef.current; if (v) rec.current = new ClipRecorder(v, cam.facing === 'user', () => countRef.current); } catch { rec.current = null; }
+    try { const v = cam.videoRef.current; if (v) rec.current = new ClipRecorder(v, cam.facing === 'user'); } catch { rec.current = null; }
     setPhase('countdown');
   };
 
   useEffect(() => {
     if (phase !== 'countdown') return;
-    countRef.current = count;
     if (count > 0) {
       const t = setTimeout(() => setCount((c) => c - 1), 1000);
       return () => clearTimeout(t);

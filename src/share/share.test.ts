@@ -15,7 +15,7 @@ import { LAYOUTS } from '../layouts/registry';
 import { slotCount } from '../layouts/engine';
 import { makeCtx } from '../frames/prims';
 import type { RenderEnv } from '../render/render';
-import { renderColorPhoto, renderGifVersion, resampleClip, GIF_WIDTH, GIF_MAX_HEIGHT, type JpegEncoder } from './assets';
+import { renderColorPhoto, renderGifVersion, syncTimeline, frameIndexAt, GIF_WIDTH, GIF_MAX_HEIGHT, type JpegEncoder } from './assets';
 import type { FootageClip } from './footage';
 import { newShareId } from './id';
 import { qrMatrix, QUIET } from './qr';
@@ -201,7 +201,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     expect(gb.readUInt16LE(8)).toBe(plan.height);              // same aspect ratio as the printed layout
     expect(gb.readUInt16LE(8)).toBeLessThanOrEqual(GIF_MAX_HEIGHT);
     expect(gb.includes(Buffer.from('NETSCAPE2.0'))).toBe(true); // loops forever
-    expect(gifFrames(gb)).toBeGreaterThan(3 * 20);             // 3 countdowns (~24 frames each) + reveals, not a 4-frame slideshow
+    expect(gifFrames(gb)).toBe(syncTimeline(Array(3).fill(clipFor(RED, 0).frames), 10).ticks.length + 1); // ONE shared timeline (24 clip frames → 25 ticks) + the final captured-photos frame, not 3 clips back to back
     expect(gb.length).toBeLessThan(2_000_000);                 // delta frames keep it small
     await loadImage(gb); // decodes as an image
   });
@@ -209,7 +209,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
   it('a one-photo layout: countdown then the photo, then loops', async () => {
     const snap = buildSnapshot('single', sources(RED));
     const gif = await renderGifVersion(snap, ctx, [clipFor(RED, 50)], env);
-    expect(gifFrames(Buffer.from(gif.bytes))).toBeGreaterThan(20);
+    expect(gifFrames(Buffer.from(gif.bytes))).toBe(syncTimeline([clipFor(RED, 50).frames], 10).ticks.length + 1);
   });
 
   it('a photo with no footage still gets a valid GIF (no countdown, it just appears)', async () => {
@@ -217,7 +217,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     const gif = await renderGifVersion(snap, ctx, [], env);
     const gb = Buffer.from(gif.bytes);
     expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
-    expect(gifFrames(gb)).toBe(2); // slot 1 lands, slot 2 lands (+ hold)
+    expect(gifFrames(gb)).toBe(2); // nothing to play: the layout, held, then loop
   });
 
   it('ignores a previous session\'s footage and works for every layout', async () => {
@@ -228,17 +228,31 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
       const own = srcs.map((src, i) => clipFor(src, 30 * i));
       const gb = Buffer.from((await renderGifVersion(snap, ctx, [OLD, ...own], env)).bytes);
       expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
-      expect(gifFrames(gb)).toBeGreaterThan(n * 15);
+      expect(gifFrames(gb)).toBe(syncTimeline(Array(n).fill(clipFor(RED, 0).frames), n > 4 ? 8 : 10).ticks.length + 1); // frame count does not grow with the number of slots: they play together
     }
   });
 
-  it('resampleClip picks a steady rhythm from uneven samples and ends on the capture moment', () => {
-    const f = (t: number) => ({ t, canvas: null as never });
-    const frames = [0, 90, 260, 300, 610, 1000, 1400, 2000, 2990].map(f);
-    const out = resampleClip(frames, 8);
-    expect(out[0]).toBe(frames[0]);
-    expect(out[out.length - 1]).toBe(frames[frames.length - 1]);
-    expect(out.length).toBeGreaterThanOrEqual(23);
+  const fr = (ts: number[]) => ts.map((t) => ({ t, canvas: null as never }));
+  it('syncTimeline: every slot moves on the SAME clock, from tick 0 to the end', () => {
+    const a = fr([0, 500, 1000, 1500, 2000, 2500, 3000]), b = fr([1000, 1500, 2000, 2500, 3000, 3500, 4000]), c = fr([0, 1000, 2000, 3000]);
+    const { ticks, stepMs } = syncTimeline([a, b, c], 10);
+    expect(stepMs).toBe(100);
+    expect(ticks.length).toBe(31);                       // 3 s at 10 fps, +1
+    expect(ticks[0]).toEqual([0, 0, 0]);                 // all three start together (even with different absolute timestamps)
+    expect(ticks[10]).toEqual([2, 2, 1]);                // t = 1 s: all three are mid-playback at once
+    expect(ticks[20]).toEqual([4, 4, 2]);                // t = 2 s
+    expect(ticks[30]).toEqual([6, 6, 3]);                // t = 3 s: all reach their final frame together
+    for (const t of ticks) expect(t.every((i) => i >= 0)).toBe(true); // nothing is idle or waiting for another slot
+  });
+  it('syncTimeline: a shorter clip holds its last frame; a slot with no footage shows its photo (-1)', () => {
+    const { ticks } = syncTimeline([fr([0, 1000, 3000]), fr([0, 500, 1000]), null], 10);
+    expect(ticks[0]).toEqual([0, 0, -1]);
+    expect(ticks[ticks.length - 1]).toEqual([2, 2, -1]);
+    expect(ticks[20][1]).toBe(2);                        // clip 2 ended at 1 s and holds
+  });
+  it('frameIndexAt uses each clip\'s own start time', () => {
+    const f = fr([5000, 5100, 5200, 5300]);
+    expect([0, 99, 100, 250, 9999].map((t) => frameIndexAt(f, t))).toEqual([0, 0, 1, 2, 3]);
   });
 
   it('QR from an old session never opens a newer session, and old files stay theirs', async () => {

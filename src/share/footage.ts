@@ -1,6 +1,4 @@
-import { FONT_STACK } from '../render/font';
-
-/** One sampled preview frame of a countdown (already mirrored like the photo, with the countdown number drawn on). */
+/** One sampled CLEAN camera frame from before a photo (mirrored like the photo; no countdown number or any other UI). */
 export interface FootageFrame { t: number; canvas: HTMLCanvasElement }
 /** The recorded countdown that led up to ONE captured photo. `src` is that photo's URL, which is how the GIF pairs them. */
 export interface FootageClip { src: string; width: number; height: number; frames: FootageFrame[] }
@@ -8,8 +6,11 @@ export interface FootageClip { src: string; width: number; height: number; frame
 export const FOOTAGE_MAX_SIDE = 448;   // longest side of a stored frame (px): plenty for a phone-sized GIF slot, small in memory
 export const FOOTAGE_INTERVAL_MS = 125; // 8 samples/second while the countdown runs
 
-/** One preview frame → a small canvas (mirrored for the front camera, countdown number on top). null if the video has no frame yet. */
-export function sampleFrame(video: HTMLVideoElement, mirror: boolean, count: number): HTMLCanvasElement | null {
+/**
+ * One frame of the raw camera <video> → a small canvas (mirrored for the front camera). The countdown number, flash and
+ * viewfinder marks are separate DOM elements drawn ABOVE the video, so reading the video element yields clean footage.
+ */
+export function sampleFrame(video: HTMLVideoElement, mirror: boolean): HTMLCanvasElement | null {
   const vw = video.videoWidth, vh = video.videoHeight;
   if (!vw || !vh) return null;
   const f = Math.min(1, FOOTAGE_MAX_SIDE / Math.max(vw, vh));
@@ -18,38 +19,29 @@ export function sampleFrame(video: HTMLVideoElement, mirror: boolean, count: num
   c.width = w; c.height = h;
   const g = c.getContext('2d');
   if (!g) return null;
-  g.save();
   if (mirror) { g.translate(w, 0); g.scale(-1, 1); }
   g.drawImage(video, 0, 0, w, h);
-  g.restore();
-  if (count > 0) { // the same big outlined number the customer sees on screen
-    const size = Math.round(Math.min(w, h) * 0.6);
-    g.font = `700 ${size}px ${FONT_STACK}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineJoin = 'round'; g.lineWidth = Math.max(3, size * 0.06);
-    g.strokeStyle = '#000'; g.fillStyle = '#fff';
-    g.strokeText(String(count), w / 2, h / 2); g.fillText(String(count), w / 2, h / 2);
-  }
   return c;
 }
 
 /**
- * Records the countdown before ONE photo by sampling the live preview. Never throws: if a frame can't be read it is
+ * Records the camera footage before ONE photo (during its countdown) by sampling the live preview. Never throws: if a frame can't be read it is
  * skipped, and a photo with no footage simply appears without a countdown in the GIF. Nothing here touches the capture.
  */
 export class ClipRecorder {
   private frames: FootageFrame[] = [];
   private timer: ReturnType<typeof setInterval> | undefined;
   private t0 = performance.now();
-  constructor(private video: HTMLVideoElement, private mirror: boolean, private count: () => number) {
+  constructor(private video: HTMLVideoElement, private mirror: boolean) {
     this.take(); this.timer = setInterval(() => this.take(), FOOTAGE_INTERVAL_MS);
   }
-  private take(count = this.count()) {
-    try { const c = sampleFrame(this.video, this.mirror, count); if (c) this.frames.push({ t: performance.now() - this.t0, canvas: c }); } catch { /* skip this sample */ }
+  private take() {
+    try { const c = sampleFrame(this.video, this.mirror); if (c) this.frames.push({ t: performance.now() - this.t0, canvas: c }); } catch { /* skip this sample */ }
   }
-  /** Stops sampling, adds the final "0" frame (the moment of capture, no number) and returns the frames. */
+  /** Stops sampling, adds one last frame (the moment of capture) and returns the frames. */
   stop(final = true): FootageFrame[] {
     if (this.timer) { clearInterval(this.timer); this.timer = undefined; }
-    if (final) this.take(0);
+    if (final) this.take();
     const f = this.frames; this.frames = [];
     return f;
   }
