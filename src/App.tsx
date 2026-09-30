@@ -6,11 +6,13 @@ import { Edit } from './screens/Edit';
 import { Camera } from './screens/Camera';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { PrintScreen } from './screens/PrintScreen';
+import { ShareScreen } from './screens/ShareScreen';
 import { SuccessScreen } from './screens/SuccessScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { Placeholder } from './screens/Placeholder';
 import { sessionStore, useSession } from './state/session';
 import { useInactivity } from './hooks/useInactivity';
+import { useWakeLock } from './hooks/useWakeLock';
 import { loadSettings } from './config/settings';
 
 export default function App() {
@@ -18,6 +20,7 @@ export default function App() {
   const { inactivitySeconds } = loadSettings();
   const onIdle = useCallback(() => sessionStore.reset(), []);
   useInactivity(screen !== 'standby', inactivitySeconds, onIdle);
+  useWakeLock();
 
   // Leaving ADMIN (EXIT / idle reset) also leaves the /admin URL, so a reload boots to standby.
   useEffect(() => {
@@ -28,7 +31,7 @@ export default function App() {
   return (
     <div className="app" key={id}>
       <div className="screen" key={screen}>
-        {screen === 'standby' ? <Standby /> : screen === 'layout' ? <Layout /> : screen === 'edit' ? <Edit /> : screen === 'camera' ? <Camera /> : screen === 'preview' ? <PreviewScreen /> : screen === 'print' ? <PrintScreen /> : screen === 'success' ? <SuccessScreen /> : screen === 'admin' ? <AdminScreen /> : <Placeholder title={screen.toUpperCase()} />}
+        {screen === 'standby' ? <Standby /> : screen === 'layout' ? <Layout /> : screen === 'edit' ? <Edit /> : screen === 'camera' ? <Camera /> : screen === 'preview' ? <PreviewScreen /> : screen === 'print' ? <PrintScreen /> : screen === 'share' ? <ShareScreen /> : screen === 'success' ? <SuccessScreen /> : screen === 'admin' ? <AdminScreen /> : <Placeholder title={screen.toUpperCase()} />}
       </div>
     </div>
   );

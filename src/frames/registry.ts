@@ -26,6 +26,9 @@ export const FRAMES: FrameDef[] = [
   { id: 'wanted-bounty', name: 'Wanted / Bounty', headerHeight: 124, footerHeight: 96, border: dbl(3), decor: ['torn', 'nails', 'stars', 'slot-border-double'], ornaments: [{ at: 'footer', y: .56, size: 30, left: 'bones', right: 'bones' }],
     header: { lines: [B('WANTED', 68, .4, { ls: 2 }), T('FOR MISCHIEF ON THE HIGH SEAS', 9, .73, { ls: 1 })], rule: 'double' },
     footer: { lines: [B('BOUNTY', 16, .2, { ls: 8 }), B('1,000,000', 34, .56, { ls: 2 }), T('REWARD PAID IN FULL', 8, .9)], rule: 'double' } },
+  // Full-colour poster frame: geometry comes from frames/wanted.ts, so it works with every layout. Header/footer heights only reserve the bands.
+  { id: 'straw-hat-wanted', name: 'STRAW HAT WANTED', headerHeight: 92, footerHeight: 150, border: none, decor: ['wanted-poster'],
+    header: { lines: [] }, footer: { lines: [] } },
   { id: 'birthday', name: 'Birthday', headerHeight: 80, footerHeight: 70, border: none, decor: ['stars'], ornaments: [{ at: 'header', y: .4, size: 34, left: 'balloon', right: 'party-hat' }],
     header: { lines: [B('HAPPY', 13, .18, { ls: 8 }), B('BIRTHDAY', 30, .55, { ls: 3 })], rule: 'dashed' },
     footer: { lines: [T('MAKE A WISH', 12, .3, { ls: 4 }), T('{DATE}', 10, .68, { ls: 3 })], rule: 'dashed' } },

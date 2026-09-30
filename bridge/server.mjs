@@ -7,10 +7,18 @@
 //
 // Safety: only private-network IPv4 addresses (10.x, 172.16-31.x, 192.168.x, 127.x) and port 9100 are allowed,
 // so the bridge can't be used to reach the internet or other services. Override the port list with ALLOW_PORTS=9100,9101.
+// Optional: ALLOW_ORIGIN=https://your-booth-host (comma-separated) so only your booth page may call it; unset = any page (original behaviour).
+//
+// Photo sharing (QR codes after printing), see docs/SHARE.md:
+//   POST /share/<id>/photo.jpg|photo.gif   booth uploads a finished session's files (local, subject to ALLOW_ORIGIN)
+//   GET  /s/<id>/photo.jpg|photo.gif       serves them (fine on a LAN; for the internet use the separate read-only SHARE_PORT server below)
+// Files live in SHARE_DIR (default ./share-files) and expire after SHARE_TTL_HOURS (default 24).
 import http from 'node:http';
 import net from 'node:net';
 import { pathToFileURL } from 'node:url';
+import path from 'node:path';
 import { listPrinters, printerInfo, runPowerShell, sendRaw } from './windows.mjs';
+import { createShareServer, createShareStore, receiveShareUpload, serveShareFile, DEFAULT_TTL_MS } from './share.mjs';
 
 const MAX_BYTES = 64 * 1024 * 1024;
 
@@ -37,10 +45,20 @@ function withSocket(host, port, timeoutMs, use) {
 const writeAll = (s, buf) => new Promise((res, rej) => s.write(buf, (e) => (e ? rej(e) : res())));
 const flushAndClose = (s) => new Promise((res) => { s.end(() => setTimeout(res, 150)); }); // brief grace so the last bytes leave the OS buffer
 
-export function createBridge({ allowPorts = [9100], log = () => {}, powershell = runPowerShell } = {}) {
+/**
+ * CORS origin to send back. `allowOrigins` empty/undefined = '*' (the original behaviour: any page may call the bridge).
+ * With a list, only a matching request Origin is echoed; anything else gets no allow-origin header, so the browser blocks it.
+ */
+export function corsOrigin(allowOrigins, requestOrigin) {
+  if (!allowOrigins || allowOrigins.length === 0) return '*';
+  return requestOrigin && allowOrigins.includes(requestOrigin) ? requestOrigin : null;
+}
+
+export function createBridge({ allowPorts = [9100], allowOrigins = [], log = () => {}, powershell = runPowerShell, shareStore = null } = {}) {
   return http.createServer(async (req, res) => {
+    const origin = corsOrigin(allowOrigins, req.headers.origin);
     const cors = {
-      'Access-Control-Allow-Origin': '*',
+      ...(origin ? { 'Access-Control-Allow-Origin': origin, ...(origin !== '*' ? { Vary: 'Origin' } : {}) } : {}),
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Private-Network': 'true',
@@ -50,6 +68,12 @@ export function createBridge({ allowPorts = [9100], log = () => {}, powershell =
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
 
     const url = new URL(req.url || '/', 'http://bridge');
+    if (shareStore) {
+      if (await serveShareFile(shareStore, req, res, url.pathname)) return;
+      try {
+        if (await receiveShareUpload(shareStore, req, (code, obj) => { if (code === 200) log(`share stored ${url.pathname.slice(7, 15)}\u2026/${url.pathname.split('/').pop()} (${obj.bytes} bytes)`); send(code, obj); }, url.pathname)) return;
+      } catch (e) { return send(500, { ok: false, error: `share failed: ${e.message}` }); }
+    }
     const host = url.searchParams.get('host') || '';
     const port = Number(url.searchParams.get('port') || 9100);
     const needsPrinter = url.pathname === '/print' || url.pathname === '/status';
@@ -114,6 +138,16 @@ export function createBridge({ allowPorts = [9100], log = () => {}, powershell =
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT || 9101);
   const allowPorts = (process.env.ALLOW_PORTS || '9100').split(',').map(Number);
-  createBridge({ allowPorts, log: (m) => console.log(new Date().toLocaleTimeString(), m) })
-    .listen(port, () => console.log(`Print bridge listening on http://localhost:${port}  (printer port(s): ${allowPorts.join(', ')})`));
+  // ALLOW_ORIGIN=https://booth.example.com[,http://localhost:5173] restricts which web pages may call the bridge (default: any).
+  const allowOrigins = (process.env.ALLOW_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+  const log = (m) => console.log(new Date().toLocaleTimeString(), m);
+  const ttlMs = Math.max(0.1, Number(process.env.SHARE_TTL_HOURS || 24)) * 3600 * 1000 || DEFAULT_TTL_MS;
+  const shareStore = createShareStore({ dir: process.env.SHARE_DIR || path.resolve('share-files'), ttlMs });
+  createBridge({ allowPorts, allowOrigins, log, shareStore })
+    .listen(port, () => console.log(`Print bridge listening on http://localhost:${port}  (printer port(s): ${allowPorts.join(', ')}; origins: ${allowOrigins.join(', ') || 'any'})`));
+  // Read-only public side for QR links. Point your tunnel / port-forward at THIS port, not the bridge port above.
+  const sharePort = Number(process.env.SHARE_PORT || 9102);
+  createShareServer(shareStore).listen(sharePort, () => console.log(`Photo share (read-only) on http://localhost:${sharePort}  files: ${shareStore.root}  expire after ${ttlMs / 3600000} h`));
+  const sweep = () => shareStore.sweep().then((n) => n && log(`share: removed ${n} expired session(s)`), () => {});
+  sweep(); setInterval(sweep, 10 * 60 * 1000).unref();
 }

@@ -23,3 +23,6 @@ Owner's printer: USB, Windows queue "POS80 10.0.0.11" (the IP in the name is jus
     npm run bridge
 ADMIN → PRINTER = WINDOWS PRINTER → name = the queue name → CHECK PRINTER → TEST PRINT.
 Bridge endpoints: `GET /printers`, `GET /status?printer=NAME`, `POST /print?printer=NAME`. The C# was compile-checked with mono but the PowerShell path has only been run through fakes: verify on real Windows.
+
+## Photo sharing (QR codes)
+The bridge also stores and serves each session's colour photo + GIF: `POST /share/<id>/photo.jpg|photo.gif` (booth uploads) and a **separate read-only server on `SHARE_PORT` (default 9102)** that serves only `GET /s/<id>/<file>`. Expose 9102 (tunnel), never 9101. `SHARE_DIR`, `SHARE_TTL_HOURS` (default 24). See `docs/SHARE.md`.

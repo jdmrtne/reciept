@@ -3,7 +3,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { readFileSync } from 'fs';
 import { buildPlan } from './plan';
-import { renderPlan, renderPrint, type RenderEnv } from './render';
+import { photoTile, renderOverlay, renderPlan, renderPrint, type RenderEnv } from './render';
 import { canvasToRGBA } from '../print/browser';
 import { toThermalBitmap } from '../print/pipeline';
 import { blackRatio, getDot } from '../print/bitmap';
@@ -128,6 +128,27 @@ describe('renderPrint → canvasToRGBA → toThermalBitmap (end to end, what Pri
       // Same input → same dots.
       const again = toThermalBitmap(canvasToRGBA(await renderPrint(snap, ctx, mm, env)), DEFAULT_THERMAL, PAPER_DOTS[mm]);
       expect(Buffer.compare(Buffer.from(again.data), Buffer.from(bits.data))).toBe(0);
+    }
+  }, 60000);
+});
+
+describe('GIF layering re-uses the print layout exactly', () => {
+  it('white + photo tiles + overlay === renderPlan for every layout × frame (with a sticker and a filter)', async () => {
+    for (const l of LAYOUTS) for (const f of FRAMES) {
+      let snap = withFilter(withFrame(buildSnapshot(l.id, srcs), f.id), 'grayscale');
+      snap = addSticker(snap, 'heart', 384, 700).snap;
+      const plan = buildPlan(snap, ctx, 320);
+      const whole = await renderPlan(plan, env);
+      const base = createCanvas(plan.width, plan.height), g = base.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, plan.width, plan.height);
+      for (const c of plan.cmds) if (c.op === 'photo') {
+        const t = photoTile(env, await env.image(c.src), c.iw, c.ih, c, plan.k);
+        g.drawImage(t.tile as any, t.dx, t.dy);
+      }
+      g.drawImage(await renderOverlay(plan, env) as any, 0, 0);
+      const a = (whole as any).getContext('2d').getImageData(0, 0, plan.width, plan.height).data, b = g.getImageData(0, 0, plan.width, plan.height).data;
+      let off = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 6) off++;
+      expect(off, `${l.id}/${f.id}`).toBeLessThan(plan.width * plan.height * 0.001);
     }
   }, 60000);
 });

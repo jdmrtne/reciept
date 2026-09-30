@@ -22,6 +22,11 @@ export interface BoothSettings {
   mockFailures: PrinterErrorCode[];
   /** Seconds the "take your receipt" screen stays before returning to standby. */
   successSeconds: number;
+  /**
+   * QR codes after printing (docs/SHARE.md). Files are uploaded to the print bridge (network.bridgeUrl) and the QR
+   * points at `publicBaseUrl`, the address customers' PHONES can reach (tunnel / LAN address of the bridge's share port).
+   */
+  share: { enabled: boolean; publicBaseUrl: string };
 }
 
 export const DEFAULT_SETTINGS: BoothSettings = {
@@ -35,7 +40,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   network: { bridgeUrl: 'http://localhost:9101', host: '10.0.0.11', port: 9100 },
   windowsPrinter: 'POS80 10.0.0.11',
   mockFailures: [],
-  successSeconds: 10
+  successSeconds: 10,
+  share: { enabled: false, publicBaseUrl: '' }
 };
 
 const KEY = 'booth.settings.v1';
@@ -77,7 +83,11 @@ export function mergeSettings(raw: unknown): BoothSettings {
     },
     windowsPrinter: typeof r.windowsPrinter === 'string' ? r.windowsPrinter.slice(0, 200) : DEFAULT_SETTINGS.windowsPrinter, // not trimmed here: names contain spaces and this runs on every keystroke
     mockFailures: Array.isArray(r.mockFailures) ? r.mockFailures : [],
-    successSeconds: typeof r.successSeconds === 'number' && r.successSeconds > 0 ? r.successSeconds : DEFAULT_SETTINGS.successSeconds
+    successSeconds: typeof r.successSeconds === 'number' && r.successSeconds > 0 ? r.successSeconds : DEFAULT_SETTINGS.successSeconds,
+    share: {
+      enabled: r.share?.enabled === true,
+      publicBaseUrl: typeof r.share?.publicBaseUrl === 'string' ? r.share.publicBaseUrl.slice(0, 300) : DEFAULT_SETTINGS.share.publicBaseUrl // not trimmed here: runs on every keystroke
+    }
   };
 }
 

@@ -13,7 +13,6 @@ import {
   loadPhotoSrcs, moveLayer, newEditor, photoRect, redo, resetEditor, stickerCorner, swapPhotos, undo, withFilter, withFrame
 } from '../editor/model';
 import { isPhoto, isSticker, type EditorObject, type EditorState, type PhotoObject, type Snapshot, type StickerObject } from '../editor/types';
-import { Preview } from './Layout';
 import { Icon } from '../components/Icon';
 
 type Pt = { x: number; y: number };
@@ -237,7 +236,7 @@ export function Edit() {
           <div className="edit-tray">
             {LAYOUTS.map((l) => (
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
-                <Preview id={l.id} /><span>{l.name.toUpperCase()}</span>
+                <FramePreview frameId={snap.frameId} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>
             ))}
           </div>

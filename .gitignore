@@ -1,2 +1,7 @@
 node_modules
 dist
+share-files
+
+.env
+.env.local
+.env.*.local

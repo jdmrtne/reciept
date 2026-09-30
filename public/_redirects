@@ -1,0 +1,2 @@
+# Single-page app: every path (notably /admin) serves the shell. Netlify + Cloudflare Pages.
+/*  /index.html  200

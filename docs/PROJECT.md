@@ -10,7 +10,7 @@ STANDBY → TAP TO START → SELECT LAYOUT → CAMERA → COUNTDOWN → CAPTURE 
 - App ALWAYS boots to standby. Inactivity (default 60s) or "new session" wipes everything (photos, stickers, layout, frame, editor, camera).
 - NO text tools of any kind (no add-text, input, font/color). Text exists only inside predefined frame designs (WANTED, PHOTOBOOTH, THANK YOU, DATE, TIME, EVENT NAME, BOUNTY).
 - Wanted/Bounty frame must be ORIGINAL (no One Piece characters, logos, art or poster layouts). Must render well in 1-bit monochrome.
-- Photos are never stored long-term. Only settings/config go in localStorage.
+- Photos are never stored long-term on the booth device. Only settings/config go in localStorage. Exception (opt-in, `docs/SHARE.md`): with SHARE QR on, the finished photo + GIF are uploaded to the owner's print bridge and auto-deleted after 24 h so customers can scan them.
 - No account; core flow works offline.
 - Layouts, frames, stickers, printers are data/adapter driven so new ones need no editor rewrite.
 - Renderer produces final images separately from UI (preview / export / print-ready).

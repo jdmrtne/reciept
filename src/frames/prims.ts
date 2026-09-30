@@ -1,6 +1,7 @@
 import type { Block, FrameCtx, FrameDef, PathCmd, Prim } from './types';
 import type { Rect as Rect0 } from '../layouts/types';
 import { ornament, sketchRect, tornRect } from './art';
+import { wantedPrims } from './wanted';
 import type { ResolvedLayout } from '../layouts/types';
 
 const REF = 384;
@@ -67,6 +68,7 @@ function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[]) {
 }
 
 export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[] {
+  if (f.decor?.includes('wanted-poster')) return wantedPrims(L, ctx); // full-colour parchment drawn around the layout's slots
   const k = L.width / REF, out: Prim[] = [];
   const W = L.width, H = L.height, off = 8 * k;
   const { style, width, inset } = f.border;
