@@ -100,7 +100,6 @@ export function drawPrims(g: CanvasRenderingContext2D, prims: Prim[]): void {
 const stickerSvgUrl = (id: string, px: number) =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}">${getSticker(id).svg}</svg>`);
 
-
 type PhotoCmd = Extract<Cmd, { op: 'photo' }>;
 type StickerCmd = Extract<Cmd, { op: 'sticker' }>;
 
@@ -124,10 +123,24 @@ export function photoTile(env: RenderEnv, img: CanvasImageSource, srcW: number, 
   return { tile, dx, dy, dw, dh };
 }
 
+/** Pixel size a sticker is drawn at, at the plan's scale k (never below a few pixels so tiny ones still load). */
+const stickerPx = (c: StickerCmd, k: number) => ({ pw: Math.max(8, Math.ceil(c.w * k)), ph: Math.max(8, Math.ceil(c.h * k)) });
+
+/**
+ * The sticker as a ready-to-draw source at its final pixel size. SVG stickers rasterise at that size. PNG stickers are
+ * high-resolution, so they are halved down to it (scaledCrop) instead of one big smoothing-poor jump, which keeps
+ * the 384-dot print and the 2x preview crisp. The loaded PNG itself is never modified.
+ */
+async function stickerSource(env: RenderEnv, c: StickerCmd, k: number, load: (src: string) => Promise<CanvasImageSource>): Promise<CanvasImageSource> {
+  const def = getSticker(c.stickerId), { pw, ph } = stickerPx(c, k);
+  if (def.src && def.iw && def.ih) return scaledCrop(env, await load(def.src), 0, 0, def.iw, def.ih, pw, ph);
+  return load(stickerSvgUrl(c.stickerId, pw));
+}
+
 function drawSticker(g: CanvasRenderingContext2D, c: StickerCmd, img: CanvasImageSource, k: number) {
   g.save();
   g.translate(c.cx * k, c.cy * k); g.rotate((c.rotation * Math.PI) / 180);
-  g.drawImage(img, (-c.size * k) / 2, (-c.size * k) / 2, c.size * k, c.size * k);
+  g.drawImage(img, (-c.w * k) / 2, (-c.h * k) / 2, c.w * k, c.h * k);
   g.restore();
 }
 
@@ -139,11 +152,13 @@ function drawSticker(g: CanvasRenderingContext2D, c: StickerCmd, img: CanvasImag
 export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEnv): Promise<HTMLCanvasElement> {
   await env.ready?.();
   const { k } = plan;
+  const cache = new Map<string, Promise<CanvasImageSource>>();
+  const load = (src: string) => { if (!cache.has(src)) cache.set(src, env.image(src)); return cache.get(src)!; };
   const out = env.canvas(plan.width, plan.height), g = ctx2d(out);
   for (const c of plan.cmds) {
     if (c.op === 'photo') { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); }
     else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
-    else drawSticker(g, c, await env.image(stickerSvgUrl(c.stickerId, Math.max(8, Math.ceil(c.size * k)))), k);
+    else drawSticker(g, c, await stickerSource(env, c, k, load), k);
   }
   return out;
 }
@@ -154,11 +169,13 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
   const { k } = plan;
   const cache = new Map<string, Promise<CanvasImageSource>>();
   const load = (src: string) => { if (!cache.has(src)) cache.set(src, env.image(src)); return cache.get(src)!; };
-  const stickerPx = (c: Extract<Cmd, { op: 'sticker' }>) => Math.max(8, Math.ceil(c.size * k));
 
-  // Load everything first so a failed image aborts before any drawing.
-  await Promise.all(plan.cmds.map((c) =>
-    c.op === 'photo' ? load(c.src) : c.op === 'sticker' ? load(stickerSvgUrl(c.stickerId, stickerPx(c))) : null));
+  // Load everything first so a failed image aborts before any drawing. Stickers resolve to their final-size source here too.
+  const stickers = new Map<StickerCmd, CanvasImageSource>();
+  await Promise.all(plan.cmds.map(async (c) => {
+    if (c.op === 'photo') await load(c.src);
+    else if (c.op === 'sticker') stickers.set(c, await stickerSource(env, c, k, load));
+  }));
 
   const out = env.canvas(plan.width, plan.height), g = ctx2d(out);
   g.fillStyle = '#fff'; g.fillRect(0, 0, plan.width, plan.height);
@@ -172,7 +189,7 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
     } else if (c.op === 'frame') {
       g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore();
     } else {
-      drawSticker(g, c, await load(stickerSvgUrl(c.stickerId, stickerPx(c))), k);
+      drawSticker(g, c, stickers.get(c)!, k);
     }
   }
   return out;

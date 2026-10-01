@@ -13,7 +13,7 @@ export interface PhotoObject extends BaseObject {
   src: string; iw: number; ih: number; // source image (never modified)
   crop: Crop;
 }
-export interface StickerObject extends BaseObject { type: 'sticker'; stickerId: string } // square: w === h; x,y = unrotated top-left
+export interface StickerObject extends BaseObject { type: 'sticker'; stickerId: string } // w x h keeps the sticker's own aspect ratio (square for SVG stickers); x,y = unrotated top-left
 export type EditorObject = PhotoObject | StickerObject; // add new object types here
 export const isPhoto = (o: EditorObject): o is PhotoObject => o.type === 'photo';
 export const isSticker = (o: EditorObject): o is StickerObject => o.type === 'sticker';

@@ -2,6 +2,7 @@ import type { Carry, Crop, EditorObject, EditorState, PhotoObject, Snapshot, Sti
 import { isSticker } from './types';
 import { DEFAULT_FRAME, resolveFramed } from '../frames/registry';
 import { DEFAULT_FILTER, getFilter } from '../filters/registry';
+import { stickerAspect } from '../stickers/registry';
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 export interface PhotoSrc { src: string; iw: number; ih: number }
@@ -69,9 +70,13 @@ export function keepStickers(old: Snapshot, next: Snapshot): Snapshot {
   const kept = old.objects.filter(isSticker);
   return { ...next, objects: clampStickers([...next.objects, ...kept], L.width, L.height) };
 }
+/** Width limits for a sticker of this aspect (h / w) so its SHORT side stays grabbable and its LONG side stays on the paper. */
+export const stickerWidthRange = (ar: number, maxSide: number) => ({ min: MIN_STICKER / Math.min(1, ar), max: maxSide / Math.max(1, ar) });
 export function addSticker(s: Snapshot, stickerId: string, cw: number, ch: number) {
-  const size = cw * 0.3, id = newId();
-  const o: StickerObject = { id, type: 'sticker', stickerId, x: cw / 2 - size / 2, y: ch / 2 - size / 2, w: size, h: size, rotation: 0, layer: nextLayer(s), visible: true };
+  const ar = stickerAspect(stickerId), side = cw * 0.3, id = newId();
+  // Same visual weight as a square sticker (area = side x side), aspect preserved, longest side capped at 45% of the paper width.
+  const w = Math.min(side / Math.sqrt(ar), (cw * 0.45) / Math.max(1, ar)), h = w * ar;
+  const o: StickerObject = { id, type: 'sticker', stickerId, x: cw / 2 - w / 2, y: ch / 2 - h / 2, w, h, rotation: 0, layer: nextLayer(s), visible: true };
   return { snap: { ...s, objects: [...s.objects, o] }, id };
 }
 export const deleteObject = (s: Snapshot, id: string): Snapshot => ({ ...s, objects: s.objects.filter((o) => o.id !== id || o.type === 'photo') });

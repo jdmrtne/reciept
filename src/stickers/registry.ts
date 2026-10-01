@@ -1,7 +1,8 @@
 /** Data-driven stickers. Each is monochrome SVG markup in a 100×100 box. Add a sticker = add an entry (or point `svg` at loaded asset markup from src/assets/stickers). */
-export interface StickerDef { id: string; category: string; name: string; svg: string }
+/** `svg` stickers draw in a 100x100 box. Image stickers (`src`) are PNGs that keep their own `iw`x`ih` aspect ratio. */
+export interface StickerDef { id: string; category: string; name: string; svg: string; src?: string; iw?: number; ih?: number }
 
-export const CATEGORIES = ['Hearts', 'Stars', 'Cute', 'Celebration', 'Food', 'Expressions', 'Decorative', 'Seasonal'] as const;
+export const CATEGORIES = ['Stickers', 'Hearts', 'Stars', 'Cute', 'Celebration', 'Food', 'Expressions', 'Decorative', 'Seasonal'] as const;
 
 const H = 'M50 88 C10 58 6 30 28 20 C40 15 48 22 50 30 C52 22 60 15 72 20 C94 30 90 58 50 88Z';
 const star = (n: number, R: number, r: number) =>
@@ -53,9 +54,55 @@ const RAW: StickerDef[] = [
  */
 const ink = (svg: string) =>
   `<g fill="#fff" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${svg.replace(/stroke="#fff"/g, 'stroke="#111"').replace(/stroke="#000"/g, 'stroke="#111"')}</g>`;
-export const STICKERS: StickerDef[] = RAW.map((s) => ({ ...s, svg: ink(s.svg) }));
+const SVG_STICKERS: StickerDef[] = RAW.map((s) => ({ ...s, svg: ink(s.svg) }));
+
+/**
+ * Transparent PNG sticker pack in src/assets/stickers. Vite turns each file into a hashed URL (and the PWA precaches it).
+ * [file stem, pixel width, pixel height]: sizes are needed up front so a sticker can be placed with the right aspect ratio.
+ */
+const PNG_URLS = import.meta.glob<string>('../assets/stickers/*.png', { eager: true, query: '?url', import: 'default' });
+const PNG_DIMS: [string, number, number][] = [
+  ['sticker_001', 732, 1076],
+  ['sticker_002', 624, 908],
+  ['sticker_003', 752, 1120],
+  ['sticker_004', 1128, 892],
+  ['sticker_005', 1268, 744],
+  ['sticker_006', 644, 640],
+  ['sticker_007', 764, 808],
+  ['sticker_008', 580, 796],
+  ['sticker_009', 664, 736],
+  ['sticker_010', 800, 792],
+  ['sticker_011', 760, 792],
+  ['sticker_012', 412, 728],
+  ['sticker_013', 432, 752],
+  ['sticker_014', 304, 892],
+  ['sticker_015', 576, 920],
+  ['sticker_016', 852, 836],
+  ['sticker_017', 692, 908],
+  ['sticker_018', 524, 844],
+  ['sticker_019', 468, 856],
+  ['sticker_020', 868, 688],
+  ['sticker_021', 596, 568],
+  ['sticker_022', 836, 760],
+  ['sticker_023', 456, 828],
+  ['sticker_024', 472, 808],
+  ['sticker_025', 744, 780],
+  ['sticker_026', 468, 796],
+  ['sticker_027', 960, 700],
+  ['sticker_028', 1160, 748]
+];
+const PNG_STICKERS: StickerDef[] = PNG_DIMS.flatMap(([stem, iw, ih]) => {
+  const src = PNG_URLS[`../assets/stickers/${stem}.png`];
+  return src ? [{ id: stem, category: 'Stickers', name: `Sticker ${stem.slice(-3)}`, svg: '', src, iw, ih }] : [];
+});
+
+/** SVG stickers stay first so getSticker()'s fallback is unchanged. */
+export const STICKERS: StickerDef[] = [...SVG_STICKERS, ...PNG_STICKERS];
 
 export const getSticker = (id: string) => STICKERS.find((s) => s.id === id) ?? STICKERS[0];
+
+/** height / width of a sticker's box (1 for the square SVG stickers). */
+export const stickerAspect = (id: string) => { const s = getSticker(id); return s.src && s.iw && s.ih ? s.ih / s.iw : 1; };
 
 /** For canvas/print renderers: draw this as an Image. */
 export const stickerDataUrl = (id: string) =>

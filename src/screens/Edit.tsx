@@ -9,8 +9,8 @@ import { FilterDefs, filterAttr } from '../filters/FilterLayer';
 import { FilterTray } from '../filters/FilterTray';
 import { loadSettings } from '../config/settings';
 import {
-  MIN_STICKER, addSticker, applyCarry, buildSnapshot, clampCrop, commit, deleteObject, duplicateObject, hitSticker, keepStickers,
-  loadPhotoSrcs, moveLayer, newEditor, photoRect, redo, resetEditor, stickerCorner, swapPhotos, undo, withFilter, withFrame
+  addSticker, applyCarry, buildSnapshot, clampCrop, commit, deleteObject, duplicateObject, hitSticker, keepStickers,
+  loadPhotoSrcs, moveLayer, newEditor, photoRect, redo, resetEditor, stickerCorner, stickerWidthRange, swapPhotos, undo, withFilter, withFrame
 } from '../editor/model';
 import { isPhoto, isSticker, type EditorObject, type EditorState, type PhotoObject, type Snapshot, type StickerObject } from '../editor/types';
 import { Icon } from '../components/Icon';
@@ -123,16 +123,18 @@ export function Edit() {
       next = { ...b, crop: clampCrop(b, { zoom: multi ? b.crop.zoom * (spread(s.ptrs) / s.d0) : b.crop.zoom, ox: b.crop.ox + c.x - s.start.x, oy: b.crop.oy + c.y - s.start.y }) };
     } else {
       const b = s.base as StickerObject;
+      const ar = b.h / b.w, range = stickerWidthRange(ar, maxSize); // resize scales w and h together: aspect never changes
       let cx = b.x + b.w / 2, cy = b.y + b.h / 2, w = b.w, rot = b.rotation;
       if (s.kind === 'handle') {
         const vx = p.x - cx, vy = p.y - cy;
-        w = clamp((b.w * Math.hypot(vx, vy)) / s.d0, MIN_STICKER, maxSize);
+        w = clamp((b.w * Math.hypot(vx, vy)) / s.d0, range.min, range.max);
         rot = b.rotation + (Math.atan2(vy, vx) - s.a0) * DEG;
       } else {
         cx = clamp(cx + c.x - s.start.x, 0, L.width); cy = clamp(cy + c.y - s.start.y, 0, L.height);
-        if (multi) { w = clamp((b.w * spread(s.ptrs)) / s.d0, MIN_STICKER, maxSize); rot = b.rotation + (angle(s.ptrs) - s.a0) * DEG; }
+        if (multi) { w = clamp((b.w * spread(s.ptrs)) / s.d0, range.min, range.max); rot = b.rotation + (angle(s.ptrs) - s.a0) * DEG; }
       }
-      next = { ...b, x: cx - w / 2, y: cy - w / 2, w, h: w, rotation: rot };
+      const h = w * ar;
+      next = { ...b, x: cx - w / 2, y: cy - h / 2, w, h, rotation: rot };
     }
     const base = editor.present;
     setDraft({ ...base, objects: base.objects.map((o) => (o.id === s.id ? next : o)) });
@@ -194,7 +196,7 @@ export function Edit() {
           })}
           <FrameLayer prims={prims} />
           {snap.objects.filter(isSticker).filter((o) => o.visible).sort((a, b) => a.layer - b.layer).map((o) => (
-            <g key={o.id} pointerEvents="none" transform={`translate(${o.x + o.w / 2} ${o.y + o.h / 2}) rotate(${o.rotation}) scale(${o.w / 100}) translate(-50 -50)`}>
+            <g key={o.id} pointerEvents="none" transform={`translate(${o.x + o.w / 2} ${o.y + o.h / 2}) rotate(${o.rotation}) scale(${o.w / 100}) translate(-50 ${-50 * (o.h / o.w)})`}>
               <StickerGlyph id={o.stickerId} />
             </g>
           ))}

@@ -13,7 +13,7 @@ export const UNITS_W = 384;
 export type Cmd =
   | { op: 'photo'; src: string; iw: number; ih: number; slot: Rect; img: Rect; filterId: string }
   | { op: 'frame'; prims: Prim[] }
-  | { op: 'sticker'; stickerId: string; cx: number; cy: number; size: number; rotation: number };
+  | { op: 'sticker'; stickerId: string; cx: number; cy: number; w: number; h: number; rotation: number };
 
 /**
  * PURE description of the final image: no DOM, no canvas. The canvas executor (render.ts) just runs it.
@@ -30,6 +30,6 @@ export function buildPlan(snap: Snapshot, ctx: FrameCtx, widthPx: number): Rende
     cmds.push({ op: 'photo', src: o.src, iw: o.iw, ih: o.ih, slot: { x: o.x, y: o.y, w: o.w, h: o.h }, img: photoRect(o), filterId: snap.filterId });
   cmds.push({ op: 'frame', prims: framePrims(getFrame(snap.frameId), L, ctx) });
   for (const o of snap.objects.filter(isSticker).filter((s) => s.visible).sort((a, b) => a.layer - b.layer))
-    cmds.push({ op: 'sticker', stickerId: o.stickerId, cx: o.x + o.w / 2, cy: o.y + o.h / 2, size: o.w, rotation: o.rotation });
+    cmds.push({ op: 'sticker', stickerId: o.stickerId, cx: o.x + o.w / 2, cy: o.y + o.h / 2, w: o.w, h: o.h, rotation: o.rotation });
   return { width: Math.round(widthPx), height: Math.round(L.height * k), k, unitsW: L.width, unitsH: L.height, cmds };
 }
