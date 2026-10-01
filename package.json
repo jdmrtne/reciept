@@ -13,6 +13,7 @@
     "find-printer": "node bridge/find-printer.mjs",
     "list-printers": "node bridge/list-printers.mjs",
     "frame-specs": "vitest run src/frames/frameSpecs.test.ts -u",
+    "build-frames": "node scripts/build-frames.mjs",
     "frame-knockout": "node scripts/frame-knockout.mjs"
   },
   "dependencies": {

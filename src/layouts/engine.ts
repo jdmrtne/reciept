@@ -4,9 +4,9 @@ export const PAPER_DOTS = { 58: 384, 80: 576 } as const; // printable dots @203d
 const REF = 384;
 
 /** Pure function: layout data + target width in pixels → concrete geometry. No UI, no DOM. */
-export function resolveLayout(def: LayoutDef, width: number = REF, over?: { headerHeight?: number; footerHeight?: number }): ResolvedLayout {
+export function resolveLayout(def: LayoutDef, width: number = REF, over?: { headerHeight?: number; footerHeight?: number; padding?: number }): ResolvedLayout {
   const k = width / REF;
-  const pad = def.padding * k, gap = def.gap * k;
+  const pad = (over?.padding ?? def.padding) * k, gap = def.gap * k;
   const headerH = (over?.headerHeight ?? def.headerHeight) * k, footerH = (over?.footerHeight ?? def.footerHeight) * k;
   const a = def.arrangement;
   let slots: Rect[] = [];

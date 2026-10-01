@@ -52,13 +52,13 @@ export const FRAMES: FrameDef[] = [
  * defaults for all layouts, `image.bands[layoutId]` overrides one layout. Tune these to the artwork you export.
  */
 const imageFrame = (id: string, name: string, dir: string, bands: Bands, per?: Partial<Record<string, Bands>>): FrameDef =>
-  ({ id, name, type: 'image', image: { dir, bands: per }, ...bands, border: none, header: { lines: [] }, footer: { lines: [] } });
+  ({ id, name, type: 'image', image: { dir, bands: per, padding: bands.padding }, headerHeight: bands.headerHeight, footerHeight: bands.footerHeight, border: none, header: { lines: [] }, footer: { lines: [] } });
 
+// Bands/padding are sized to the designs in design-src/ (border width, header + caption room). Rebuild artwork with `npm run build-frames`.
 export const IMAGE_FRAMES: FrameDef[] = [
-  imageFrame('kawaii', 'Kawaii Cats', 'kawaii', { headerHeight: 0, footerHeight: 40 }),
-  imageFrame('retro-film', 'Retro Film', 'retro', { headerHeight: 40, footerHeight: 64 }),
-  imageFrame('better-together', 'Better Together', 'better-together', { headerHeight: 0, footerHeight: 72 }),
-  imageFrame('neon-gaming', 'Neon Gaming', 'neon-gaming', { headerHeight: 40, footerHeight: 56 })
+  imageFrame('kawaii', 'Kawaii Cats', 'kawaii', { headerHeight: 20, footerHeight: 20, padding: 44 }),
+  imageFrame('retro-film', 'Retro Film', 'retro', { headerHeight: 20, footerHeight: 30, padding: 50 }),
+  imageFrame('better-together', 'Better Together', 'better-together', { headerHeight: 44, footerHeight: 56 })
 ];
 FRAMES.push(...IMAGE_FRAMES);
 
@@ -67,7 +67,7 @@ export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id
 export const isImageFrame = (f: FrameDef) => f.type === 'image' && !!f.image;
 
 /** Header/footer band heights for this frame on this layout (image frames may override per layout). */
-export const getFrameBands = (f: FrameDef, layoutId: string): Bands => f.image?.bands?.[layoutId] ?? { headerHeight: f.headerHeight, footerHeight: f.footerHeight };
+export const getFrameBands = (f: FrameDef, layoutId: string): Bands => f.image?.bands?.[layoutId] ?? { headerHeight: f.headerHeight, footerHeight: f.footerHeight, ...(f.image?.padding !== undefined ? { padding: f.image.padding } : {}) };
 
 const PLAIN: FrameDef = { id: '_plain', name: 'Plain', headerHeight: 0, footerHeight: 0, border: { style: 'solid', width: 2, inset: 6 }, header: { lines: [] }, footer: { lines: [] } };
 /** The vector definition to DRAW for a frame: itself, or (image frame without artwork) its fallback / a thin plain border. */

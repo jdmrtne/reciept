@@ -7,7 +7,7 @@ export type Decor = 'corners' | 'stars' | 'notches' | 'slot-border' | 'slot-bord
 export type Orn = 'star' | 'heart' | 'balloon' | 'party-hat' | 'cap' | 'smile' | 'bones' | 'sparkle' | 'anchor';
 export interface Ornaments { at: 'header' | 'footer'; y: number; size: number; left?: Orn; right?: Orn } // y = fraction of band
 /** Bands (reference dots @58mm) a frame reserves above/below the photo slots. */
-export interface Bands { headerHeight: number; footerHeight: number }
+export interface Bands { headerHeight: number; footerHeight: number; padding?: number } // padding = outer margin override (the artwork's border width)
 /**
  * Bitmap-art frame (PNG overlay with TRANSPARENT photo windows). Assets are discovered by convention:
  * src/assets/frames/<dir>/<layoutId>.png (single, strip-2, strip-3, strip-4, grid-2x2, classic) and an optional <dir>/default.png.
@@ -15,6 +15,8 @@ export interface Bands { headerHeight: number; footerHeight: number }
  */
 export interface ImageFrameDef {
   dir: string;
+  /** Outer margin (reference dots) for every layout: the artwork's border width. Default: the layout's own padding. */
+  padding?: number;
   /** Per-layout band overrides; layouts not listed use the frame's headerHeight/footerHeight. */
   bands?: Partial<Record<string, Bands>>;
   /** Vector frame id drawn when no artwork exists for this layout (default: a plain thin border). */

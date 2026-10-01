@@ -72,11 +72,11 @@ describe('asset resolution (frameId + layoutId)', () => {
 });
 
 describe('registry', () => {
-  it('keeps every vector frame and adds the four image frames', () => {
+  it('keeps every vector frame and adds the three image frames', () => {
     for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
       expect(isImageFrame(getFrame(id)), id).toBe(false);
     expect(FRAMES[0].id).toBe('classic-receipt');
-    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together', 'neon-gaming']);
+    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together']);
     expect(IMAGE_FRAMES.every((f) => isImageFrame(f) && FRAMES.includes(f))).toBe(true);
     expect(new Set(FRAMES.map((f) => f.id)).size).toBe(FRAMES.length);
   });

@@ -26,7 +26,8 @@ const srcs = [{ src: A, iw: 1600, ih: 900 }, { src: B, iw: 1600, ih: 900 }];
 const env: RenderEnv = {
   canvas: (w, h) => createCanvas(w, h) as unknown as HTMLCanvasElement,
   // node-canvas can't read the utf8 SVG data-URL form browsers accept, so hand it the decoded markup.
-  image: (s) => loadImage(s.startsWith('data:image/svg+xml;utf8,') ? Buffer.from(decodeURIComponent(s.slice('data:image/svg+xml;utf8,'.length))) : s) as unknown as Promise<CanvasImageSource>
+  // Vite serves bundled assets as '/src/assets/…' URLs (real frame PNGs); in node read them straight from disk.
+  image: (s) => loadImage(s.startsWith('data:image/svg+xml;utf8,') ? Buffer.from(decodeURIComponent(s.slice('data:image/svg+xml;utf8,'.length))) : s.startsWith('/src/') ? readFileSync(s.slice(1)) : s) as unknown as Promise<CanvasImageSource>
 };
 const px = (c: HTMLCanvasElement, x: number, y: number) => [...(c as any).getContext('2d').getImageData(Math.round(x), Math.round(y), 1, 1).data];
 const center = (o: { x: number; y: number; w: number; h: number }, k: number, fx = .5, fy = .5) => [(o.x + o.w * fx) * k, (o.y + o.h * fy) * k];
