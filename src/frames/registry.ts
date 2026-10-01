@@ -1,4 +1,4 @@
-import type { FrameDef, TextLine } from './types';
+import type { Bands, FrameDef, TextLine } from './types';
 import { resolveLayout } from '../layouts/engine';
 import { getLayout } from '../layouts/registry';
 
@@ -46,11 +46,34 @@ export const FRAMES: FrameDef[] = [
     footer: { lines: [T('{DATE}  {TIME}', 10, .16, { ls: 3 }), T('NO. {SERIAL}', 10, .88, { ls: 3 })], rule: 'dashed', barcode: { y: .32, h: .38 } } }
 ];
 
+/**
+ * Image (PNG overlay) frames. Add one = drop PNGs in src/assets/frames/<dir>/ (named by layout id, see frames/assets.ts) + one entry here.
+ * `bands` only reserves caption/header room; the layout engine still decides every photo slot. headerHeight/footerHeight are the
+ * defaults for all layouts, `image.bands[layoutId]` overrides one layout. Tune these to the artwork you export.
+ */
+const imageFrame = (id: string, name: string, dir: string, bands: Bands, per?: Partial<Record<string, Bands>>): FrameDef =>
+  ({ id, name, type: 'image', image: { dir, bands: per }, ...bands, border: none, header: { lines: [] }, footer: { lines: [] } });
+
+export const IMAGE_FRAMES: FrameDef[] = [
+  imageFrame('kawaii', 'Kawaii Cats', 'kawaii', { headerHeight: 0, footerHeight: 40 }),
+  imageFrame('retro-film', 'Retro Film', 'retro', { headerHeight: 40, footerHeight: 64 }),
+  imageFrame('better-together', 'Better Together', 'better-together', { headerHeight: 0, footerHeight: 72 }),
+  imageFrame('neon-gaming', 'Neon Gaming', 'neon-gaming', { headerHeight: 40, footerHeight: 56 })
+];
+FRAMES.push(...IMAGE_FRAMES);
+
 export const DEFAULT_FRAME = 'classic-receipt';
 export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id === id) ?? FRAMES[0];
+export const isImageFrame = (f: FrameDef) => f.type === 'image' && !!f.image;
+
+/** Header/footer band heights for this frame on this layout (image frames may override per layout). */
+export const getFrameBands = (f: FrameDef, layoutId: string): Bands => f.image?.bands?.[layoutId] ?? { headerHeight: f.headerHeight, footerHeight: f.footerHeight };
+
+const PLAIN: FrameDef = { id: '_plain', name: 'Plain', headerHeight: 0, footerHeight: 0, border: { style: 'solid', width: 2, inset: 6 }, header: { lines: [] }, footer: { lines: [] } };
+/** The vector definition to DRAW for a frame: itself, or (image frame without artwork) its fallback / a thin plain border. */
+export const vectorFrameOf = (f: FrameDef): FrameDef => (isImageFrame(f) ? FRAMES.find((v) => v.id === f.image!.fallback && !isImageFrame(v)) ?? PLAIN : f);
 
 /** Layout geometry with the frame's header/footer bands applied. Use this everywhere (editor, renderer). */
 export function resolveFramed(layoutId: string, frameId: string | null, width = 384) {
-  const f = getFrame(frameId);
-  return resolveLayout(getLayout(layoutId), width, { headerHeight: f.headerHeight, footerHeight: f.footerHeight });
+  return resolveLayout(getLayout(layoutId), width, getFrameBands(getFrame(frameId), layoutId));
 }

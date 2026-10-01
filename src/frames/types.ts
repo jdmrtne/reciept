@@ -6,8 +6,24 @@ export type Decor = 'corners' | 'stars' | 'notches' | 'slot-border' | 'slot-bord
 /** Hand-drawn ornaments (see frames/art.ts). Drawn as line art inside the header/footer band, left and right of the text. */
 export type Orn = 'star' | 'heart' | 'balloon' | 'party-hat' | 'cap' | 'smile' | 'bones' | 'sparkle' | 'anchor';
 export interface Ornaments { at: 'header' | 'footer'; y: number; size: number; left?: Orn; right?: Orn } // y = fraction of band
+/** Bands (reference dots @58mm) a frame reserves above/below the photo slots. */
+export interface Bands { headerHeight: number; footerHeight: number }
+/**
+ * Bitmap-art frame (PNG overlay with TRANSPARENT photo windows). Assets are discovered by convention:
+ * src/assets/frames/<dir>/<layoutId>.png (single, strip-2, strip-3, strip-4, grid-2x2, classic) and an optional <dir>/default.png.
+ * The layout engine still owns the slot geometry; `bands` only reserves room for the artwork's caption/header areas.
+ */
+export interface ImageFrameDef {
+  dir: string;
+  /** Per-layout band overrides; layouts not listed use the frame's headerHeight/footerHeight. */
+  bands?: Partial<Record<string, Bands>>;
+  /** Vector frame id drawn when no artwork exists for this layout (default: a plain thin border). */
+  fallback?: string;
+}
 export interface FrameDef {
   id: string; name: string;
+  type?: 'vector' | 'image'; // default 'vector'
+  image?: ImageFrameDef;      // present when type === 'image'
   headerHeight: number; footerHeight: number;
   border: { style: 'none' | 'solid' | 'double' | 'dashed'; width: number; inset: number };
   header: Block; footer: Block; decor?: Decor[]; ornaments?: Ornaments[];

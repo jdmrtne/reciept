@@ -11,7 +11,9 @@
     "test": "vitest run",
     "bridge": "node bridge/server.mjs",
     "find-printer": "node bridge/find-printer.mjs",
-    "list-printers": "node bridge/list-printers.mjs"
+    "list-printers": "node bridge/list-printers.mjs",
+    "frame-specs": "vitest run src/frames/frameSpecs.test.ts -u",
+    "frame-knockout": "node scripts/frame-knockout.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

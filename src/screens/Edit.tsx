@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { LAYOUTS } from '../layouts/registry';
-import { FRAMES, DEFAULT_FRAME, getFrame, resolveFramed } from '../frames/registry';
-import { FrameLayer, FramePreview } from '../frames/FrameLayer';
+import { FRAMES, DEFAULT_FRAME, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
+import { getFrameAsset } from '../frames/assets';
+import { FrameLayer, FramePreview, ImageFrameLayer } from '../frames/FrameLayer';
 import { framePrims, makeCtx } from '../frames/prims';
 import { StickerGlyph, StickerTray } from '../stickers/StickerTray';
 import { FilterDefs, filterAttr } from '../filters/FilterLayer';
@@ -61,7 +62,8 @@ export function Edit() {
   const set = (e: EditorState) => sessionStore.update({ editor: e, layoutId: e.present.layoutId, frameId: e.present.frameId });
   const snap = draft ?? editor.present;
   const L = resolveFramed(snap.layoutId, snap.frameId);
-  const prims = framePrims(getFrame(snap.frameId), L, ctx);
+  const frameAsset = getFrameAsset(getFrame(snap.frameId), snap.layoutId); // frameId + layoutId → artwork; null → vector frame
+  const prims = frameAsset ? [] : framePrims(vectorFrameOf(getFrame(snap.frameId)), L, ctx);
   const sel = snap.objects.filter(isSticker).find((o) => o.id === selId && o.visible) ?? null;
   const maxSize = L.width * 1.2;
   const photoCount = snap.objects.filter(isPhoto).length;
@@ -190,11 +192,11 @@ export function Edit() {
               <g key={o.id}>
                 <clipPath id={`clip-${o.id}`}><rect x={o.x} y={o.y} width={o.w} height={o.h} /></clipPath>
                 <image href={o.src} x={r.x} y={r.y} width={r.w} height={r.h} preserveAspectRatio="none" filter={filterAttr('ed', snap.filterId)} clipPath={`url(#clip-${o.id})`} />
-                <rect x={o.x} y={o.y} width={o.w} height={o.h} fill="none" stroke="#000" strokeWidth={2} />
+                {!frameAsset && <rect x={o.x} y={o.y} width={o.w} height={o.h} fill="none" stroke="#000" strokeWidth={2} />}
               </g>
             );
           })}
-          <FrameLayer prims={prims} />
+          {frameAsset ? <ImageFrameLayer asset={frameAsset} w={L.width} h={L.height} /> : <FrameLayer prims={prims} />}
           {snap.objects.filter(isSticker).filter((o) => o.visible).sort((a, b) => a.layer - b.layer).map((o) => (
             <g key={o.id} pointerEvents="none" transform={`translate(${o.x + o.w / 2} ${o.y + o.h / 2}) rotate(${o.rotation}) scale(${o.w / 100}) translate(-50 ${-50 * (o.h / o.w)})`}>
               <StickerGlyph id={o.stickerId} />

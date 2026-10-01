@@ -102,6 +102,29 @@ const stickerSvgUrl = (id: string, px: number) =>
 
 type PhotoCmd = Extract<Cmd, { op: 'photo' }>;
 type StickerCmd = Extract<Cmd, { op: 'sticker' }>;
+type ImageFrameCmd = Extract<Cmd, { op: 'image-frame' }>;
+
+const natural = (img: CanvasImageSource) => {
+  const i = img as { naturalWidth?: number; naturalHeight?: number; width: number; height: number };
+  return { w: i.naturalWidth || i.width, h: i.naturalHeight || i.height };
+};
+
+/**
+ * The frame artwork at its final pixel size, ready to draw at (0,0). The PNG is read at native resolution and halved
+ * progressively down to the target (scaledCrop), so a big 4×-art asset stays crisp at 384/576 dots instead of one aliased jump.
+ * 'stretch' = artwork authored for this layout (aspect already matches). 'cover' = generic art: uniform scale, centred, overflow cropped (never distorted).
+ */
+export function imageFrameSource(env: RenderEnv, img: CanvasImageSource, c: ImageFrameCmd, k: number, outW: number, outH: number): CanvasImageSource {
+  const { w: iw, h: ih } = natural(img);
+  if (c.fit === 'stretch') return scaledCrop(env, img, 0, 0, iw, ih, outW, outH);
+  const s = Math.max(outW / iw, outH / ih), sw = outW / s, sh = outH / s;
+  return scaledCrop(env, img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, outW, outH);
+}
+
+/** Draws the (already loaded) frame artwork over the whole canvas. Transparent windows leave the photos underneath untouched. */
+export function drawImageFrame(g: CanvasRenderingContext2D, art: CanvasImageSource) {
+  g.drawImage(art, 0, 0);
+}
 
 /**
  * One photo slot's pixels (crop/zoom/pan applied, filter applied to PHOTO pixels only) for a source of srcW×srcH.
@@ -156,8 +179,9 @@ export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEn
   const load = (src: string) => { if (!cache.has(src)) cache.set(src, env.image(src)); return cache.get(src)!; };
   const out = env.canvas(plan.width, plan.height), g = ctx2d(out);
   for (const c of plan.cmds) {
-    if (c.op === 'photo') { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); }
+    if (c.op === 'photo') { if (!c.noBorder) { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); } }
     else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
+    else if (c.op === 'image-frame') drawImageFrame(g, imageFrameSource(env, await load(c.src), c, k, plan.width, plan.height));
     else drawSticker(g, c, await stickerSource(env, c, k, load), k);
   }
   return out;
@@ -172,8 +196,10 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
 
   // Load everything first so a failed image aborts before any drawing. Stickers resolve to their final-size source here too.
   const stickers = new Map<StickerCmd, CanvasImageSource>();
+  const frames = new Map<ImageFrameCmd, CanvasImageSource>();
   await Promise.all(plan.cmds.map(async (c) => {
     if (c.op === 'photo') await load(c.src);
+    else if (c.op === 'image-frame') frames.set(c, imageFrameSource(env, await load(c.src), c, k, plan.width, plan.height));
     else if (c.op === 'sticker') stickers.set(c, await stickerSource(env, c, k, load));
   }));
 
@@ -185,9 +211,11 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
       const img = await load(c.src);
       const { tile, dx, dy } = photoTile(env, img, c.iw, c.ih, c, k);
       g.drawImage(tile, dx, dy);
-      g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); // same slot border as the editor
+      if (!c.noBorder) { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); } // same slot border as the editor
     } else if (c.op === 'frame') {
       g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore();
+    } else if (c.op === 'image-frame') {
+      drawImageFrame(g, frames.get(c)!);
     } else {
       drawSticker(g, c, stickers.get(c)!, k);
     }

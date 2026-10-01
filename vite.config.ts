@@ -30,7 +30,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+        // High-resolution frame artwork (src/assets/frames) is often >2 MB per PNG; the default cap would silently skip it and break offline use.
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Every deploy's precache otherwise stays on the tablet forever; this deletes caches from prior versions
         // once the new one takes over, so storage doesn't grow unbounded over months of unattended kiosk updates.

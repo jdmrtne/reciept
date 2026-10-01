@@ -1,5 +1,6 @@
 import { pathD, type Prim } from './types';
-import { getFrame, resolveFramed } from './registry';
+import { getFrame, resolveFramed, vectorFrameOf } from './registry';
+import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
 
 import { FONT_STACK, FONT_DISPLAY_STACK } from '../render/font';
@@ -23,20 +24,26 @@ export function FrameLayer({ prims }: { prims: Prim[] }) {
   );
 }
 
-/** Small thumbnail for the frame picker: framed layout with black photo slots. */
+/** PNG frame artwork over the whole canvas (editor + picker). Photos show through its transparent windows; no pointer events, so photos/stickers stay draggable. */
+export function ImageFrameLayer({ asset, w, h }: { asset: FrameAsset; w: number; h: number }) {
+  return <image href={asset.src} x={0} y={0} width={w} height={h} preserveAspectRatio={asset.fit === 'stretch' ? 'none' : 'xMidYMid slice'} pointerEvents="none" />;
+}
+
+/** Small thumbnail for the frame picker: framed layout with placeholder photo slots under the real frame artwork. */
 export function FramePreview({ frameId, layoutId }: { frameId: string; layoutId: string }) {
   const L = resolveFramed(layoutId, frameId);
-  const prims = framePrims(getFrame(frameId), L, makeCtx('PHOTOBOOTH'));
+  const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
+  const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH'));
   return (
     <svg viewBox={`0 0 ${L.width} ${L.height}`} className="lay-svg" aria-hidden="true">
       <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />
       {L.slots.map((s, i) => (
         <g key={i}>
-          <rect x={s.x} y={s.y} width={s.w} height={s.h} fill="#f5f5f5" stroke="#111" strokeWidth={2.5} rx={3} />
+          <rect x={s.x} y={s.y} width={s.w} height={s.h} fill="#f5f5f5" stroke={asset ? 'none' : '#111'} strokeWidth={2.5} rx={3} />
           <circle cx={s.x + s.w / 2} cy={s.y + s.h / 2} r={Math.min(s.w, s.h) * 0.16} fill="none" stroke="#111" strokeWidth={2} />
         </g>
       ))}
-      <FrameLayer prims={prims} />
+      {asset ? <ImageFrameLayer asset={asset} w={L.width} h={L.height} /> : <FrameLayer prims={prims} />}
     </svg>
   );
 }
