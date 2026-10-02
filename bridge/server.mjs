@@ -11,6 +11,7 @@
 //
 // Photo sharing (QR codes after printing), see docs/SHARE.md:
 //   POST /share/<id>/photo.jpg|photo.gif   booth uploads a finished session's files (local, subject to ALLOW_ORIGIN)
+//   GET  /p/<id>                           the result page the ONE QR opens (colour photo + GIF)
 //   GET  /s/<id>/photo.jpg|photo.gif       serves them (fine on a LAN; for the internet use the separate read-only SHARE_PORT server below)
 // Files live in SHARE_DIR (default ./share-files) and expire after SHARE_TTL_HOURS (default 24).
 import http from 'node:http';
@@ -18,7 +19,7 @@ import net from 'node:net';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { listPrinters, printerInfo, runPowerShell, sendRaw } from './windows.mjs';
-import { createShareServer, createShareStore, receiveShareUpload, serveShareFile, DEFAULT_TTL_MS } from './share.mjs';
+import { createShareServer, createShareStore, receiveShareUpload, serveShareFile, servePhotoPage, DEFAULT_TTL_MS } from './share.mjs';
 
 const MAX_BYTES = 64 * 1024 * 1024;
 
@@ -69,7 +70,8 @@ export function createBridge({ allowPorts = [9100], allowOrigins = [], log = () 
 
     const url = new URL(req.url || '/', 'http://bridge');
     if (shareStore) {
-      if (await serveShareFile(shareStore, req, res, url.pathname)) return;
+      if (await serveShareFile(shareStore, req, res, url.pathname, url.search)) return;
+      if (await servePhotoPage(shareStore, req, res, url.pathname)) return;
       try {
         if (await receiveShareUpload(shareStore, req, (code, obj) => { if (code === 200) log(`share stored ${url.pathname.slice(7, 15)}\u2026/${url.pathname.split('/').pop()} (${obj.bytes} bytes)`); send(code, obj); }, url.pathname)) return;
       } catch (e) { return send(500, { ok: false, error: `share failed: ${e.message}` }); }

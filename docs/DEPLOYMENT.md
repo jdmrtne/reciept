@@ -7,7 +7,7 @@ Camera, WebUSB, Web Bluetooth and the service worker only work on a secure origi
 
 ## 2. Pick a host
 Any static host with HTTPS works. The repo ships config for **Netlify / Cloudflare Pages** (`public/_headers`, `public/_redirects`, copied into `dist/` by the build). Requirements for any host:
-- **SPA fallback**: unknown paths must return `index.html` (so `/admin` reaches the app instead of a 404).
+- **SPA fallback**: unknown paths must return `index.html` (so `/admin` reaches the app instead of a 404, and `/p/<id>`, the page phones open from the QR code, reaches the result page).
 - **Revalidate the shell**: `index.html`, `sw.js`, `manifest.webmanifest` must be `Cache-Control: no-cache`. A cached `sw.js` can pin the kiosk to an old version.
 - **Root-domain hosting** (`https://booth.example.com/`). The manifest uses `start_url: '/'` and `scope: '/'`; serving from a sub-path is not supported without changing `vite.config.ts` (`base`, manifest `start_url`/`scope`/`id`).
 - Recommended response headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy: camera=(self), usb=(self), bluetooth=(self)`.

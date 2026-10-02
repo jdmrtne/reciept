@@ -25,3 +25,25 @@ export function qrPath(m: boolean[][]): string {
   return d;
 }
 export const QUIET = 4;
+
+/** Smallest whole-module scale whose side (modules + quiet zone) reaches `minPx`: crisp edges, no blur from fractional modules. */
+export const qrScale = (matrix: boolean[][], minPx = 1024) => Math.max(1, Math.ceil(minPx / (matrix.length + QUIET * 2)));
+
+/**
+ * Draws the QR (with its quiet zone) as a `size × size` square at (x, y) on any 2D canvas: white square, black modules.
+ * The ONE drawing routine: the PNG download uses it now and Phase 2's printable-frame composer can call it on the frame canvas.
+ */
+export function drawQr(g: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>, matrix: boolean[][], x: number, y: number, size: number): void {
+  const m = size / (matrix.length + QUIET * 2);
+  g.fillStyle = '#fff'; g.fillRect(x, y, size, size);
+  g.fillStyle = '#000';
+  matrix.forEach((row, r) => {
+    let c = 0;
+    while (c < row.length) {
+      if (!row[c]) { c++; continue; }
+      let e = c; while (e < row.length && row[e]) e++;
+      g.fillRect(x + (c + QUIET) * m, y + (r + QUIET) * m, (e - c) * m, m);
+      c = e;
+    }
+  });
+}

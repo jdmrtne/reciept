@@ -7,3 +7,5 @@ export const DEFAULT_TTL_MS: number;
 export function looksLike(name: string, buf: Buffer): boolean;
 export function createShareStore(o: { dir: string; ttlMs?: number; now?: () => number }): ShareStore;
 export function createShareServer(store: ShareStore): Server;
+export function servePhotoPage(store: ShareStore, req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, pathname: string): Promise<boolean>;
+export function serveShareFile(store: ShareStore, req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, pathname: string, search?: string): Promise<boolean>;

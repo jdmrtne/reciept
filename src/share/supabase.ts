@@ -2,23 +2,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ShareAsset } from './assets';
 import type { ShareFile } from './url';
 import type { ShareStore, StoreResult } from './service';
+import { BUCKET, objectPath, type SupabaseConfig } from './supabaseConfig';
 
-export const BUCKET = 'photobooth-media';
-/** Storage layout: photos/<sessionId>/color.jpg and photos/<sessionId>/animation.gif (one folder per session, never overwritten). */
-export const FILE_NAME: Record<ShareFile, string> = { 'photo.jpg': 'color.jpg', 'photo.gif': 'animation.gif' };
-export const objectPath = (sessionId: string, file: ShareFile) => `photos/${sessionId}/${FILE_NAME[file]}`;
-
-/** Only the SAFE client credentials. Never put a service_role key here (or anywhere Vite can see it). */
-export interface SupabaseConfig { url: string; publishableKey: string }
-
-/** Reads VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY. Returns null unless both look valid. */
-export function supabaseConfigFromEnv(env: Record<string, unknown> = import.meta.env): SupabaseConfig | null {
-  const url = String(env.VITE_SUPABASE_URL ?? '').trim().replace(/\/+$/, '');
-  const publishableKey = String(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim();
-  if (!/^https:\/\/[^/\s]+$/.test(url) || !publishableKey) return null;
-  if (/service_role|sb_secret_/i.test(publishableKey)) return null; // refuse a secret key in browser code
-  return { url, publishableKey };
-}
+export { BUCKET, FILE_NAME, objectPath, objectPublicUrl, supabaseConfigFromEnv, type SupabaseConfig } from './supabaseConfig';
 
 const UPLOAD_TIMEOUT_MS = 30_000;
 const RETRY_DELAYS_MS = [800, 2500];
@@ -54,7 +40,7 @@ export function createSupabaseStore(cfg: SupabaseConfig, opts: { client?: Supaba
   };
 
   return {
-    async upload(sessionId, file, asset, signal) {
+    async upload(sessionId, file, asset, signal, opts) {
       const path = objectPath(sessionId, file);
       let r: StoreResult | 'retry' = 'retry';
       for (let i = 0; i <= delays.length; i++) {
@@ -64,6 +50,16 @@ export function createSupabaseStore(cfg: SupabaseConfig, opts: { client?: Supaba
         if (i < delays.length) await sleep(delays[i]);
       }
       if (r === 'retry') return { ok: false, code: 'upload' };
+      if (!r.ok && r.code === 'collision' && opts?.allowExisting) {
+        // Our OWN earlier attempt at this very file (a timed-out upload that landed, or a retry after "unreachable") is not a clash.
+        // Nothing is overwritten; it only counts when the public link serves exactly our byte length.
+        const url = client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        try {
+          const head = await doFetch(url, { method: 'HEAD', cache: 'no-store', signal });
+          if (head.ok && Number(head.headers.get('content-length')) === asset.bytes.length) return { ok: true, url, ttlMs: null };
+        } catch { /* cannot confirm: treat as the clash it might be */ }
+        return r;
+      }
       if (!r.ok) return r;
 
       // Confirm the PUBLIC link serves the file (what a phone will open). Only a definite "no" fails: a network/CORS hiccup on this

@@ -19,8 +19,8 @@ import { renderColorPhoto, renderGifVersion, syncTimeline, frameIndexAt, GIF_WID
 import type { FootageClip } from './footage';
 import { newShareId } from './id';
 import { qrMatrix, QUIET } from './qr';
-import { checkShare, prepareShare, type ShareEnv } from './service';
-import { normalizePublicBase, publicUrl } from './url';
+import { checkShare, makePageQr, uploadShareFile, type ShareEnv } from './service';
+import { normalizePublicBase, pageUrl, photoPageId, publicUrl, resolvePageBase } from './url';
 import { mergeSettings } from '../config/settings';
 
 /* ---------- helpers ---------- */
@@ -93,11 +93,11 @@ describe('share ids and URLs', () => {
 
 describe('QR codes are real and scannable', () => {
   it('decodes back to the exact URL, for realistic URLs', () => {
-    for (const u of [publicUrl('https://photos.example.com', newShareId(), 'photo.jpg'), publicUrl('http://192.168.1.20:9102', newShareId(), 'photo.gif'), publicUrl('https://a-quite-long-tunnel-name-1234.trycloudflare.com', newShareId(), 'photo.gif')])
+    for (const u of [pageUrl('https://photos.example.com', newShareId()), pageUrl('http://192.168.1.20:9102', newShareId()), pageUrl('https://a-quite-long-tunnel-name-1234.trycloudflare.com', newShareId())])
       expect(scan(qrMatrix(u))).toBe(u);
   });
   it('still decodes at a small on-screen size (4px modules)', () => {
-    const u = publicUrl('https://photos.example.com', newShareId(), 'photo.jpg');
+    const u = pageUrl('https://photos.example.com', newShareId());
     expect(scan(qrMatrix(u), 4)).toBe(u);
   });
   it('refuses text it cannot encode instead of returning a broken code', () => {
@@ -132,7 +132,7 @@ describe('share store over HTTP', () => {
       expect([400, 404]).toContain((await fetch(base + p)).status);
     expect(readdirSync(dir).every((n) => /^[a-f0-9]{32}$/.test(n))).toBe(true);
   });
-  it('the public server exposes nothing but /s/… (no print, status, upload)', async () => {
+  it('the public server exposes nothing but /s/… and /p/… (no print, status, upload)', async () => {
     for (const [m, p] of [['GET', '/status?host=10.0.0.11'], ['POST', '/print?host=10.0.0.11'], ['POST', `/share/${id}/photo.jpg`], ['GET', '/'], ['GET', '/printers']] as const)
       expect((await fetch(base + p, { method: m, body: m === 'POST' ? JPG : undefined })).status, `${m} ${p}`).toBe(404);
     expect((await fetch(`${base}/s/${id}/photo.jpg`, { method: 'DELETE' })).status).toBe(405);
@@ -163,22 +163,37 @@ describe('share store over HTTP', () => {
 
 /* ---------- the whole customer flow ---------- */
 describe('capture → photo + GIF → upload → QR → scan → verify', () => {
-  it('two QR codes open the right files: real JPEG in colour, real looping GIF', async () => {
+  it('ONE QR opens ONE page that serves the real colour JPEG and the real looping GIF, both under the same id', async () => {
     const snap = buildSnapshot('strip-3', sources(RED, GREEN, BLUE));
     const id = newShareId();
     const color = await renderColorPhoto(snap, ctx, 58, env, jpeg);
     const results = await Promise.all([
-      prepareShare('photo.jpg', id, async () => color.asset, senv()),
-      prepareShare('photo.gif', id, () => renderGifVersion(snap, ctx, [clipFor(RED, 10), clipFor(GREEN, 120), clipFor(BLUE, 240)], env), senv())
+      uploadShareFile('photo.jpg', id, async () => color.asset, senv()),
+      uploadShareFile('photo.gif', id, () => renderGifVersion(snap, ctx, [clipFor(RED, 10), clipFor(GREEN, 120), clipFor(BLUE, 240)], env), senv())
     ]);
     const [p, g] = results;
     if (!p.ok || !g.ok) throw new Error('flow failed: ' + JSON.stringify(results.map((r) => (r.ok ? 'ok' : r.code))));
-    expect(p.url).not.toBe(g.url);
+    expect(p.url).toBe(`${base}/s/${id}/photo.jpg`);
+    expect(g.url).toBe(`${base}/s/${id}/photo.gif`);
 
-    // Scan QR 1 → colour photo
-    const photoUrl = scan(p.matrix)!;
-    expect(photoUrl).toBe(`${base}/s/${id}/photo.jpg`);
-    const jpgRes = await fetch(photoUrl);
+    // ONE QR for the session: it carries only the page address (never an image, never a file URL)
+    const qr = makePageQr(base, id);
+    if (!qr.ok) throw new Error('qr');
+    const scanned = scan(qr.matrix)!;
+    expect(scanned).toBe(`${base}/p/${id}`);
+
+    // Scan → the page: both versions, each with a download link
+    const page = await fetch(scanned);
+    expect(page.status).toBe(200);
+    expect(page.headers.get('content-type')).toContain('text/html');
+    const html = await page.text();
+    expect(html).toContain('DOWNLOAD IMAGE');
+    expect(html).toContain('DOWNLOAD GIF');
+    const imgs = [...html.matchAll(/<img src="([^"]+)"/g)].map((m) => m[1]);
+    expect(imgs).toEqual([`/s/${id}/photo.jpg`, `/s/${id}/photo.gif`]);
+
+    // The page's own image links serve the right bytes
+    const jpgRes = await fetch(base + imgs[0]);
     const jpgBytes = new Uint8Array(await jpgRes.arrayBuffer());
     expect(jpgRes.headers.get('content-type')).toBe('image/jpeg');
     expect(jpgBytes).toEqual(color.asset.bytes);
@@ -189,10 +204,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     for (let i = 0; i < d.length; i += 4) if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 100) colourful++;
     expect(colourful).toBeGreaterThan(1000); // saturated red/green/blue photos survived: it is a COLOUR photo
 
-    // Scan QR 2 → GIF
-    const gifUrl = scan(g.matrix)!;
-    expect(gifUrl).toBe(`${base}/s/${id}/photo.gif`);
-    const gifRes = await fetch(gifUrl);
+    const gifRes = await fetch(base + imgs[1]);
     const gb = Buffer.from(await gifRes.arrayBuffer());
     expect(gifRes.headers.get('content-type')).toBe('image/gif');
     expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
@@ -204,6 +216,11 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     expect(gifFrames(gb)).toBe(syncTimeline(Array(3).fill(clipFor(RED, 0).frames), 10).ticks.length + 1); // ONE shared timeline (24 clip frames → 25 ticks) + the final captured-photos frame, not 3 clips back to back
     expect(gb.length).toBeLessThan(2_000_000);                 // delta frames keep it small
     await loadImage(gb); // decodes as an image
+
+    // The page's DOWNLOAD buttons really download (attachment), they do not just open the file
+    const dl = await fetch(`${base}/s/${id}/photo.gif?download=photobooth.gif`);
+    expect(dl.headers.get('content-disposition')).toBe('attachment; filename="photobooth.gif"');
+    expect(new Uint8Array(await dl.arrayBuffer())).toEqual(new Uint8Array(gb));
   });
 
   it('a one-photo layout: countdown then the photo, then loops', async () => {
@@ -255,70 +272,145 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     expect([0, 99, 100, 250, 9999].map((t) => frameIndexAt(f, t))).toEqual([0, 0, 1, 2, 3]);
   });
 
-  it('QR from an old session never opens a newer session, and old files stay theirs', async () => {
+  it('a QR from an old session never opens a newer session, and old files stay theirs', async () => {
     const a = newShareId(), b = newShareId();
     const A = new Uint8Array([0xff, 0xd8, 0xff, 1, 1, 1, 1]), B = new Uint8Array([0xff, 0xd8, 0xff, 2, 2, 2, 2, 2]);
-    const ra = await prepareShare('photo.jpg', a, async () => ({ bytes: A, type: 'image/jpeg' }), senv());
-    const rb = await prepareShare('photo.jpg', b, async () => ({ bytes: B, type: 'image/jpeg' }), senv());
+    const ra = await uploadShareFile('photo.jpg', a, async () => ({ bytes: A, type: 'image/jpeg' }), senv());
+    const rb = await uploadShareFile('photo.jpg', b, async () => ({ bytes: B, type: 'image/jpeg' }), senv());
     if (!ra.ok || !rb.ok) throw new Error('setup');
-    const oldQr = scan(ra.matrix)!;
+    const qa = makePageQr(base, a), qb = makePageQr(base, b);
+    if (!qa.ok || !qb.ok) throw new Error('qr');
+    const oldQr = scan(qa.matrix)!;
     expect(oldQr).toContain(a); expect(oldQr).not.toContain(b);
-    expect(new Uint8Array(await (await fetch(oldQr)).arrayBuffer())).toEqual(A); // still session A's bytes after B was made
-    expect(new Uint8Array(await (await fetch(scan(rb.matrix)!)).arrayBuffer())).toEqual(B);
+    const oldPage = await (await fetch(oldQr)).text();
+    expect(oldPage).toContain(`/s/${a}/photo.jpg`); expect(oldPage).not.toContain(b);
+    expect(new Uint8Array(await (await fetch(base + `/s/${a}/photo.jpg`)).arrayBuffer())).toEqual(A); // still session A's bytes after B was made
+    expect(new Uint8Array(await (await fetch(base + `/s/${b}/photo.jpg`)).arrayBuffer())).toEqual(B);
   });
 
-  it('multiple consecutive sessions each get their own working, distinct pair', async () => {
+  it('multiple consecutive sessions each get their own working, distinct QR and page', async () => {
     const seen = new Set<string>();
     for (let i = 0; i < 4; i++) {
       const snap = buildSnapshot('strip-2', sources(i % 2 ? RED : GREEN, BLUE)), id = newShareId();
-      const { canvas, asset } = await renderColorPhoto(snap, ctx, 58, env, jpeg);
-      const [p, g] = await Promise.all([prepareShare('photo.jpg', id, async () => asset, senv()), prepareShare('photo.gif', id, () => renderGifVersion(snap, ctx, [], env), senv())]);
+      const { asset } = await renderColorPhoto(snap, ctx, 58, env, jpeg);
+      const [p, g] = await Promise.all([uploadShareFile('photo.jpg', id, async () => asset, senv()), uploadShareFile('photo.gif', id, () => renderGifVersion(snap, ctx, [], env), senv())]);
       expect(p.ok && g.ok).toBe(true);
-      if (p.ok && g.ok) for (const r of [p, g]) { expect(seen.has(r.url)).toBe(false); seen.add(r.url); expect((await fetch(scan(r.matrix)!)).status).toBe(200); }
+      const qr = makePageQr(base, id);
+      if (!qr.ok) throw new Error('qr');
+      const url = scan(qr.matrix)!;
+      expect(seen.has(url)).toBe(false); seen.add(url);
+      const html = await (await fetch(url)).text();
+      expect(html).toContain(`/s/${id}/photo.jpg`); expect(html).toContain(`/s/${id}/photo.gif`);
     }
-    expect(seen.size).toBe(8);
+    expect(seen.size).toBe(4);
+  });
+});
+
+/* ---------- the result page (/p/<id>) on the bridge's public server ---------- */
+describe('result page /p/<id>', () => {
+  const put = (id: string, file: 'photo.jpg' | 'photo.gif', bytes: Uint8Array) => fetch(`${bridgeUrl}/share/${id}/${file}`, { method: 'POST', body: bytes as BodyInit }).then((r) => r.status);
+  const get = (id: string) => fetch(`${base}/p/${id}`);
+  it('shows both versions when both exist', async () => {
+    const id = newShareId(); await put(id, 'photo.jpg', JPG); await put(id, 'photo.gif', GIF);
+    const html = await (await get(id)).text();
+    expect(html).toContain('COLOR PHOTO'); expect(html).toContain('ANIMATED GIF');
+    expect(html).toContain('DOWNLOAD IMAGE'); expect(html).toContain('DOWNLOAD GIF');
+    expect(html).toContain('width=device-width');     // mobile friendly
+    expect(html).toContain('noindex');                // private page, not for search engines
+  });
+  it('missing GIF: the colour image still works', async () => {
+    const id = newShareId(); await put(id, 'photo.jpg', JPG);
+    const r = await get(id); const html = await r.text();
+    expect(r.status).toBe(200);
+    expect(html).toContain(`/s/${id}/photo.jpg`); expect(html).not.toContain('photo.gif"'); expect(html).toContain('animated GIF is not available');
+  });
+  it('missing colour image: the GIF is shown', async () => {
+    const id = newShareId(); await put(id, 'photo.gif', GIF);
+    const r = await get(id); const html = await r.text();
+    expect(r.status).toBe(200);
+    expect(html).toContain(`/s/${id}/photo.gif`); expect(html).not.toContain('photo.jpg"'); expect(html).toContain('color photo is not available');
+  });
+  it('unknown, malformed, empty and traversal ids → friendly "no longer available" page, no internals', async () => {
+    for (const p of [newShareId(), 'nope', '', 'A'.repeat(32), '..%2F..%2Fetc', '%E0%A4%A', 'x'.repeat(5000)]) {
+      const r = await get(p), html = await r.text();
+      expect(r.status, p).toBe(404);
+      expect(html).toContain('PHOTO NOT FOUND'); expect(html).toContain('This digital photo is no longer available.');
+      expect(html).not.toMatch(/ENOENT|stack|Error:|\/home|node:/i);
+    }
+  });
+  it('an expired session shows the same friendly page and its folder is gone', async () => {
+    const id = newShareId(); await put(id, 'photo.jpg', JPG); await put(id, 'photo.gif', GIF);
+    expect((await get(id)).status).toBe(200);
+    clock = Date.now() + 61_000; // past the 60 s TTL
+    try {
+      const r = await get(id);
+      expect(r.status).toBe(404); expect(await r.text()).toContain('no longer available');
+      expect(readdirSync(dir)).not.toContain(id);
+    } finally { clock = Date.now(); }
+  });
+  it('refreshing the page gives the same result; HEAD works; other methods are refused', async () => {
+    const id = newShareId(); await put(id, 'photo.jpg', JPG); await put(id, 'photo.gif', GIF);
+    const a = await (await get(id)).text(), b = await (await get(id)).text();
+    expect(a).toBe(b);
+    expect((await fetch(`${base}/p/${id}`, { method: 'HEAD' })).status).toBe(200);
+    expect((await fetch(`${base}/p/${id}`, { method: 'POST', body: 'x' })).status).toBe(405);
+  });
+  it('is also reachable through the bridge itself, and the download name cannot inject headers', async () => {
+    const id = newShareId(); await put(id, 'photo.jpg', JPG);
+    expect((await fetch(`${bridgeUrl}/p/${id}`)).status).toBe(200);
+    const r = await fetch(`${base}/s/${id}/photo.jpg?download=${encodeURIComponent('x"\r\nSet-Cookie: a=b')}`);
+    expect(r.headers.get('set-cookie')).toBeNull();
+    expect(r.headers.get('content-disposition')).toMatch(/^attachment; filename="[A-Za-z0-9._-]+"$/);
+  });
+  it('page route helpers: parse the id from any /p/<id> path, ignore everything else', () => {
+    expect(photoPageId('/p/abc')).toBe('abc'); expect(photoPageId('/p/abc/')).toBe('abc'); expect(photoPageId('/booth/p/abc')).toBe('abc');
+    expect(photoPageId('/p/')).toBe(''); expect(photoPageId('/p/%E0%A4%A')).toBe('');
+    for (const other of ['/', '/admin', '/p', '/pp/abc', '/photo/abc', '/p/a/b']) expect(photoPageId(other), other).toBeNull();
+    expect(resolvePageBase({ cloud: true, publicBaseUrl: '', origin: 'https://booth.example.com' })).toBe('https://booth.example.com');
+    expect(resolvePageBase({ cloud: true, publicBaseUrl: 'https://photos.example.com/', origin: 'https://booth.example.com' })).toBe('https://photos.example.com');
+    expect(resolvePageBase({ cloud: true, publicBaseUrl: '', origin: 'http://localhost:5173' })).toBeNull();
+    expect(resolvePageBase({ cloud: false, publicBaseUrl: '', origin: 'https://booth.example.com' })).toBeNull();
   });
 });
 
 /* ---------- failures ---------- */
-describe('failure handling (each QR fails on its own, never throws)', () => {
+describe('failure handling (each file fails on its own, never throws)', () => {
   const id = () => newShareId();
   const ok = async () => ({ bytes: JPG, type: 'image/jpeg' as const });
   it('missing photo → "missing"', async () => {
-    expect(await prepareShare('photo.jpg', id(), async () => null, senv())).toEqual({ ok: false, code: 'missing' });
+    expect(await uploadShareFile('photo.jpg', id(), async () => null, senv())).toEqual({ ok: false, code: 'missing' });
   });
   it('missing GIF source (no photos in the layout) → "missing"', async () => {
     const snap = buildSnapshot('strip-2', []);
-    expect(await prepareShare('photo.gif', id(), () => renderGifVersion(snap, ctx, [], env), senv())).toEqual({ ok: false, code: 'missing' });
+    expect(await uploadShareFile('photo.gif', id(), () => renderGifVersion(snap, ctx, [], env), senv())).toEqual({ ok: false, code: 'missing' });
   });
   it('renderer crash → "render"', async () => {
-    expect(await prepareShare('photo.jpg', id(), async () => { throw new Error('canvas exploded'); }, senv())).toEqual({ ok: false, code: 'render' });
+    expect(await uploadShareFile('photo.jpg', id(), async () => { throw new Error('canvas exploded'); }, senv())).toEqual({ ok: false, code: 'render' });
   });
   it('no/loopback public address → "config" (nothing is uploaded)', async () => {
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ publicBase: normalizePublicBase('http://localhost:9102') }))).toEqual({ ok: false, code: 'config' });
+    expect(await uploadShareFile('photo.jpg', id(), ok, senv({ publicBase: normalizePublicBase('http://localhost:9102') }))).toEqual({ ok: false, code: 'config' });
   });
   it('bridge down → "upload"', async () => {
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ bridgeUrl: 'http://127.0.0.1:9' }))).toEqual({ ok: false, code: 'upload' });
+    expect(await uploadShareFile('photo.jpg', id(), ok, senv({ bridgeUrl: 'http://127.0.0.1:9' }))).toEqual({ ok: false, code: 'upload' });
   });
   it('bridge rejects the file → "upload"', async () => {
-    expect(await prepareShare('photo.jpg', id(), async () => ({ bytes: new Uint8Array([1, 2, 3, 4, 5, 6, 7]), type: 'image/jpeg' }), senv())).toEqual({ ok: false, code: 'upload' });
+    expect(await uploadShareFile('photo.jpg', id(), async () => ({ bytes: new Uint8Array([1, 2, 3, 4, 5, 6, 7]), type: 'image/jpeg' }), senv())).toEqual({ ok: false, code: 'upload' });
   });
   it('upload saved but the PUBLIC address does not serve it → "unreachable" (no QR to nowhere)', async () => {
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ publicBase: 'http://127.0.0.1:9' }))).toEqual({ ok: false, code: 'unreachable' });
+    expect(await uploadShareFile('photo.jpg', id(), ok, senv({ publicBase: 'http://127.0.0.1:9' }))).toEqual({ ok: false, code: 'unreachable' });
   });
   it('bytes damaged in transit → "upload"', async () => {
     const lying: typeof fetch = async (i, o) => { const r = await fetch(i, o); return String(i).includes('/share/') ? new Response(JSON.stringify({ ok: true, bytes: 1 }), { status: 200 }) : r; };
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ fetch: lying }))).toEqual({ ok: false, code: 'upload' });
+    expect(await uploadShareFile('photo.jpg', id(), ok, senv({ fetch: lying }))).toEqual({ ok: false, code: 'upload' });
   });
-  it('QR cannot be built (absurdly long address) → "qr", never a broken code', async () => {
-    const longBase = 'https://photos.example.com/' + 'a'.repeat(320);
-    const pretend: typeof fetch = async (i, o) => String(i).startsWith(longBase) ? new Response(null, { status: 200, headers: { 'content-length': String(JPG.length) } }) : fetch(i, o);
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ publicBase: longBase, fetch: pretend }))).toEqual({ ok: false, code: 'qr' });
+  it('QR cannot be built (absurdly long address) → "qr", never a broken code; no address → "config"', () => {
+    expect(makePageQr('https://photos.example.com/' + 'a'.repeat(320), id())).toEqual({ ok: false, code: 'qr' });
+    expect(makePageQr(null, id())).toEqual({ ok: false, code: 'config' });
   });
   it('retry after a failure works (same id, file replaced)', async () => {
     const i = id();
-    expect((await prepareShare('photo.jpg', i, ok, senv({ bridgeUrl: 'http://127.0.0.1:9' }))).ok).toBe(false);
-    expect((await prepareShare('photo.jpg', i, ok, senv())).ok).toBe(true);
+    expect((await uploadShareFile('photo.jpg', i, ok, senv({ bridgeUrl: 'http://127.0.0.1:9' }))).ok).toBe(false);
+    expect((await uploadShareFile('photo.jpg', i, ok, senv())).ok).toBe(true);
   });
   it('ADMIN check reports success and the precise failure', async () => {
     expect(await checkShare(id(), senv())).toBeNull();
@@ -328,6 +420,6 @@ describe('failure handling (each QR fails on its own, never throws)', () => {
   });
   it('an aborted request (screen left / session reset) stops cleanly', async () => {
     const ac = new AbortController(); ac.abort();
-    expect(await prepareShare('photo.jpg', id(), ok, senv({ signal: ac.signal }))).toEqual({ ok: false, code: 'upload' });
+    expect(await uploadShareFile('photo.jpg', id(), ok, senv({ signal: ac.signal }))).toEqual({ ok: false, code: 'upload' });
   });
 });

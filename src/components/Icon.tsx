@@ -25,6 +25,7 @@ const P: Record<string, ReactNode> = {
   retry: <path d="M20 12a8 8 0 11-2.4-5.7M20 4v5h-5" />,
   play: <path d="M8 5l11 7-11 7z" />,
   photo: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M3.5 17l5-4.5 4 3.5 3-2.5 5 4" /></>,
+  save: <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />,
   film: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9h4M3.5 14.5h4M16.5 9h4M16.5 14.5h4" /></>
 };
 

@@ -3,13 +3,15 @@
 //
 //   POST /share/<id>/photo.jpg   body = JPEG bytes   (booth -> bridge, local)      -> {ok:true,bytes:N}
 //   POST /share/<id>/photo.gif   body = GIF bytes                                   -> {ok:true,bytes:N}
-//   GET|HEAD /s/<id>/photo.jpg | /s/<id>/photo.gif   (customer's phone, public)    -> the file
+//   GET|HEAD /s/<id>/photo.jpg | /s/<id>/photo.gif   (customer's phone, public)    -> the file (`?download=<name>` saves instead of showing)
+//   GET|HEAD /p/<id>                                 (customer's phone, public)    -> the result page the ONE QR code opens: colour photo + GIF
 //
 // <id> is a 128-bit random token made by the booth (32 hex chars): unguessable, one per photo session, so a QR from an
 // old session can only ever open that old session's files. Files expire `ttlMs` after upload (default 24 h).
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
+import { errorHtml, notFoundHtml, photoPageHtml } from './page.mjs';
 
 export const ID_RE = /^[a-f0-9]{32}$/;
 export const FILE_TYPES = { 'photo.jpg': 'image/jpeg', 'photo.gif': 'image/gif' };
@@ -42,6 +44,15 @@ export function createShareStore({ dir, ttlMs = DEFAULT_TTL_MS, now = Date.now }
       await fs.writeFile(tmp, buf);
       await fs.rename(tmp, where(id, name)); // atomic: a scan never sees a half-written file
     },
+    /** Is this file stored and unexpired? (no read of the bytes; expired sessions are deleted on the spot) */
+    async has(id, name) {
+      if (!valid(id, name)) return false;
+      try {
+        const st = await fs.stat(where(id, name));
+        if (now() - st.mtimeMs > ttlMs) { await fs.rm(path.join(root, id), { recursive: true, force: true }); return false; }
+        return true;
+      } catch { return false; }
+    },
     /** File + metadata, or null when unknown/expired (expired files are deleted on the spot). */
     async get(id, name) {
       if (!valid(id, name)) return null;
@@ -71,16 +82,38 @@ export function createShareStore({ dir, ttlMs = DEFAULT_TTL_MS, now = Date.now }
 }
 
 /** GET|HEAD /s/<id>/<file>. Returns true when the path was a share path (handled), false to let the caller continue. */
-export async function serveShareFile(store, req, res, pathname) {
+export async function serveShareFile(store, req, res, pathname, search = '') {
   const m = /^\/s\/([^/]+)\/([^/]+)$/.exec(pathname);
   if (!m) return false;
   const base = { 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store' };
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { ...base, Allow: 'GET, HEAD' }); res.end(); return true; }
   const f = await store.get(m[1], m[2]);
   if (!f) { res.writeHead(404, { ...base, 'Content-Type': 'text/plain' }); res.end('This link has expired or does not exist.'); return true; }
-  res.writeHead(200, { ...base, 'Content-Type': f.type, 'Content-Length': f.buf.length, 'Content-Disposition': `inline; filename="${m[2]}"` });
+  // ?download=<name> → attachment, so a phone saves the file instead of opening it (the page's DOWNLOAD buttons). The name is sanitised: it lands in a header.
+  const dl = new URLSearchParams(search).get('download');
+  const saveAs = dl === null ? null : dl.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 60) || m[2];
+  res.writeHead(200, { ...base, 'Content-Type': f.type, 'Content-Length': f.buf.length, 'Content-Disposition': `${saveAs ? 'attachment' : 'inline'}; filename="${saveAs ?? m[2]}"` });
   res.end(req.method === 'HEAD' ? undefined : f.buf);
   return true;
+}
+
+/**
+ * GET|HEAD /p/<id>: the page the ONE QR code opens. Shows whichever of colour photo / GIF is stored; neither (bad id, never
+ * uploaded, expired, deleted) = a friendly 404 page. A storage failure is a friendly 500 page. Raw errors never reach the visitor.
+ */
+export async function servePhotoPage(store, req, res, pathname) {
+  const m = /^\/p\/([^/]*)\/?$/.exec(pathname);
+  if (!m) return false;
+  const head = { 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow',
+    'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" };
+  const reply = (code, html) => { res.writeHead(code, { ...head, 'Content-Length': Buffer.byteLength(html) }); res.end(req.method === 'HEAD' ? undefined : html); return true; };
+  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { ...head, Allow: 'GET, HEAD' }); res.end(); return true; }
+  let id; try { id = decodeURIComponent(m[1]); } catch { return reply(404, notFoundHtml()); }
+  if (!ID_RE.test(id)) return reply(404, notFoundHtml());
+  try {
+    const [color, gif] = await Promise.all([store.has(id, 'photo.jpg'), store.has(id, 'photo.gif')]);
+    return color || gif ? reply(200, photoPageHtml(id, { color, gif })) : reply(404, notFoundHtml());
+  } catch { return reply(500, errorHtml()); }
 }
 
 /** POST /share/<id>/<file>. Returns true when handled. `send(code, obj)` is the bridge's JSON responder. */
@@ -103,12 +136,13 @@ export async function receiveShareUpload(store, req, send, pathname) {
 
 /**
  * Read-only server for the OUTSIDE world (put a tunnel/reverse proxy in front of THIS port, never the bridge's).
- * It can only serve /s/<id>/<file>; it has no print, status or upload routes at all.
+ * It can only serve /s/<id>/<file> and the /p/<id> result page; it has no print, status or upload routes at all.
  */
 export function createShareServer(store) {
   return http.createServer(async (req, res) => {
-    const pathname = new URL(req.url || '/', 'http://share').pathname;
-    if (await serveShareFile(store, req, res, pathname)) return;
+    const u = new URL(req.url || '/', 'http://share');
+    if (await serveShareFile(store, req, res, u.pathname, u.search)) return;
+    if (await servePhotoPage(store, req, res, u.pathname)) return;
     res.writeHead(404, { 'Content-Type': 'text/plain', 'X-Content-Type-Options': 'nosniff' });
     res.end('Not found');
   });
