@@ -22,18 +22,15 @@ describe('buildPlan with a QR', () => {
   for (const f of FRAMES) for (const l of LAYOUTS) {
     it(`${f.id} × ${l.id}: the design is byte-identical, the QR is last, below it, and verified`, () => {
       const snap = buildSnapshot(l.id, photos, f.id);
-      const plain = buildPlan(snap, ctx, 384), withQr = buildPlan(snap, ctx, 384, { matrix, paperDots: 576 });
+      const plain = buildPlan(snap, ctx, 384), withQr = buildPlan(snap, ctx, 384, { matrix });
       expect(withQr.cmds.slice(0, -1)).toEqual(plain.cmds);
       expect(withQr.cmds[withQr.cmds.length - 1].op).toBe('qr');
-      const q = withQr.cmds[withQr.cmds.length - 1];
-      if (q.op !== 'qr') throw new Error('no qr');
-      if (q.mode === 'corner') expect(withQr.height).toBe(plain.height); // inside the frame: the canvas did not grow
-      else expect(withQr.height).toBeGreaterThan(plain.height);
+      expect(withQr.height).toBeGreaterThan(plain.height);
       expect(verifyPlanQr(withQr).ok).toBe(true);
     });
   }
   it('refuses to place a QR when the frame has no safe area and the strip is not allowed', () => {
-    expect(() => buildPlan(buildSnapshot('single', photos, 'straw-hat-wanted'), ctx, 384, { matrix, allowStrip: false, paperDots: 576 })).toThrow(QrPlacementError);
+    expect(() => buildPlan(buildSnapshot('single', photos), ctx, 384, { matrix, allowStrip: false })).toThrow(QrPlacementError);
   });
   it('the export gate catches a QR moved over a photo', () => {
     const p = buildPlan(buildSnapshot('single', photos), ctx, 384, { matrix });

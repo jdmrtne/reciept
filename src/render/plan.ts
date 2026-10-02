@@ -19,7 +19,7 @@ export type Cmd =
   | { op: 'sticker'; stickerId: string; cx: number; cy: number; w: number; h: number; rotation: number }
   // The page QR. ALWAYS the last command, and only present when the caller asked for one. `slots` = every photo slot (kept so the plan can be
   // re-verified on its own); `rect` was chosen by qr/placement.ts so it touches nothing (see verifyPlanQr).
-  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'corner' | 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone, before any strip */ designHeight: number };
+  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone, before any strip */ designHeight: number };
 
 /**
  * PURE description of the final image: no DOM, no canvas. The canvas executor (render.ts) just runs it.
@@ -76,6 +76,6 @@ export function verifyPlanQr(plan: RenderPlan): { ok: true } | { ok: false; hits
   const img = plan.cmds.some((c) => c.op === 'image-frame');
   const occ = occupancy(plan.unitsW, q.designHeight, q.slots, plan.cmds, img);
   if (!within(q.rect, { x: 0, y: 0, w: plan.unitsW, h: plan.unitsH })) return { ok: false, hits: [] };
-  const all = occupiedRegions(occ), hits = collisions(q.rect, q.mode === 'corner' ? all.filter((r) => r.kind === 'photo' || r.kind === 'sticker' || r.kind === 'text') : all, q.margin);
+  const hits = collisions(q.rect, occupiedRegions(occ), q.margin);
   return hits.length ? { ok: false, hits } : { ok: true };
 }

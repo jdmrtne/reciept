@@ -249,9 +249,7 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
     } else if (c.op === 'sticker') {
       drawSticker(g, c, stickers.get(c)!, k);
     } else {
-      // Part 2 of the gate, then the QR itself (always the last command). The corner QR sits ON the frame artwork by design, so only the
-      // reserved-empty placements (declared safe area, strip) must be flat on the real pixels.
-      if (c.mode !== 'corner') assertQrSpotClear(g, c, k, plan.width, plan.height);
+      assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 of the gate, then the QR itself (always the last command)
       drawPlanQr(g, c, k);
     }
   }
