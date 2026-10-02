@@ -4,6 +4,7 @@ import { loadSettings } from '../config/settings';
 import { makeCtx } from '../frames/prims';
 import { canvasToBlob, renderPreview } from '../render/render';
 import { Icon } from '../components/Icon';
+import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
 
 /** Final look of the receipt, drawn by the same renderer that will feed the printer. */
 export function PreviewScreen() {
@@ -15,10 +16,10 @@ export function PreviewScreen() {
     if (!editor) return;
     let dead = false, made: string | null = null;
     const { eventName, paperWidthMm } = loadSettings();
-    renderPreview(editor.present, stamp ?? makeCtx(eventName), paperWidthMm)
+    renderPreview(editor.present, stamp ?? makeCtx(eventName), paperWidthMm, undefined, frameQrForSession() ?? undefined)
       .then((c) => canvasToBlob(c))
       .then((b) => { if (dead) return; made = URL.createObjectURL(b); setUrl(made); })
-      .catch(() => { if (!dead) setError('Could not prepare your receipt. Go back and try again.'); });
+      .catch((e) => { if (!dead) setError(qrErrorText(e) ?? 'Could not prepare your receipt. Go back and try again.'); });
     return () => { dead = true; if (made) URL.revokeObjectURL(made); };
   }, [editor, stamp]);
 

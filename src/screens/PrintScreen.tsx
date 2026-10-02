@@ -7,6 +7,7 @@ import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
 import { bitmapToCanvas, canvasToRGBA } from '../print/browser';
 import { Icon } from '../components/Icon';
+import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
 
 type Phase = 'preparing' | 'ready' | 'printing' | 'error';
 
@@ -21,6 +22,7 @@ export function PrintScreen() {
   const [progress, setProgress] = useState(0);
   const [code, setCode] = useState<PrinterErrorCode | null>(null);
   const [prepFailed, setPrepFailed] = useState(false);
+  const [prepMsg, setPrepMsg] = useState<string | null>(null);
   const image = useRef<RGBAImage | null>(null);
   const alive = useRef(true);
   const autoStarted = useRef(false);
@@ -31,7 +33,7 @@ export function PrintScreen() {
     if (!editor) { setPrepFailed(true); return; }
     let dead = false, made: string | null = null;
     const { eventName, paperWidthMm, thermal } = loadSettings();
-    renderPrint(editor.present, stamp ?? makeCtx(eventName), paperWidthMm)
+    renderPrint(editor.present, stamp ?? makeCtx(eventName), paperWidthMm, undefined, frameQrForSession() ?? undefined)
       .then(async (c) => {
         const rgba = canvasToRGBA(c);
         const bits = toThermalBitmap(rgba, thermal, PAPER_DOTS[paperWidthMm]);
@@ -40,7 +42,7 @@ export function PrintScreen() {
         image.current = rgba; made = URL.createObjectURL(blob);
         setUrl(made); setPhase('ready');
       })
-      .catch(() => { if (!dead) setPrepFailed(true); });
+      .catch((e) => { if (!dead) { setPrepMsg(qrErrorText(e)); setPrepFailed(true); } });
     return () => { dead = true; if (made) URL.revokeObjectURL(made); image.current = null; };
   }, [editor, stamp]);
 
@@ -74,7 +76,7 @@ export function PrintScreen() {
     <main className="prev">
       <p className="edit-hint">{printing ? 'PRINTING' : phase === 'error' ? 'PRINT FAILED' : 'PREPARING TO PRINT'}</p>
       <div className="prev-stage">
-        {prepFailed ? <p className="err">Could not prepare your receipt. Go back and try again.</p>
+        {prepFailed ? <p className="err">{prepMsg ?? 'Could not prepare your receipt. Go back and try again.'}</p>
           : url ? (
             <div className={printing ? 'prt-paper feeding' : 'prt-paper'} style={printing ? ({ '--p': `${Math.round(progress * 100)}%` } as CSSProperties) : undefined}>
               <img src={url} alt="Black and white print preview" className="prev-img prt-img" />

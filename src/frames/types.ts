@@ -22,6 +22,14 @@ export interface ImageFrameDef {
   /** Vector frame id drawn when no artwork exists for this layout (default: a plain thin border). */
   fallback?: string;
 }
+/**
+ * An intentionally EMPTY region reserved for the QR code. `safeArea` is in fractions of the canvas (x/w of its width, y/h of its
+ * height); `size` is the preferred QR side as a fraction of the canvas width. The QR can only exist inside it, and the placement
+ * is rejected (never forced) if anything is drawn there. Designers: keep it empty in the artwork, with room for the margin.
+ */
+export interface QrArea { safeArea: { x: number; y: number; w: number; h: number }; size?: number }
+/** Per-frame QR reservation: `default` for every layout, `byLayout` overrides for one layout (artwork usually differs per layout). */
+export interface FrameQr { default?: QrArea; byLayout?: Partial<Record<string, QrArea>> }
 export interface FrameDef {
   id: string; name: string;
   type?: 'vector' | 'image'; // default 'vector'
@@ -29,6 +37,8 @@ export interface FrameDef {
   headerHeight: number; footerHeight: number;
   border: { style: 'none' | 'solid' | 'double' | 'dashed'; width: number; inset: number };
   header: Block; footer: Block; decor?: Decor[]; ornaments?: Ornaments[];
+  /** Optional QR-safe area inside the design. Without one the QR goes in a reserved strip below the design (see qr/placement.ts). */
+  qr?: FrameQr;
 }
 export interface FrameCtx { event: string; date: string; time: string; year: string; serial: string }
 

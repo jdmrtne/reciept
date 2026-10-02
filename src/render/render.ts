@@ -4,7 +4,9 @@ import { getSticker } from '../stickers/registry';
 import { PAPER_DOTS } from '../layouts/engine';
 import type { FrameCtx } from '../frames/types';
 import type { Snapshot } from '../editor/types';
-import { buildPlan, type Cmd, type RenderPlan } from './plan';
+import { buildPlan, verifyPlanQr, type Cmd, type PlanQr, type RenderPlan } from './plan';
+import { drawQr, QUIET } from '../share/qr';
+import { QrPlacementError, inflate, regionIsClear } from '../qr/placement';
 import { FONT_STACK, FONT_DISPLAY_STACK, ensureFonts } from './font';
 
 /** Everything environment-specific. The browser default is below; tests inject node-canvas. */
@@ -103,6 +105,7 @@ const stickerSvgUrl = (id: string, px: number) =>
 type PhotoCmd = Extract<Cmd, { op: 'photo' }>;
 type StickerCmd = Extract<Cmd, { op: 'sticker' }>;
 type ImageFrameCmd = Extract<Cmd, { op: 'image-frame' }>;
+type QrCmd = Extract<Cmd, { op: 'qr' }>;
 
 const natural = (img: CanvasImageSource) => {
   const i = img as { naturalWidth?: number; naturalHeight?: number; width: number; height: number };
@@ -167,6 +170,28 @@ function drawSticker(g: CanvasRenderingContext2D, c: StickerCmd, img: CanvasImag
   g.restore();
 }
 
+/** The frame artwork's own pixel size: its units × k. (Not the canvas size: a QR strip makes the canvas taller than the artwork.) */
+const artSize = (c: ImageFrameCmd, k: number) => ({ w: Math.round(c.w * k), h: Math.round(c.h * k) });
+
+/**
+ * Draws the page QR with WHOLE-pixel modules (blur-free for scanners and for the 1-bit thermal pipeline), centred in its reserved box.
+ * The box was chosen by qr/placement.ts to be empty; this only draws inside it.
+ */
+function drawPlanQr(g: CanvasRenderingContext2D, c: QrCmd, k: number) {
+  const n = c.matrix.length + QUIET * 2, boxW = c.rect.w * k, boxH = c.rect.h * k;
+  const mod = Math.max(1, Math.floor(Math.min(boxW, boxH) / n)), px = mod * n;
+  drawQr(g, c.matrix, Math.round(c.rect.x * k + (boxW - px) / 2), Math.round(c.rect.y * k + (boxH - px) / 2), px);
+}
+
+/** Export gate, part 2: on the REAL pixels drawn so far (everything except the QR) the QR box + margin must be empty. */
+function assertQrSpotClear(g: CanvasRenderingContext2D, c: QrCmd, k: number, w: number, h: number) {
+  const r = inflate(c.rect, c.margin), x = Math.max(0, Math.floor(r.x * k)), y = Math.max(0, Math.floor(r.y * k));
+  const rw = Math.min(w, Math.ceil((r.x + r.w) * k)) - x, rh = Math.min(h, Math.ceil((r.y + r.h) * k)) - y;
+  if (rw <= 0 || rh <= 0) throw new QrPlacementError('out-of-bounds', 'The QR is outside the image.');
+  const img = g.getImageData(x, y, rw, rh);
+  if (!regionIsClear({ data: img.data, width: rw, height: rh }, { x: 0, y: 0, w: rw, h: rh })) throw new QrPlacementError('content', 'Something is drawn where the QR code would go.');
+}
+
 /**
  * Everything that is drawn ABOVE the photos, on a transparent canvas: the slot borders, the frame and the stickers,
  * in the same order/geometry as renderPlan. Compositing this over the photo layer equals renderPlan's output, which is
@@ -181,8 +206,9 @@ export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEn
   for (const c of plan.cmds) {
     if (c.op === 'photo') { if (!c.noBorder) { g.save(); g.scale(k, k); g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(c.slot.x, c.slot.y, c.slot.w, c.slot.h); g.restore(); } }
     else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
-    else if (c.op === 'image-frame') drawImageFrame(g, imageFrameSource(env, await load(c.src), c, k, plan.width, plan.height));
-    else drawSticker(g, c, await stickerSource(env, c, k, load), k);
+    else if (c.op === 'image-frame') { const a = artSize(c, k); drawImageFrame(g, imageFrameSource(env, await load(c.src), c, k, a.w, a.h)); }
+    else if (c.op === 'sticker') drawSticker(g, c, await stickerSource(env, c, k, load), k);
+    else drawPlanQr(g, c, k);
   }
   return out;
 }
@@ -194,12 +220,16 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
   const cache = new Map<string, Promise<CanvasImageSource>>();
   const load = (src: string) => { if (!cache.has(src)) cache.set(src, env.image(src)); return cache.get(src)!; };
 
+  // Export gate, part 1: a plan whose QR touches anything is refused before a single pixel is drawn.
+  const bad = verifyPlanQr(plan);
+  if (!bad.ok) throw new QrPlacementError('overlap', 'The QR code would overlap the design.', bad.hits);
+
   // Load everything first so a failed image aborts before any drawing. Stickers resolve to their final-size source here too.
   const stickers = new Map<StickerCmd, CanvasImageSource>();
   const frames = new Map<ImageFrameCmd, CanvasImageSource>();
   await Promise.all(plan.cmds.map(async (c) => {
     if (c.op === 'photo') await load(c.src);
-    else if (c.op === 'image-frame') frames.set(c, imageFrameSource(env, await load(c.src), c, k, plan.width, plan.height));
+    else if (c.op === 'image-frame') { const a = artSize(c, k); frames.set(c, imageFrameSource(env, await load(c.src), c, k, a.w, a.h)); }
     else if (c.op === 'sticker') stickers.set(c, await stickerSource(env, c, k, load));
   }));
 
@@ -216,19 +246,23 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
       g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore();
     } else if (c.op === 'image-frame') {
       drawImageFrame(g, frames.get(c)!);
-    } else {
+    } else if (c.op === 'sticker') {
       drawSticker(g, c, stickers.get(c)!, k);
+    } else {
+      assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 of the gate, then the QR itself (always the last command)
+      drawPlanQr(g, c, k);
     }
   }
   return out;
 }
 
 /** Screen preview: 2× the paper's dot width so it stays crisp on a tablet. */
-export const renderPreview = (snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env?: RenderEnv) =>
-  renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2), env);
+// async: a QR that cannot be placed makes buildPlan throw, and callers handle that as a rejected promise (.catch), not a synchronous throw.
+export const renderPreview = async (snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env?: RenderEnv, qr?: PlanQr) =>
+  renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2, qr), env);
 /** Print-ready composition at exactly the paper's printable dot width (still full colour; the 1-bit thermal pipeline is Phase 9). */
-export const renderPrint = (snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env?: RenderEnv) =>
-  renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm]), env);
+export const renderPrint = async (snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env?: RenderEnv, qr?: PlanQr) =>
+  renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm], qr), env);
 /** Export any rendered canvas (PNG by default). */
 export const canvasToBlob = (c: HTMLCanvasElement, type = 'image/png', quality?: number) =>
   new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('encode'))), type, quality));
