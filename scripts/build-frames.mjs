@@ -3,7 +3,13 @@
 // The ARTWORK (cats, hearts, tape, script lettering, film rails…) is cut out of your designs; only the plain
 // background, border lines and window cut-outs are rebuilt around the real photo slots of each layout.
 import { createCanvas, loadImage } from '@napi-rs/canvas';
+<<<<<<< Updated upstream
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+=======
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { knockout, drawSliced } from './frames-slice.mjs';
+import { SLICED } from './frames-config.mjs';
+>>>>>>> Stashed changes
 
 const S = 3, UNITS = 384;
 const layouts = JSON.parse(readFileSync('docs/frame-layouts.json', 'utf8'));
@@ -140,6 +146,7 @@ async function retro() {
   };
 }
 
+<<<<<<< Updated upstream
 const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether] };
 for (const [id, [dir, make]] of Object.entries(FRAMES)) {
   const draw = await make();
@@ -154,3 +161,63 @@ for (const [id, [dir, make]] of Object.entries(FRAMES)) {
     console.log(`${dir}/${layoutId}.png  ${W}x${H}`);
   }
 }
+=======
+// ---------------------------------------------------------------- Just Us (black doodle frame; heart-shaped window when there is a single photo)
+async function justUs() {
+  const img = await loadImage('design-src/just-us.png'), BG = [18, 18, 18];
+  const k = (b) => keyed(img, b, BG, 40, 150);
+  const spr = { title: k([60, 30, 390, 305]), arc: k([570, 80, 930, 325]), heartTR: k([940, 105, 1125, 300]), sparkTL: k([95, 255, 175, 340]), sparkBig: k([55, 910, 185, 1055]), sparkBL: k([330, 1150, 425, 1255]),
+    sparkR: k([1000, 875, 1105, 995]), heartBL: k([120, 1075, 310, 1260]), heartBR: k([925, 1045, 1090, 1205]), waves: k([650, 1140, 1120, 1300]), sparkTM: k([465, 85, 555, 190]), sparkTR: k([1055, 300, 1120, 380]) };
+  return (g, W, H, slots, B) => {
+    g.fillStyle = 'rgb(18,18,18)'; rr(g, 0, 0, W, H, 40); g.fill();
+    g.strokeStyle = 'rgb(214,214,214)'; g.lineWidth = 5; rr(g, 4, 4, W - 8, H - 8, 36); g.stroke();
+    if (slots.length === 1) { // heart window, fitted to the slot (the design's whole point)
+      const s = slots[0], hw = s.w, hh = hw * 0.93, hx = s.x, hy = s.y + (s.h - hh) / 2;
+      g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; g.beginPath();
+      const P = (x, y) => [hx + x * hw, hy + y * hh];
+      g.moveTo(...P(0.5, 0.97));
+      g.bezierCurveTo(...P(0.16, 0.74), ...P(0.0, 0.52), ...P(0.0, 0.31)); g.bezierCurveTo(...P(0.0, 0.1), ...P(0.15, 0.0), ...P(0.28, 0.0));
+      g.bezierCurveTo(...P(0.4, 0.0), ...P(0.47, 0.07), ...P(0.5, 0.16)); g.bezierCurveTo(...P(0.53, 0.07), ...P(0.6, 0.0), ...P(0.72, 0.0));
+      g.bezierCurveTo(...P(0.85, 0.0), ...P(1.0, 0.1), ...P(1.0, 0.31)); g.bezierCurveTo(...P(1.0, 0.52), ...P(0.84, 0.74), ...P(0.5, 0.97));
+      g.closePath(); g.fill(); g.restore();
+      put(g, spr.sparkBig, s.x + 4, s.y + s.h - spr.sparkBig.height - 4, 0.9); put(g, spr.sparkR, s.x + s.w - spr.sparkR.width - 6, s.y + s.h - spr.sparkR.height - 20, 0.9);
+    } else {
+      g.strokeStyle = 'rgb(236,236,236)'; g.lineWidth = 5;
+      for (const s of slots) { rr(g, s.x - 3, s.y - 3, s.w + 6, s.h + 6, 10); g.stroke(); }
+      cut(g, slots);
+    }
+    const topH = B.minY, botH = H - B.maxY;
+    const t = Math.min(0.85, (topH - 24) / spr.title.height); put(g, spr.title, 34, 14, t);
+    put(g, spr.sparkTL, 34 + 35 * t, 14 + 225 * t, t); // same spot relative to the lettering as in the design
+    const a = Math.min(0.7, (topH - 24) / spr.arc.height); put(g, spr.arc, W * 0.40, 12, a);
+    put(g, spr.heartTR, W - spr.heartTR.width * a - 40, 16, a); put(g, spr.sparkTM, W * 0.33, 14, 0.5);
+    const b = Math.min(0.75, (botH - 24) / spr.heartBL.height);
+    put(g, spr.heartBL, 38, B.maxY + 14, b); put(g, spr.sparkBL, 38 + spr.heartBL.width * b + 14, B.maxY + botH * 0.45, 0.6);
+    put(g, spr.waves, W - spr.waves.width * 0.62 - 150, B.maxY + botH * 0.35, 0.62); put(g, spr.heartBR, W - spr.heartBR.width * b - 40, B.maxY + 12, b);
+  };
+}
+
+const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether], 'just-us': ['just-us', justUs] };
+const only = process.argv.slice(2);
+// WebP (q92, alpha kept) is ~10x smaller than PNG, which keeps the offline cache small; hand-made PNGs in the same folders still work.
+const done = (dir, layoutId, c) => { rmSync(`src/assets/frames/${dir}/${layoutId}.png`, { force: true }); writeFileSync(`src/assets/frames/${dir}/${layoutId}.webp`, c.toBuffer('image/webp', 92)); console.log(`${dir}/${layoutId}.webp  ${c.width}x${c.height}`); };
+const geom = (L) => { const slots = L.slots.map(([x, y, w, h]) => ({ x: x * S, y: y * S, w: w * S, h: h * S })); return { slots, B: { minX: Math.min(...slots.map((s) => s.x)), maxX: Math.max(...slots.map((s) => s.x + s.w)), minY: Math.min(...slots.map((s) => s.y)), maxY: Math.max(...slots.map((s) => s.y + s.h)) } }; };
+
+for (const [id, [dir, make]] of Object.entries(FRAMES)) {
+  if (only.length && !only.includes(id)) continue;
+  const draw = await make();
+  mkdirSync(`src/assets/frames/${dir}`, { recursive: true });
+  for (const [layoutId, L] of Object.entries(layouts[id])) {
+    const c = createCanvas(UNITS * S, L.h * S), g = c.getContext('2d'), { slots, B } = geom(L);
+    g.imageSmoothingQuality = 'high';
+    draw(g, c.width, c.height, slots, B);
+    done(dir, layoutId, c);
+  }
+}
+for (const [id, cfg] of Object.entries(SLICED)) {
+  if (only.length && !only.includes(id)) continue;
+  const k = knockout(await loadImage(`design-src/${id}.png`), cfg);
+  mkdirSync(`src/assets/frames/${cfg.dir}`, { recursive: true });
+  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); done(cfg.dir, layoutId, drawSliced(k, { ...cfg, id }, L, slots, B)); }
+}
+>>>>>>> Stashed changes

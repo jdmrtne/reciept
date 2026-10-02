@@ -72,11 +72,19 @@ describe('asset resolution (frameId + layoutId)', () => {
 });
 
 describe('registry', () => {
+<<<<<<< Updated upstream
   it('keeps every vector frame and adds the three image frames', () => {
     for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
       expect(isImageFrame(getFrame(id)), id).toBe(false);
     expect(FRAMES[0].id).toBe('classic-receipt');
     expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together']);
+=======
+  it('keeps every vector frame and adds the image frames', () => {
+    for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
+      expect(isImageFrame(getFrame(id)), id).toBe(false);
+    expect(FRAMES[0].id).toBe('classic-receipt');
+    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together', 'kawaii-pets', 'just-us', 'retro-memories', 'halloween', 'pink-you-me', 'stay-real', 'summer-vibes', 'neon-gaming']);
+>>>>>>> Stashed changes
     expect(IMAGE_FRAMES.every((f) => isImageFrame(f) && FRAMES.includes(f))).toBe(true);
     expect(new Set(FRAMES.map((f) => f.id)).size).toBe(FRAMES.length);
   });
@@ -201,21 +209,28 @@ describe('rendering (real pixels)', () => {
   });
 });
 
-// Validates the REAL PNGs in src/assets/frames (skips when none are supplied yet): right aspect for their layout, and an alpha channel.
+// Validates the REAL artwork in src/assets/frames (png or webp; skips when none is supplied yet): right aspect for its layout, and real transparency.
 describe('supplied artwork on disk', () => {
   const root = join(process.cwd(), 'src/assets/frames');
   const files: [string, string, string][] = [];
   if (existsSync(root)) for (const d of readdirSync(root)) if (statSync(join(root, d)).isDirectory())
-    for (const n of readdirSync(join(root, d))) if (/\.png$/.test(n)) files.push([d, n.replace(/\.png$/, ''), join(root, d, n)]);
-  it.skipIf(!files.length)('layout-specific PNGs match the canvas aspect (±1.5%) and have transparency', () => {
+    for (const n of readdirSync(join(root, d))) if (/\.(png|webp)$/.test(n)) files.push([d, n.replace(/\.(png|webp)$/, ''), join(root, d, n)]);
+  it.skipIf(!files.length)('layout-specific art matches the canvas aspect (±1.5%) and has transparent photo windows', async () => {
     for (const [dir, name, path] of files) {
-      const buf = readFileSync(path), w = buf.readUInt32BE(16), h = buf.readUInt32BE(20), colorType = buf[25];
-      expect([4, 6], `${dir}/${name}.png needs an alpha channel (transparent photo windows)`).toContain(colorType);
+      const img = await loadImage(readFileSync(path)), w = img.width, h = img.height;
       const f = IMAGE_FRAMES.find((x) => x.image!.dir === dir);
       expect(f, `no registry entry uses folder ${dir}`).toBeTruthy();
+      const c = createCanvas(64, Math.max(1, Math.round((64 * h) / w))), g = c.getContext('2d');
+      g.drawImage(img, 0, 0, c.width, c.height);
+      const px = g.getImageData(0, 0, c.width, c.height).data;
+      let clear = 0; for (let i = 3; i < px.length; i += 4) if (px[i] < 40) clear++;
+      expect(clear, `${dir}/${name} has no transparent photo window`).toBeGreaterThan(20);
       if (name === 'default' || !f) continue;
       const L = resolveFramed(name, f.id);
-      expect(Math.abs(w / h / (L.width / L.height) - 1), `${dir}/${name}.png is ${w}x${h}, canvas aspect is ${(L.width / L.height).toFixed(4)}`).toBeLessThan(0.015);
+      expect(Math.abs(w / h / (L.width / L.height) - 1), `${dir}/${name} is ${w}x${h}, canvas aspect is ${(L.width / L.height).toFixed(4)}`).toBeLessThan(0.015);
     }
+  }, 60000);
+  it.skipIf(!files.length)('every registered image frame ships artwork for every layout', () => {
+    for (const f of IMAGE_FRAMES) for (const l of LAYOUTS) expect(files.some(([d, n]) => d === f.image!.dir && n === l.id), `${f.id}/${l.id}`).toBe(true);
   });
 });

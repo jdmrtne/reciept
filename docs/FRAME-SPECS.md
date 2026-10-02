@@ -118,3 +118,310 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 - window 2: 72, 1056, 1008 × 756
 - window 3: 72, 1860, 1008 × 756
 - window 4: 72, 2664, 1008 × 756
+<<<<<<< Updated upstream
+=======
+
+## Kawaii Pets (`kawaii-pets`, folder `src/assets/frames/kawaii-pets/`)
+
+### `single.png` — 1152 × 1449 px (aspect 0.7950), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 882 × 1104
+
+### `strip-2.png` — 1152 × 1716 px (aspect 0.6713), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 882 × 663
+- window 2: 135, 846, 882 × 663
+
+### `strip-3.png` — 1152 × 2427 px (aspect 0.4747), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 882 × 663
+- window 2: 135, 846, 882 × 663
+- window 3: 135, 1554, 882 × 663
+
+### `strip-4.png` — 1152 × 3135 px (aspect 0.3675), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 882 × 663
+- window 2: 135, 846, 882 × 663
+- window 3: 135, 1554, 882 × 663
+- window 4: 135, 2265, 882 × 663
+
+### `grid-2x2.png` — 1152 × 1227 px (aspect 0.9389), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 417 × 417
+- window 2: 600, 135, 417 × 417
+- window 3: 135, 600, 417 × 417
+- window 4: 600, 600, 417 × 417
+
+### `classic.png` — 1152 × 3135 px (aspect 0.3675), header band 0 px, footer band 27 px
+
+- window 1: 135, 135, 882 × 663
+- window 2: 135, 846, 882 × 663
+- window 3: 135, 1554, 882 × 663
+- window 4: 135, 2265, 882 × 663
+
+## Just Us (`just-us`, folder `src/assets/frames/just-us/`)
+
+### `single.png` — 1152 × 1758 px (aspect 0.6553), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 984 × 1230
+
+### `strip-2.png` — 1152 × 2052 px (aspect 0.5614), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 984 × 738
+- window 2: 84, 1050, 984 × 738
+
+### `strip-3.png` — 1152 × 2838 px (aspect 0.4059), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 984 × 738
+- window 2: 84, 1050, 984 × 738
+- window 3: 84, 1836, 984 × 738
+
+### `strip-4.png` — 1152 × 3624 px (aspect 0.3179), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 984 × 738
+- window 2: 84, 1050, 984 × 738
+- window 3: 84, 1836, 984 × 738
+- window 4: 84, 2622, 984 × 738
+
+### `grid-2x2.png` — 1152 × 1512 px (aspect 0.7619), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 468 × 468
+- window 2: 600, 264, 468 × 468
+- window 3: 84, 780, 468 × 468
+- window 4: 600, 780, 468 × 468
+
+### `classic.png` — 1152 × 3624 px (aspect 0.3179), header band 132 px, footer band 132 px
+
+- window 1: 84, 264, 984 × 738
+- window 2: 84, 1050, 984 × 738
+- window 3: 84, 1836, 984 × 738
+- window 4: 84, 2622, 984 × 738
+
+## Retro Memories (`retro-memories`, folder `src/assets/frames/retro-memories/`)
+
+### `single.png` — 1152 × 1668 px (aspect 0.6906), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 978 × 1224
+
+### `strip-2.png` — 1152 × 1959 px (aspect 0.5881), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 978 × 735
+- window 2: 87, 939, 978 × 735
+
+### `strip-3.png` — 1152 × 2742 px (aspect 0.4201), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 978 × 735
+- window 2: 87, 939, 978 × 735
+- window 3: 87, 1719, 978 × 735
+
+### `strip-4.png` — 1152 × 3522 px (aspect 0.3271), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 978 × 735
+- window 2: 87, 939, 978 × 735
+- window 3: 87, 1719, 978 × 735
+- window 4: 87, 2502, 978 × 735
+
+### `grid-2x2.png` — 1152 × 1422 px (aspect 0.8101), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 465 × 465
+- window 2: 600, 156, 465 × 465
+- window 3: 87, 669, 465 × 465
+- window 4: 600, 669, 465 × 465
+
+### `classic.png` — 1152 × 3522 px (aspect 0.3271), header band 21 px, footer band 153 px
+
+- window 1: 87, 156, 978 × 735
+- window 2: 87, 939, 978 × 735
+- window 3: 87, 1719, 978 × 735
+- window 4: 87, 2502, 978 × 735
+
+## Halloween (`halloween`, folder `src/assets/frames/halloween/`)
+
+### `single.png` — 1152 × 1470 px (aspect 0.7837), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 864 × 1080
+
+### `strip-2.png` — 1152 × 1734 px (aspect 0.6644), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 864 × 648
+- window 2: 144, 840, 864 × 648
+
+### `strip-3.png` — 1152 × 2430 px (aspect 0.4741), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 864 × 648
+- window 2: 144, 840, 864 × 648
+- window 3: 144, 1536, 864 × 648
+
+### `strip-4.png` — 1152 × 3126 px (aspect 0.3685), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 864 × 648
+- window 2: 144, 840, 864 × 648
+- window 3: 144, 1536, 864 × 648
+- window 4: 144, 2232, 864 × 648
+
+### `grid-2x2.png` — 1152 × 1254 px (aspect 0.9187), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 408 × 408
+- window 2: 600, 144, 408 × 408
+- window 3: 144, 600, 408 × 408
+- window 4: 600, 600, 408 × 408
+
+### `classic.png` — 1152 × 3126 px (aspect 0.3685), header band 0 px, footer band 54 px
+
+- window 1: 144, 144, 864 × 648
+- window 2: 144, 840, 864 × 648
+- window 3: 144, 1536, 864 × 648
+- window 4: 144, 2232, 864 × 648
+
+## You & Me (`pink-you-me`, folder `src/assets/frames/pink-you-me/`)
+
+### `single.png` — 1152 × 1458 px (aspect 0.7901), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 852 × 1065
+
+### `strip-2.png` — 1152 × 1719 px (aspect 0.6702), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 852 × 639
+- window 2: 150, 837, 852 × 639
+
+### `strip-3.png` — 1152 × 2406 px (aspect 0.4788), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 852 × 639
+- window 2: 150, 837, 852 × 639
+- window 3: 150, 1524, 852 × 639
+
+### `strip-4.png` — 1152 × 3093 px (aspect 0.3725), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 852 × 639
+- window 2: 150, 837, 852 × 639
+- window 3: 150, 1524, 852 × 639
+- window 4: 150, 2211, 852 × 639
+
+### `grid-2x2.png` — 1152 × 1245 px (aspect 0.9253), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 402 × 402
+- window 2: 600, 150, 402 × 402
+- window 3: 150, 600, 402 × 402
+- window 4: 600, 600, 402 × 402
+
+### `classic.png` — 1152 × 3093 px (aspect 0.3725), header band 0 px, footer band 45 px
+
+- window 1: 150, 150, 852 × 639
+- window 2: 150, 837, 852 × 639
+- window 3: 150, 1524, 852 × 639
+- window 4: 150, 2211, 852 × 639
+
+## Stay Real (`stay-real`, folder `src/assets/frames/stay-real/`)
+
+### `single.png` — 1152 × 1461 px (aspect 0.7885), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 816 × 1020
+
+### `strip-2.png` — 1152 × 1713 px (aspect 0.6725), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 816 × 612
+- window 2: 168, 828, 816 × 612
+
+### `strip-3.png` — 1152 × 2373 px (aspect 0.4855), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 816 × 612
+- window 2: 168, 828, 816 × 612
+- window 3: 168, 1488, 816 × 612
+
+### `strip-4.png` — 1152 × 3033 px (aspect 0.3798), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 816 × 612
+- window 2: 168, 828, 816 × 612
+- window 3: 168, 1488, 816 × 612
+- window 4: 168, 2148, 816 × 612
+
+### `grid-2x2.png` — 1152 × 1257 px (aspect 0.9165), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 384 × 384
+- window 2: 600, 168, 384 × 384
+- window 3: 168, 600, 384 × 384
+- window 4: 600, 600, 384 × 384
+
+### `classic.png` — 1152 × 3033 px (aspect 0.3798), header band 0 px, footer band 57 px
+
+- window 1: 168, 168, 816 × 612
+- window 2: 168, 828, 816 × 612
+- window 3: 168, 1488, 816 × 612
+- window 4: 168, 2148, 816 × 612
+
+## Summer Vibes (`summer-vibes`, folder `src/assets/frames/summer-vibes/`)
+
+### `single.png` — 1152 × 1491 px (aspect 0.7726), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 810 × 1014
+
+### `strip-2.png` — 1152 × 1740 px (aspect 0.6621), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 810 × 609
+- window 2: 171, 828, 810 × 609
+
+### `strip-3.png` — 1152 × 2397 px (aspect 0.4806), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 810 × 609
+- window 2: 171, 828, 810 × 609
+- window 3: 171, 1482, 810 × 609
+
+### `strip-4.png` — 1152 × 3051 px (aspect 0.3776), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 810 × 609
+- window 2: 171, 828, 810 × 609
+- window 3: 171, 1482, 810 × 609
+- window 4: 171, 2139, 810 × 609
+
+### `grid-2x2.png` — 1152 × 1287 px (aspect 0.8951), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 381 × 381
+- window 2: 600, 171, 381 × 381
+- window 3: 171, 600, 381 × 381
+- window 4: 600, 600, 381 × 381
+
+### `classic.png` — 1152 × 3051 px (aspect 0.3776), header band 0 px, footer band 87 px
+
+- window 1: 171, 171, 810 × 609
+- window 2: 171, 828, 810 × 609
+- window 3: 171, 1482, 810 × 609
+- window 4: 171, 2139, 810 × 609
+
+## Neon Gaming (`neon-gaming`, folder `src/assets/frames/neon-gaming/`)
+
+### `single.png` — 1152 × 1461 px (aspect 0.7885), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 828 × 1035
+
+### `strip-2.png` — 1152 × 1716 px (aspect 0.6713), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 828 × 621
+- window 2: 162, 831, 828 × 621
+
+### `strip-3.png` — 1152 × 2385 px (aspect 0.4830), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 828 × 621
+- window 2: 162, 831, 828 × 621
+- window 3: 162, 1500, 828 × 621
+
+### `strip-4.png` — 1152 × 3054 px (aspect 0.3772), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 828 × 621
+- window 2: 162, 831, 828 × 621
+- window 3: 162, 1500, 828 × 621
+- window 4: 162, 2169, 828 × 621
+
+### `grid-2x2.png` — 1152 × 1254 px (aspect 0.9187), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 390 × 390
+- window 2: 600, 162, 390 × 390
+- window 3: 162, 600, 390 × 390
+- window 4: 600, 600, 390 × 390
+
+### `classic.png` — 1152 × 3054 px (aspect 0.3772), header band 0 px, footer band 54 px
+
+- window 1: 162, 162, 828 × 621
+- window 2: 162, 831, 828 × 621
+- window 3: 162, 1500, 828 × 621
+- window 4: 162, 2169, 828 × 621
+>>>>>>> Stashed changes
