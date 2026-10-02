@@ -58,9 +58,6 @@ const imageFrame = (id: string, name: string, dir: string, bands: Bands, per?: P
 export const IMAGE_FRAMES: FrameDef[] = [
   imageFrame('kawaii', 'Kawaii Cats', 'kawaii', { headerHeight: 20, footerHeight: 20, padding: 44 }),
   imageFrame('retro-film', 'Retro Film', 'retro', { headerHeight: 20, footerHeight: 30, padding: 50 }),
-<<<<<<< Updated upstream
-  imageFrame('better-together', 'Better Together', 'better-together', { headerHeight: 44, footerHeight: 56 })
-=======
   imageFrame('better-together', 'Better Together', 'better-together', { headerHeight: 44, footerHeight: 56 }),
   imageFrame('kawaii-pets', 'Kawaii Pets', 'kawaii-pets', { padding: 45, headerHeight: 0, footerHeight: 9 }),
   imageFrame('just-us', 'Just Us', 'just-us', { padding: 28, headerHeight: 44, footerHeight: 44 }),
@@ -70,7 +67,6 @@ export const IMAGE_FRAMES: FrameDef[] = [
   imageFrame('stay-real', 'Stay Real', 'stay-real', { padding: 56, headerHeight: 0, footerHeight: 19 }),
   imageFrame('summer-vibes', 'Summer Vibes', 'summer-vibes', { padding: 57, headerHeight: 0, footerHeight: 29 }),
   imageFrame('neon-gaming', 'Neon Gaming', 'neon-gaming', { padding: 54, headerHeight: 0, footerHeight: 18 })
->>>>>>> Stashed changes
 ];
 FRAMES.push(...IMAGE_FRAMES);
 

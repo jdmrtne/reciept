@@ -3,13 +3,9 @@
 // The ARTWORK (cats, hearts, tape, script lettering, film rails…) is cut out of your designs; only the plain
 // background, border lines and window cut-outs are rebuilt around the real photo slots of each layout.
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-<<<<<<< Updated upstream
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-=======
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { knockout, drawSliced } from './frames-slice.mjs';
 import { SLICED } from './frames-config.mjs';
->>>>>>> Stashed changes
 
 const S = 3, UNITS = 384;
 const layouts = JSON.parse(readFileSync('docs/frame-layouts.json', 'utf8'));
@@ -146,22 +142,6 @@ async function retro() {
   };
 }
 
-<<<<<<< Updated upstream
-const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether] };
-for (const [id, [dir, make]] of Object.entries(FRAMES)) {
-  const draw = await make();
-  mkdirSync(`src/assets/frames/${dir}`, { recursive: true });
-  for (const [layoutId, L] of Object.entries(layouts[id])) {
-    const W = UNITS * S, H = L.h * S, c = createCanvas(W, H), g = c.getContext('2d');
-    const slots = L.slots.map(([x, y, w, h]) => ({ x: x * S, y: y * S, w: w * S, h: h * S }));
-    const B = { minX: Math.min(...slots.map((s) => s.x)), maxX: Math.max(...slots.map((s) => s.x + s.w)), minY: Math.min(...slots.map((s) => s.y)), maxY: Math.max(...slots.map((s) => s.y + s.h)) };
-    g.imageSmoothingQuality = 'high';
-    draw(g, W, H, slots, B);
-    writeFileSync(`src/assets/frames/${dir}/${layoutId}.png`, c.toBuffer('image/png'));
-    console.log(`${dir}/${layoutId}.png  ${W}x${H}`);
-  }
-}
-=======
 // ---------------------------------------------------------------- Just Us (black doodle frame; heart-shaped window when there is a single photo)
 async function justUs() {
   const img = await loadImage('design-src/just-us.png'), BG = [18, 18, 18];
@@ -220,4 +200,3 @@ for (const [id, cfg] of Object.entries(SLICED)) {
   mkdirSync(`src/assets/frames/${cfg.dir}`, { recursive: true });
   for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); done(cfg.dir, layoutId, drawSliced(k, { ...cfg, id }, L, slots, B)); }
 }
->>>>>>> Stashed changes

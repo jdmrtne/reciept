@@ -72,19 +72,11 @@ describe('asset resolution (frameId + layoutId)', () => {
 });
 
 describe('registry', () => {
-<<<<<<< Updated upstream
-  it('keeps every vector frame and adds the three image frames', () => {
-    for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
-      expect(isImageFrame(getFrame(id)), id).toBe(false);
-    expect(FRAMES[0].id).toBe('classic-receipt');
-    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together']);
-=======
   it('keeps every vector frame and adds the image frames', () => {
     for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
       expect(isImageFrame(getFrame(id)), id).toBe(false);
     expect(FRAMES[0].id).toBe('classic-receipt');
     expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together', 'kawaii-pets', 'just-us', 'retro-memories', 'halloween', 'pink-you-me', 'stay-real', 'summer-vibes', 'neon-gaming']);
->>>>>>> Stashed changes
     expect(IMAGE_FRAMES.every((f) => isImageFrame(f) && FRAMES.includes(f))).toBe(true);
     expect(new Set(FRAMES.map((f) => f.id)).size).toBe(FRAMES.length);
   });

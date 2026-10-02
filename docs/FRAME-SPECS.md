@@ -118,8 +118,6 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 - window 2: 72, 1056, 1008 × 756
 - window 3: 72, 1860, 1008 × 756
 - window 4: 72, 2664, 1008 × 756
-<<<<<<< Updated upstream
-=======
 
 ## Kawaii Pets (`kawaii-pets`, folder `src/assets/frames/kawaii-pets/`)
 
@@ -424,4 +422,3 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 - window 2: 162, 831, 828 × 621
 - window 3: 162, 1500, 828 × 621
 - window 4: 162, 2169, 828 × 621
->>>>>>> Stashed changes
