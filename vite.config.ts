@@ -34,6 +34,9 @@ export default defineConfig({
         // High-resolution frame artwork (src/assets/frames) is often >2 MB per PNG; the default cap would silently skip it and break offline use.
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         navigateFallback: '/index.html',
+        // /p/<id> is the customer's phone page. The kiosk service worker (scope '/') must never answer it from a precached shell:
+        // a stale precache would boot the old kiosk bundle there. Let it go to the network, where the host rewrites it to index.html.
+        navigateFallbackDenylist: [/^\/p\//],
         // Every deploy's precache otherwise stays on the tablet forever; this deletes caches from prior versions
         // once the new one takes over, so storage doesn't grow unbounded over months of unattended kiosk updates.
         cleanupOutdatedCaches: true
