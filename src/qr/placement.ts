@@ -6,10 +6,13 @@ import type { FrameDef, Prim, QrArea } from '../frames/types';
  *
  * WHERE THE QR GOES (same for every frame, including Straw Hat Wanted):
  *   1. SAFE AREA - a frame (per layout) may DECLARE an intentionally empty region (`FrameDef.qr`); the QR then lives only inside it.
- *   2. STRIP     - otherwise (the default, what every frame uses today) an empty strip is APPENDED BELOW the finished design and the
- *                  QR is CENTERED in it. The design above keeps its exact coordinates; nothing is covered or moved.
- *                  `allowStrip: false` forbids it, and the placement is rejected ('no-safe-area').
- * If nothing works the placement FAILS. It never "falls back" to covering a photo, sticker or text.
+ *   2. OVERLAY   - otherwise (the default) the QR sits INSIDE the frame, centered at the bottom just above the frame's bottom edge,
+ *                  drawn ON TOP of the design (its white quiet zone covers whatever is behind it). The canvas does not grow.
+ *                  Pass `overlay: false` to get the old behaviour instead:
+ *   3. STRIP     - an empty strip is APPENDED BELOW the finished design and the QR is CENTERED in it. The design above keeps its
+ *                  exact coordinates; nothing is covered or moved. `allowStrip: false` forbids it ('no-safe-area').
+ * Safe-area and strip placements never cover anything and FAIL rather than cover a photo, sticker or text. Overlay is the one mode
+ * that covers on purpose; it only has to stay on the canvas.
  */
 
 /** Quiet-zone modules around the QR. Same value as `QUIET` in share/qr.ts (not imported, to keep this module dependency-free). */
@@ -22,15 +25,17 @@ export interface QrOptions {
   sizeFrac: number;
   /** Smallest acceptable printed dots per module (measured on the real paper, see `paperDots`). Below this a thermal print is not reliably scannable. */
   minDotsPerModule: number;
+  /** Preferred QR side (quiet zone included) in OVERLAY mode, as a fraction of the canvas width. Smaller than `sizeFrac` so it covers less of the design. */
+  overlayFrac: number;
 }
-export const DEFAULT_QR_OPTIONS: QrOptions = { margin: 3, sizeFrac: 0.36, minDotsPerModule: 2 };
+export const DEFAULT_QR_OPTIONS: QrOptions = { margin: 3, sizeFrac: 0.36, minDotsPerModule: 2, overlayFrac: 0.27 };
 
 export type OccupiedKind = 'photo' | 'sticker' | 'text' | 'frame' | 'artwork';
 export interface Occupied { kind: OccupiedKind; rect: Rect }
 
 export type QrFailure = 'no-safe-area' | 'too-small' | 'overlap' | 'out-of-bounds';
 export type QrPlacement =
-  | { ok: true; mode: 'safe-area' | 'strip'; rect: Rect; margin: number; /** total canvas height (units) once the QR is placed */ canvasHeight: number }
+  | { ok: true; mode: 'safe-area' | 'strip' | 'overlay'; rect: Rect; margin: number; /** total canvas height (units) once the QR is placed */ canvasHeight: number }
   | { ok: false; reason: QrFailure; message: string; hits: Occupied[] };
 
 export class QrPlacementError extends Error {
@@ -142,7 +147,11 @@ export interface PlaceInput {
   occ: OccupancyInput;
   /** Declared safe area for this frame + layout, if any. */
   area?: QrArea | null;
-  /** Allow the appended strip when the frame declares no safe area (default true). */
+  /** Put the QR INSIDE the frame, on top of the design, when the frame declares no safe area (default true). `false` = appended strip below the design. */
+  overlay?: boolean;
+  /** Overlay mode: empty space (canvas units) between the canvas bottom and the frame's inner edge, i.e. the frame border width. Default 12. */
+  inset?: number;
+  /** Allow the appended strip when overlay is off and the frame declares no safe area (default true). */
   allowStrip?: boolean;
   options?: Partial<QrOptions>;
   /** Dots across the real paper (58 mm = 384, 80 mm = 576). Default 384, the strictest. The scannable minimum is measured in real dots, so a wider paper may use a smaller QR. */
@@ -173,6 +182,15 @@ export function placeQr(i: PlaceInput): QrPlacement {
       }
     }
     return fail('overlap', 'The QR-safe area is not empty: something is drawn inside it. Move the QR-safe area to genuinely empty space.', blocked);
+  }
+
+  if (i.overlay !== false) {
+    // Overlay (default): centered at the bottom, inside the frame border, on top of the design. Nothing moves, the canvas keeps its height.
+    const side = Math.min(Math.max(minSide, Math.round(o.overlayFrac * W)), Math.floor(W - 2 * o.margin));
+    if (side < minSide) return fail('too-small', 'The paper is too narrow for a scannable QR.');
+    const rect = { x: Math.round((W - side) / 2), y: Math.round(H - (i.inset ?? 12) - o.margin - side), w: side, h: side };
+    if (rect.y < 0 || !within(rect, { x: 0, y: 0, w: W, h: H })) return fail('out-of-bounds', 'The design is too small to hold a scannable QR code.');
+    return { ok: true, mode: 'overlay', rect, margin: o.margin, canvasHeight: H };
   }
 
   if (i.allowStrip === false) return fail('no-safe-area', 'This frame has no QR-safe area. Add one (FrameDef.qr) instead of placing the QR on the design.');

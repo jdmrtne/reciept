@@ -249,7 +249,7 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
     } else if (c.op === 'sticker') {
       drawSticker(g, c, stickers.get(c)!, k);
     } else {
-      assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 of the gate, then the QR itself (always the last command)
+      if (c.mode !== 'overlay') assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 (overlay covers the design on purpose, so no clear-pixel check) of the gate, then the QR itself (always the last command)
       drawPlanQr(g, c, k);
     }
   }

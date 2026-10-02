@@ -44,10 +44,10 @@ describe('occupancy', () => {
   });
 });
 
-describe('strip placement (default, every frame): centered below the design, nothing is covered or moved', () => {
+describe('strip placement (overlay: false), every frame: centered below the design, nothing is covered or moved', () => {
   for (const f of FRAMES) for (const l of LAYOUTS) for (const paperDots of [384, 576]) {
     it(`${f.id} × ${l.id} (${paperDots} dots)`, () => {
-      const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o, paperDots });
+      const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o, paperDots, overlay: false });
       expect(p.ok).toBe(true);
       if (!p.ok) return;
       expect(p.mode).toBe('strip');
@@ -60,23 +60,48 @@ describe('strip placement (default, every frame): centered below the design, not
     });
   }
   it('straw-hat-wanted gets the same centered strip as every other frame', () => {
-    const o = occ(getFrame('straw-hat-wanted'), 'single'), p = placeQr({ modules: MODULES, occ: o });
+    const o = occ(getFrame('straw-hat-wanted'), 'single'), p = placeQr({ modules: MODULES, occ: o, overlay: false });
     expect(p.ok && p.mode).toBe('strip');
     if (p.ok) expect(p.rect.x + p.rect.w / 2).toBeCloseTo(o.width / 2, 0);
   });
   it('a sticker hanging off the bottom edge pushes the strip down instead of being covered', () => {
     const f = getFrame('classic-receipt'), L = resolveFramed('single', f.id);
     const s = { x: 100, y: L.height - 20, w: 120, h: 120, rotation: 30 };
-    const o = occ(f, 'single', [s]), p = placeQr({ modules: MODULES, occ: o });
+    const o = occ(f, 'single', [s]), p = placeQr({ modules: MODULES, occ: o, overlay: false });
     expect(p.ok).toBe(true);
     if (!p.ok) return;
     const bottom = rotatedBounds(s); expect(p.rect.y).toBeGreaterThanOrEqual(bottom.y + bottom.h + p.margin);
     expect(collisions(p.rect, occupiedRegions(o), p.margin)).toHaveLength(0);
   });
   it('is refused (never forced onto the design) when the strip is not allowed and the frame has no safe area', () => {
-    const p = placeQr({ modules: MODULES, occ: occ(getFrame('classic-receipt'), 'single'), allowStrip: false });
+    const p = placeQr({ modules: MODULES, occ: occ(getFrame('classic-receipt'), 'single'), overlay: false, allowStrip: false });
     expect(p.ok).toBe(false);
     if (!p.ok) expect(p.reason).toBe('no-safe-area');
+  });
+});
+
+describe('overlay placement (default): inside the frame, on top of the design', () => {
+  for (const f of FRAMES) for (const l of LAYOUTS) for (const paperDots of [384, 576]) {
+    it(`${f.id} × ${l.id} (${paperDots} dots)`, () => {
+      const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o, paperDots, inset: 24 });
+      expect(p.ok).toBe(true);
+      if (!p.ok) return;
+      expect(p.mode).toBe('overlay');
+      expect(p.canvasHeight).toBe(o.height); // the canvas does not grow
+      expect(p.rect.x + p.rect.w / 2).toBeCloseTo(o.width / 2, 0); // centered horizontally
+      expect(p.rect.y + p.rect.h).toBeLessThanOrEqual(o.height - 24); // above the frame's bottom border zone
+      expect(p.rect.y).toBeGreaterThanOrEqual(0);
+      expect(p.rect.w).toBeGreaterThanOrEqual(qrMinSide(MODULES, undefined, paperDots, o.width));
+    });
+  }
+  it('may sit on top of the frame design (that is the point)', () => {
+    const o = occ(getFrame('classic-receipt'), 'single'), p = placeQr({ modules: MODULES, occ: o, inset: 24 });
+    expect(p.ok && collisions(p.rect, occupiedRegions(o), p.margin).length).toBeGreaterThan(0);
+  });
+  it('fails (never leaves the canvas) when the design is too short to hold a scannable QR', () => {
+    const p = placeQr({ modules: MODULES, occ: { width: 384, height: 60, slots: [], stickers: [], prims: [], artwork: true } });
+    expect(p.ok).toBe(false);
+    if (!p.ok) expect(p.reason).toBe('out-of-bounds');
   });
 });
 
