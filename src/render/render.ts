@@ -6,7 +6,7 @@ import type { FrameCtx } from '../frames/types';
 import type { Snapshot } from '../editor/types';
 import { buildPlan, verifyPlanQr, type Cmd, type PlanQr, type RenderPlan } from './plan';
 import { drawQr, QUIET } from '../share/qr';
-import { QrPlacementError, inflate, regionIsClear } from '../qr/placement';
+import { QrPlacementError, inflate, regionIsClear, CUT_SW } from '../qr/placement';
 import { FONT_STACK, FONT_DISPLAY_STACK, ensureFonts } from './font';
 
 /** Everything environment-specific. The browser default is below; tests inject node-canvas. */
@@ -183,6 +183,27 @@ function drawPlanQr(g: CanvasRenderingContext2D, c: QrCmd, k: number) {
   drawQr(g, c.matrix, Math.round(c.rect.x * k + (boxW - px) / 2), Math.round(c.rect.y * k + (boxH - px) / 2), px);
 }
 
+/**
+ * The cut line: a dashed rule across the paper with a small pair of scissors at the left end, centred on `c.cutY`.
+ * Plain vector strokes (no font glyph, so it never depends on the font having a scissors character), solid black so it survives the 1-bit thermal threshold.
+ */
+function drawCutLine(g: CanvasRenderingContext2D, c: QrCmd, k: number, unitsW: number) {
+  if (c.cutY === undefined) return;
+  const y = c.cutY;
+  g.save(); g.scale(k, k);
+  g.strokeStyle = '#000'; g.fillStyle = '#000'; g.lineCap = 'butt';
+  g.lineWidth = CUT_SW; g.setLineDash([5, 3]);
+  g.beginPath(); g.moveTo(32, y); g.lineTo(unitsW - 10, y); g.stroke();
+  g.setLineDash([]); g.lineWidth = 1.4; g.lineCap = 'round';
+  g.beginPath(); g.arc(12, y - 3.4, 2.3, 0, Math.PI * 2); g.stroke(); // handles
+  g.beginPath(); g.arc(12, y + 3.4, 2.3, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(13.8, y - 2.2); g.lineTo(29, y + 3.6); g.moveTo(13.8, y + 2.2); g.lineTo(29, y - 3.6); g.stroke(); // crossed blades
+  g.restore();
+}
+
+/** The strip furniture: cut line first, then the QR (always the last thing drawn). */
+function drawQrStrip(g: CanvasRenderingContext2D, c: QrCmd, k: number, unitsW: number) { drawCutLine(g, c, k, unitsW); drawPlanQr(g, c, k); }
+
 /** Export gate, part 2: on the REAL pixels drawn so far (everything except the QR) the QR box + margin must be empty. */
 function assertQrSpotClear(g: CanvasRenderingContext2D, c: QrCmd, k: number, w: number, h: number) {
   const r = inflate(c.rect, c.margin), x = Math.max(0, Math.floor(r.x * k)), y = Math.max(0, Math.floor(r.y * k));
@@ -208,7 +229,7 @@ export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEn
     else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
     else if (c.op === 'image-frame') { const a = artSize(c, k); drawImageFrame(g, imageFrameSource(env, await load(c.src), c, k, a.w, a.h)); }
     else if (c.op === 'sticker') drawSticker(g, c, await stickerSource(env, c, k, load), k);
-    else drawPlanQr(g, c, k);
+    else drawQrStrip(g, c, k, plan.unitsW);
   }
   return out;
 }
@@ -249,8 +270,8 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
     } else if (c.op === 'sticker') {
       drawSticker(g, c, stickers.get(c)!, k);
     } else {
-      if (c.mode !== 'overlay') assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 (overlay covers the design on purpose, so no clear-pixel check) of the gate, then the QR itself (always the last command)
-      drawPlanQr(g, c, k);
+      assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 of the gate, then the QR itself (always the last command)
+      drawQrStrip(g, c, k, plan.unitsW);
     }
   }
   return out;

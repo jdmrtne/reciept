@@ -15,6 +15,13 @@ Code: `src/qr/placement.ts` (pure), `src/render/plan.ts` (`buildPlan(..., qr)`, 
 2. **Declared safe area (optional):** `FrameDef.qr = { default?, byLayout? }`, `{ safeArea: {x,y,w,h}, size? }` in canvas fractions. If a frame
    declares one the QR goes there instead, and the artwork there must stay empty (pixel-checked at export). No frame declares one yet.
 
+## Cut line (strip mode)
+Between the design and the QR the strip carries a dashed cut line with a small pair of scissors at its left end, so a customer who does not want the QR
+knows where to cut. Top to bottom: design, empty gap, **cut line**, QR. The line is full paper width (dashed, 2 units thick so it survives the 1-bit
+thermal threshold); the scissors are plain vector strokes (no font glyph). Geometry lives in `qr/placement.ts` (`CUT_SW`, `CUT_HALF`, `cutBand`,
+`QrPlacement.cutY`), the drawing in `render/render.ts` (`drawCutLine`). Safe-area mode (QR inside the artwork) has no cut line. `verifyPlanQr` also
+rejects a cut line that touches the design or a QR that touches the line.
+
 ## Checks (all must pass, otherwise nothing is printed)
 - Placement: QR box + margin (3 units) must not intersect photo slots, stickers (rotated bounds), drawn frame primitives (text, rules, ornaments, barcode, decor).
 - Size: shrinks only while it stays scannable (>= 2 dots per module at 58 mm); otherwise 'too-small'.
