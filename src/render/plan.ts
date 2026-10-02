@@ -19,7 +19,7 @@ export type Cmd =
   | { op: 'sticker'; stickerId: string; cx: number; cy: number; w: number; h: number; rotation: number }
   // The page QR. ALWAYS the last command, and only present when the caller asked for one. `slots` = every photo slot (kept so the plan can be
   // re-verified on its own); `rect` was chosen by qr/placement.ts so it touches nothing (see verifyPlanQr).
-  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone, before any strip */ designHeight: number };
+  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'corner' | 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone, before any strip */ designHeight: number };
 
 /**
  * PURE description of the final image: no DOM, no canvas. The canvas executor (render.ts) just runs it.
