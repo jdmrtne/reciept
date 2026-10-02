@@ -29,7 +29,7 @@ export type Cmd =
 export interface RenderPlan { width: number; height: number; k: number; unitsW: number; unitsH: number; cmds: Cmd[] }
 
 /** Ask for a QR on the composition. Omit it and the plan is exactly what it always was. */
-export interface PlanQr { matrix: boolean[][]; /** default true: reserve an empty strip below the design when the frame declares no safe area */ allowStrip?: boolean; options?: Partial<QrOptions> }
+export interface PlanQr { matrix: boolean[][]; /** dots across the real paper; makes preview and print choose the same spot. Default 384. */ paperDots?: number; /** default true: reserve an empty strip below the design when the frame declares no safe area */ allowStrip?: boolean; options?: Partial<QrOptions> }
 
 /**
  * With `qr`: throws QrPlacementError when no empty space exists (the export is blocked, the QR is never forced onto the design).
@@ -48,7 +48,7 @@ export function buildPlan(snap: Snapshot, ctx: FrameCtx, widthPx: number, qr?: P
     cmds.push({ op: 'sticker', stickerId: o.stickerId, cx: o.x + o.w / 2, cy: o.y + o.h / 2, w: o.w, h: o.h, rotation: o.rotation });
   let unitsH = L.height;
   if (qr) {
-    const placed = placeQr({ modules: qr.matrix.length, occ: occupancy(L.width, L.height, L.slots, cmds, !!asset), area: qrAreaFor(frame, snap.layoutId), allowStrip: qr.allowStrip, options: qr.options });
+    const placed = placeQr({ modules: qr.matrix.length, occ: occupancy(L.width, L.height, L.slots, cmds, !!asset), area: qrAreaFor(frame, snap.layoutId), allowStrip: qr.allowStrip, options: qr.options, paperDots: qr.paperDots });
     if (!placed.ok) throw new QrPlacementError(placed.reason, placed.message, placed.hits);
     cmds.push({ op: 'qr', matrix: qr.matrix, rect: placed.rect, margin: placed.margin, mode: placed.mode, slots: L.slots, designHeight: L.height });
     unitsH = placed.canvasHeight;
@@ -76,6 +76,6 @@ export function verifyPlanQr(plan: RenderPlan): { ok: true } | { ok: false; hits
   const img = plan.cmds.some((c) => c.op === 'image-frame');
   const occ = occupancy(plan.unitsW, q.designHeight, q.slots, plan.cmds, img);
   if (!within(q.rect, { x: 0, y: 0, w: plan.unitsW, h: plan.unitsH })) return { ok: false, hits: [] };
-  const hits = collisions(q.rect, occupiedRegions(occ), q.margin);
+  const all = occupiedRegions(occ), hits = collisions(q.rect, q.mode === 'corner' ? all.filter((r) => r.kind === 'photo' || r.kind === 'sticker' || r.kind === 'text') : all, q.margin);
   return hits.length ? { ok: false, hits } : { ok: true };
 }

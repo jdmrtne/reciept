@@ -44,31 +44,58 @@ describe('occupancy', () => {
   });
 });
 
-describe('strip placement (default): empty space is added, nothing is covered or moved', () => {
+const PROTECTED = (o: OccupancyInput) => occupiedRegions(o).filter((r) => r.kind === 'photo' || r.kind === 'sticker' || r.kind === 'text');
+
+describe('corner placement (default): lower-left, inside the frame, small, never over a photo, sticker or text', () => {
   for (const f of FRAMES) for (const l of LAYOUTS) {
-    it(`${f.id} × ${l.id}`, () => {
-      const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o });
+    it(`${f.id} × ${l.id} (80 mm paper)`, () => {
+      const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o, paperDots: 576 });
       expect(p.ok).toBe(true);
       if (!p.ok) return;
-      expect(p.mode).toBe('strip');
-      expect(collisions(p.rect, occupiedRegions(o), p.margin)).toHaveLength(0);
-      expect(p.rect.y).toBeGreaterThanOrEqual(o.height + p.margin); // entirely below the design
+      expect(p.mode === 'corner' || p.mode === 'strip').toBe(true);
+      if (p.mode === 'corner') {
+        expect(p.rect.x).toBe(6); // universal: lower-left corner
+        expect(p.rect.y + p.rect.h).toBe(Math.round(o.height) - 6 + (Math.round(o.height) - o.height)); // bottom inset 6
+        expect(p.canvasHeight).toBe(o.height); // inside the frame: the canvas did not grow
+        expect(p.rect.w).toBeLessThanOrEqual(Math.round(0.24 * o.width)); // not too big
+      } else {
+        expect(p.rect.y).toBeGreaterThanOrEqual(o.height + p.margin); // entirely below the design
+      }
+      expect(collisions(p.rect, PROTECTED(o), p.margin)).toHaveLength(0);
       expect(p.rect.x).toBeGreaterThanOrEqual(0); expect(p.rect.x + p.rect.w).toBeLessThanOrEqual(o.width);
-      expect(p.rect.w).toBeGreaterThanOrEqual(qrMinSide(MODULES));
-      expect(p.canvasHeight).toBeGreaterThan(p.rect.y + p.rect.h);
+      expect(p.rect.w).toBeGreaterThanOrEqual(qrMinSide(MODULES, undefined, 576, o.width));
     });
   }
-  it('a sticker hanging off the bottom edge pushes the strip down instead of being covered', () => {
-    const f = getFrame('classic-receipt'), L = resolveFramed('single', f.id);
+  it('narrow 58 mm paper needs a bigger QR, so thin footers fall back to the strip instead of covering a photo', () => {
+    const o = occ(getFrame('kawaii-pets'), 'single');
+    const p58 = placeQr({ modules: MODULES, occ: o, paperDots: 384 }), p80 = placeQr({ modules: MODULES, occ: o, paperDots: 576 });
+    expect(p58.ok && p58.mode).toBe('strip');
+    expect(p80.ok && p80.mode).toBe('corner');
+  });
+  it('text the frame draws in the lower-left pushes the QR to the strip (straw-hat-wanted)', () => {
+    const p = placeQr({ modules: MODULES, occ: occ(getFrame('straw-hat-wanted'), 'single'), paperDots: 576 });
+    expect(p.ok && p.mode).toBe('strip');
+  });
+  it('a sticker in the lower-left corner is never covered', () => {
+    const f = getFrame('birthday'), L = resolveFramed('single', f.id);
+    const s = { x: 0, y: L.height - 110, w: 110, h: 110, rotation: 0 };
+    const o = occ(f, 'single', [s]), p = placeQr({ modules: MODULES, occ: o, paperDots: 576 });
+    expect(p.ok).toBe(true);
+    if (!p.ok) return;
+    expect(collisions(p.rect, PROTECTED(o), p.margin)).toHaveLength(0);
+    expect(p.mode).toBe('strip');
+  });
+  it('a sticker hanging off the bottom edge pushes the strip below it', () => {
+    const f = getFrame('straw-hat-wanted'), L = resolveFramed('single', f.id);
     const s = { x: 100, y: L.height - 20, w: 120, h: 120, rotation: 30 };
-    const o = occ(f, 'single', [s]), p = placeQr({ modules: MODULES, occ: o });
+    const o = occ(f, 'single', [s]), p = placeQr({ modules: MODULES, occ: o, paperDots: 576 });
     expect(p.ok).toBe(true);
     if (!p.ok) return;
     const bottom = rotatedBounds(s); expect(p.rect.y).toBeGreaterThanOrEqual(bottom.y + bottom.h + p.margin);
     expect(collisions(p.rect, occupiedRegions(o), p.margin)).toHaveLength(0);
   });
-  it('is refused (never forced onto the design) when the strip is not allowed and the frame has no safe area', () => {
-    const p = placeQr({ modules: MODULES, occ: occ(getFrame('classic-receipt'), 'single'), allowStrip: false });
+  it('is refused (never forced onto the design) when the strip is not allowed and the corner is taken', () => {
+    const p = placeQr({ modules: MODULES, occ: occ(getFrame('straw-hat-wanted'), 'single'), allowStrip: false, paperDots: 576 });
     expect(p.ok).toBe(false);
     if (!p.ok) expect(p.reason).toBe('no-safe-area');
   });
@@ -131,11 +158,11 @@ describe('canPlaceQr (the drag guard)', () => {
     expect(canPlaceQr({ x: -5, y: 0, w: 50, h: 50 }, o, { w: o.width, h: o.height }).ok).toBe(false);
     expect(canPlaceQr({ x: 100, y: o.height + 10, w: 100, h: 100 }, o, { w: o.width, h: o.height + 200 }).ok).toBe(true);
   });
-  it('margin matters: a box 3 units from a slot is refused with the default margin, accepted with a 2-unit margin', () => {
+  it('margin matters: a box 2 units from a slot is refused with the default 3-unit margin, accepted with a 1-unit margin', () => {
     const o: OccupancyInput = { width: 384, height: 600, slots: [{ x: 24, y: 24, w: 336, h: 420 }], stickers: [], prims: [], artwork: true };
-    const near = { x: 24, y: 447, w: 60, h: 60 }; // 3 units below the slot
+    const near = { x: 24, y: 446, w: 60, h: 60 }; // 2 units below the slot
     expect(canPlaceQr(near, o, { w: 384, h: 600 }).ok).toBe(false);
-    expect(canPlaceQr(near, o, { w: 384, h: 600 }, 2).ok).toBe(true);
+    expect(canPlaceQr(near, o, { w: 384, h: 600 }, 1).ok).toBe(true);
   });
 });
 

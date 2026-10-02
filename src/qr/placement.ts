@@ -4,34 +4,38 @@ import type { FrameDef, Prim, QrArea } from '../frames/types';
 /**
  * QR placement for the printed frame. PURE: no DOM, no canvas, no Vite-only imports (so it is unit-testable anywhere).
  *
- * THE RULE: the QR may only occupy empty space. It is never dropped on top of a photo, photo slot, sticker, text,
- * border, ornament or artwork, and it never moves any of them. Two ways to get empty space:
- *   1. SAFE AREA  - a frame (per layout) DECLARES an intentionally empty region (`FrameDef.qr`). The QR lives only inside it.
- *   2. STRIP      - otherwise a reserved empty strip is APPENDED below the finished composition (the design above keeps
- *                   its exact coordinates). Pass `allowStrip: false` to forbid it; then a frame without a safe area is
- *                   rejected ('no-safe-area') instead of having the QR forced onto the design.
- * If neither works the placement FAILS. It never "falls back" to covering something.
+ * WHERE THE QR GOES (same for every frame):
+ *   1. SAFE AREA - a frame (per layout) may DECLARE an intentionally empty region (`FrameDef.qr`); the QR then lives only inside it.
+ *   2. CORNER    - otherwise the LOWER-LEFT corner INSIDE the frame, small (about a quarter of the paper width, the smallest
+ *                  that still scans). It is never placed over a photo slot (even a blank one), a sticker, or text/ornaments the
+ *                  frame draws itself. Bitmap frame artwork has no geometry to read, so the QR's white plate may sit on the
+ *                  artwork in that corner (a deliberate choice: see docs/QR-PLACEMENT.md).
+ *   3. STRIP     - only when the corner would hit a photo/sticker/text (a thin footer): an empty strip is appended BELOW the
+ *                  finished design, which keeps its exact coordinates. `allowStrip: false` forbids it, and the placement is rejected.
+ * If nothing works the placement FAILS. It never "falls back" to covering a photo, sticker or text.
  */
 
 /** Quiet-zone modules around the QR. Same value as `QUIET` in share/qr.ts (not imported, to keep this module dependency-free). */
 export const QR_QUIET = 4;
 
 export interface QrOptions {
-  /** Empty margin (canvas units) kept around the QR so it never looks attached to another element. */
+  /** Empty margin (canvas units) kept around the QR so it never looks attached to a photo, sticker or drawn text. */
   margin: number;
+  /** Distance (canvas units) from the left and bottom edges of the frame to the corner QR. */
+  inset: number;
   /** Preferred QR side (quiet zone included) as a fraction of the canvas width. */
   sizeFrac: number;
-  /** Smallest acceptable dots per module at the 58 mm reference (384 dots). Below this a thermal print is not reliably scannable. */
+  /** Smallest acceptable printed dots per module (measured on the real paper, see `paperDots`). Below this a thermal print is not reliably scannable. */
   minDotsPerModule: number;
 }
-export const DEFAULT_QR_OPTIONS: QrOptions = { margin: 8, sizeFrac: 0.36, minDotsPerModule: 2 };
+export const DEFAULT_QR_OPTIONS: QrOptions = { margin: 3, inset: 6, sizeFrac: 0.24, minDotsPerModule: 2 };
 
-export type OccupiedKind = 'photo' | 'sticker' | 'frame' | 'artwork';
+export type OccupiedKind = 'photo' | 'sticker' | 'text' | 'frame' | 'artwork';
 export interface Occupied { kind: OccupiedKind; rect: Rect }
 
 export type QrFailure = 'no-safe-area' | 'too-small' | 'overlap' | 'out-of-bounds';
 export type QrPlacement =
-  | { ok: true; mode: 'safe-area' | 'strip'; rect: Rect; margin: number; /** total canvas height (units) once the QR is placed */ canvasHeight: number }
+  | { ok: true; mode: 'corner' | 'safe-area' | 'strip'; rect: Rect; margin: number; /** total canvas height (units) once the QR is placed */ canvasHeight: number }
   | { ok: false; reason: QrFailure; message: string; hits: Occupied[] };
 
 export class QrPlacementError extends Error {
@@ -115,7 +119,7 @@ export function occupiedRegions(i: OccupancyInput): Occupied[] {
   const out: Occupied[] = [];
   for (const s of i.slots) out.push({ kind: 'photo', rect: s });
   for (const s of i.stickers) out.push({ kind: 'sticker', rect: rotatedBounds(s) });
-  for (const p of i.prims) for (const r of primRegions(p, i.width, i.height)) out.push({ kind: 'frame', rect: r });
+  for (const p of i.prims) for (const r of primRegions(p, i.width, i.height)) out.push({ kind: p.k === 'text' ? 'text' : 'frame', rect: r });
   return out;
 }
 
@@ -132,7 +136,10 @@ const frac = (a: QrArea['safeArea'], W: number, H: number): Rect => ({ x: a.x * 
 /** The QR-safe area a frame declares for a layout (layout-specific wins over the frame default), or null. */
 export const qrAreaFor = (f: Pick<FrameDef, 'qr'>, layoutId: string): QrArea | null => f.qr?.byLayout?.[layoutId] ?? f.qr?.default ?? null;
 
-export const qrMinSide = (modules: number, o: QrOptions = DEFAULT_QR_OPTIONS) => (modules + 2 * QR_QUIET) * o.minDotsPerModule;
+/** Printed width of the paper in dots (58 mm = 384, 80 mm = 576). The canvas is always 384 units wide, so one unit = paperDots / 384 dots. */
+export const REF_DOTS = 384;
+export const qrMinSide = (modules: number, o: QrOptions = DEFAULT_QR_OPTIONS, paperDots = REF_DOTS, unitsW = 384) =>
+  Math.ceil(((modules + 2 * QR_QUIET) * o.minDotsPerModule * unitsW) / paperDots);
 
 export interface PlaceInput {
   /** Matrix size (modules per side, without quiet zone). */
@@ -143,11 +150,13 @@ export interface PlaceInput {
   /** Allow the appended strip when the frame declares no safe area (default true). */
   allowStrip?: boolean;
   options?: Partial<QrOptions>;
+  /** Dots across the real paper (58 mm = 384, 80 mm = 576). Default 384, the strictest. The scannable minimum is measured in real dots, so a wider paper may use a smaller QR. */
+  paperDots?: number;
 }
 
 export function placeQr(i: PlaceInput): QrPlacement {
   const o = { ...DEFAULT_QR_OPTIONS, ...i.options }, { width: W, height: H } = i.occ;
-  const minSide = Math.ceil(qrMinSide(i.modules, o));
+  const minSide = qrMinSide(i.modules, o, i.paperDots ?? REF_DOTS, W);
   const occupied = occupiedRegions(i.occ);
   const fail = (reason: QrFailure, message: string, hits: Occupied[] = []): QrPlacement => ({ ok: false, reason, message, hits });
   const wanted = Math.max(minSide, Math.round((i.area?.size ?? o.sizeFrac) * W)); // a configured size below the scannable minimum is raised, never used
@@ -171,7 +180,15 @@ export function placeQr(i: PlaceInput): QrPlacement {
     return fail('overlap', 'The QR-safe area is not empty: something is drawn inside it. Move the QR-safe area to genuinely empty space.', blocked);
   }
 
-  if (i.allowStrip === false) return fail('no-safe-area', 'This frame has no QR-safe area. Add one (FrameDef.qr) instead of placing the QR on the design.');
+  const protectedOnly = occupied.filter((r) => r.kind === 'photo' || r.kind === 'sticker' || r.kind === 'text');
+  // Corner: lower-left, inside the frame, as large as preferred and shrinking only while it stays scannable.
+  // Protected here: photo slots, stickers and the text the frame draws. Drawn rules/ornaments and bitmap artwork in that corner sit under the QR's white plate.
+  for (let side = Math.min(wanted, Math.floor(W - 2 * o.inset)); side >= minSide; side -= 2) {
+    const rect = { x: Math.round(o.inset), y: Math.round(H - o.inset - side), w: side, h: side };
+    if (rect.y >= 0 && !collisions(rect, protectedOnly, o.margin).length) return { ok: true, mode: 'corner', rect, margin: o.margin, canvasHeight: H };
+  }
+
+  if (i.allowStrip === false) return fail('no-safe-area', 'The lower-left corner of this frame is taken and the frame has no QR-safe area. Add one (FrameDef.qr) instead of placing the QR on the design.');
 
   // Strip: below EVERYTHING that is on the paper, including a sticker that hangs past the bottom edge. Nothing above moves.
   const side = Math.min(wanted, Math.floor(W - 2 * o.margin));
