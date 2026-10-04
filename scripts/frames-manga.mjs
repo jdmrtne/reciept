@@ -1,8 +1,9 @@
 // "Manga Panel" frame generator: procedural vintage-manga page art (cream paper, hand-inked wobbly panel borders, tilted/irregular
 // panel windows, speed lines, halftone, impact burst + speech bubble). Output is a normal RGBA overlay per layout (photo windows
 // transparent), so the editor, picker thumbnail, print and share/export pipelines use it like any other image frame.
-// The layout engine still owns the rectangular photo SLOTS; each irregular panel window is cut INSIDE its slot and opaque paper covers
-// the rest of the slot, so photos are cropped to the panel shape (never distorted). Needs a CJK font at build time only
+// The layout engine still owns the rectangular photo SLOTS; each irregular panel is cut INSIDE its slot and opaque paper covers
+// only the slot corners/gutters OUTSIDE the panel, so photos are cropped to the panel shape (never distorted).
+// The WHOLE panel interior is transparent (alpha 0): speed lines, halftone and borders are ink drawn ON TOP of the photo - no paper fill inside a panel. Needs a CJK font at build time only
 // (Noto Sans CJK JP; the shipped WebP files contain the rendered lettering).
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
 import { existsSync } from 'node:fs';
@@ -137,23 +138,24 @@ export async function manga() {
     paper(g, W, H, rnd);
     const lines = slots.map((_, i) => n === 1 || (n === 2 ? i === 0 : i === 0 || i === n - 1));
     const tilt = [[[0, 10], [14, 0], [0, 12], [10, 0]], [[10, 0], [0, 12], [14, 0], [0, 10]], [[0, 14], [8, 0], [0, 6], [12, 0]], [[12, 0], [0, 8], [10, 0], [0, 14]]];
-    const wins = [], quads = [];
+    const clear = [], quads = [];
     slots.forEach((s, i) => {
       const k = Math.max(0.6, Math.min(1.2, Math.min(s.w, s.h) / 600));
       if (lines[i]) {
-        const ring = 0.13 * Math.min(s.w, s.h), ext = 16 * k, t = tilt[i % 4];
-        wins.push(blob({ x: s.x + ring, y: s.y + ring, w: s.w - 2 * ring, h: s.h - 2 * ring }, rnd, 5 * k));
+        const ring = 0.13 * Math.min(s.w, s.h), ext = 0, t = tilt[i % 4];
+        clear.push(blob({ x: s.x + ring, y: s.y + ring, w: s.w - 2 * ring, h: s.h - 2 * ring }, rnd, 5 * k)); // where the focus lines stop (NOT a paper boundary)
         quads.push([[s.x - ext + t[0][0], s.y - ext + t[0][1]], [s.x + s.w + ext - t[1][0], s.y - ext + t[1][1]], [s.x + s.w + ext - t[2][0], s.y + s.h + ext - t[2][1] * 0.6], [s.x - ext + t[3][0], s.y + s.h + ext - t[3][1] * 0.6]]);
       } else {
-        const t = tilt[i % 4], m = 22 * k, b = 7;
+        const t = tilt[i % 4], m = 22 * k, b = 5; // border (10.5px) inner edge lands on the window edge: no paper sliver between photo and ink
         const w = [[s.x + t[0][0] * k * 1.4, s.y + t[0][1] * k * 1.4], [s.x + s.w - t[1][0] * k * 1.4, s.y + t[1][1] * k * 1.4], [s.x + s.w - t[2][0] * k * 1.4, s.y + s.h - t[2][1] * k * 1.4], [s.x + t[3][0] * k * 1.4, s.y + s.h - t[3][1] * k * 1.4]];
-        wins.push(w); quads.push(w.map((p, j) => [p[0] + (j === 0 || j === 3 ? -b : b), p[1] + (j < 2 ? -b : b)]));
+        clear.push(w); quads.push(w.map((p, j) => [p[0] + (j === 0 || j === 3 ? -b : b), p[1] + (j < 2 ? -b : b)]));
         void m;
       }
     });
-    quads.forEach((q, i) => { if (lines[i]) speedRing(g, q, wins[i], rnd, Math.max(0.6, Math.min(1.2, slots[i].w / 700)), n === 1 ? 460 : 400); });
-    // cut the photo windows
-    g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; wins.forEach((w) => { polyPath(g, w); g.fill(); }); g.restore();
+    // 1) the whole panel interior becomes real alpha-0 transparency (photo shows through everywhere inside the panel, speed-line zones included)
+    g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; quads.forEach((q) => { polyPath(g, q); g.fill(); }); g.restore();
+    // 2) focus lines are ink only, drawn on top of the (transparent) panel - never on a paper fill
+    quads.forEach((q, i) => { if (lines[i]) speedRing(g, q, clear[i], rnd, Math.max(0.6, Math.min(1.2, slots[i].w / 700)), n === 1 ? 460 : 400); });
     // thick inked borders, overshooting corners
     quads.forEach((q, i) => { for (let e = 0; e < 4; e++) inkLine(g, q[e], q[(e + 1) % 4], rnd, lines[i] ? 14 : 10.5); });
     const clipTo = (q) => (c) => { polyPath(c, q); c.clip(); };
