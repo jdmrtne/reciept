@@ -425,38 +425,38 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 
 ## Manga Panel (`manga-panel`, folder `src/assets/frames/manga/`)
 
-### `single.png` — 1152 × 1509 px (aspect 0.7634), header band 0 px, footer band 66 px
+### `single.png` — 1152 × 1419 px (aspect 0.8118), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 972 × 1215
+- window 1: 42, 42, 1068 × 1335
 
-### `strip-2.png` — 1152 × 1800 px (aspect 0.6400), header band 0 px, footer band 66 px
+### `strip-2.png` — 1152 × 1734 px (aspect 0.6644), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 972 × 729
-- window 2: 90, 867, 972 × 729
+- window 1: 42, 42, 1068 × 801
+- window 2: 42, 891, 1068 × 801
 
-### `strip-3.png` — 1152 × 2577 px (aspect 0.4470), header band 0 px, footer band 66 px
+### `strip-3.png` — 1152 × 2583 px (aspect 0.4460), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 972 × 729
-- window 2: 90, 867, 972 × 729
-- window 3: 90, 1644, 972 × 729
+- window 1: 42, 42, 1068 × 801
+- window 2: 42, 891, 1068 × 801
+- window 3: 42, 1740, 1068 × 801
 
-### `strip-4.png` — 1152 × 3354 px (aspect 0.3435), header band 0 px, footer band 66 px
+### `strip-4.png` — 1152 × 3432 px (aspect 0.3357), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 972 × 729
-- window 2: 90, 867, 972 × 729
-- window 3: 90, 1644, 972 × 729
-- window 4: 90, 2421, 972 × 729
+- window 1: 42, 42, 1068 × 801
+- window 2: 42, 891, 1068 × 801
+- window 3: 42, 1740, 1068 × 801
+- window 4: 42, 2589, 1068 × 801
 
-### `grid-2x2.png` — 1152 × 1266 px (aspect 0.9100), header band 0 px, footer band 66 px
+### `grid-2x2.png` — 1152 × 1152 px (aspect 1.0000), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 462 × 462
-- window 2: 600, 90, 462 × 462
-- window 3: 90, 600, 462 × 462
-- window 4: 600, 600, 462 × 462
+- window 1: 42, 42, 510 × 510
+- window 2: 600, 42, 510 × 510
+- window 3: 42, 600, 510 × 510
+- window 4: 600, 600, 510 × 510
 
-### `classic.png` — 1152 × 3354 px (aspect 0.3435), header band 0 px, footer band 66 px
+### `classic.png` — 1152 × 3432 px (aspect 0.3357), header band 0 px, footer band 0 px
 
-- window 1: 90, 90, 972 × 729
-- window 2: 90, 867, 972 × 729
-- window 3: 90, 1644, 972 × 729
-- window 4: 90, 2421, 972 × 729
+- window 1: 42, 42, 1068 × 801
+- window 2: 42, 891, 1068 × 801
+- window 3: 42, 1740, 1068 × 801
+- window 4: 42, 2589, 1068 × 801

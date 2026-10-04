@@ -71,28 +71,28 @@ function rayHit(c, d, q) { // distance from c along d to polygon boundary
   return best;
 }
 
-/** Speed lines: tapered ink slivers converging on the panel centre, kept to the panel's rim so the photo stays clear. */
-function speedIn(g, q, rnd, reach = 0.15, count = 150) {
-  const c = [q.reduce((s, p) => s + p[0], 0) / 4, q.reduce((s, p) => s + p[1], 0) / 4];
+/** Reference-style focus lines: dense tapered ink wedges rooted on the panel border and converging on the clear photo window. */
+function speedRing(g, q, win, rnd, k, count = 420) {
+  const c = [win.reduce((s, p) => s + p[0], 0) / win.length, win.reduce((s, p) => s + p[1], 0) / win.length], ph = rnd() * 6.3;
   g.save(); polyPath(g, q); g.clip(); g.fillStyle = INK;
   for (let i = 0; i < count; i++) {
-    const ang = (i / count) * 6.2832 + (rnd() - 0.5) * 0.04, d = [Math.cos(ang), Math.sin(ang)], R = rayHit(c, d, q);
-    if (!isFinite(R)) continue;
-    const len = R * (reach * (0.35 + rnd() * 0.65)), wd = 0.004 + rnd() * 0.011, s0 = R + 6, s1 = R - len, nx = -d[1], ny = d[0];
-    g.beginPath(); g.moveTo(c[0] + d[0] * s0 + nx * wd * R * 0.6, c[1] + d[1] * s0 + ny * wd * R * 0.6);
-    g.lineTo(c[0] + d[0] * s1, c[1] + d[1] * s1); g.lineTo(c[0] + d[0] * s0 - nx * wd * R * 0.6, c[1] + d[1] * s0 - ny * wd * R * 0.6); g.closePath(); g.fill();
+    const ang = (i / count) * 6.2832 + (rnd() - 0.5) * 0.016, d = [Math.cos(ang), Math.sin(ang)], R = rayHit(c, d, q), Rw = rayHit(c, d, win);
+    if (!isFinite(R) || !isFinite(Rw) || R <= Rw) continue;
+    const thick = i % 3 !== 0, depth = R - Rw, clump = 0.78 + 0.22 * Math.sin(ang * 9 + ph);
+    const s1 = thick ? Rw + depth * Math.min(0.9, (0.04 + rnd() * 0.6) * (2 - clump)) : Rw + depth * (0.0 + rnd() * 0.18);
+    const hw = (thick ? 1.6 + rnd() * 4.6 : 0.5 + rnd() * 1.1) * k, s0 = R + 10, nx = -d[1], ny = d[0];
+    g.beginPath(); g.moveTo(c[0] + d[0] * s0 + nx * hw, c[1] + d[1] * s0 + ny * hw); g.lineTo(c[0] + d[0] * s1, c[1] + d[1] * s1); g.lineTo(c[0] + d[0] * s0 - nx * hw, c[1] + d[1] * s0 - ny * hw); g.closePath(); g.fill();
   }
   g.restore();
 }
-/** Short strokes radiating OUT of the panel into the gutter/margin (drawn before windows are cut, so neighbours erase any overlap). */
-function speedOut(g, q, rnd, count = 70) {
-  const c = [q.reduce((s, p) => s + p[0], 0) / 4, q.reduce((s, p) => s + p[1], 0) / 4];
-  g.fillStyle = INK;
-  for (let i = 0; i < count; i++) {
-    const ang = rnd() * 6.2832, d = [Math.cos(ang), Math.sin(ang)], R = rayHit(c, d, q); if (!isFinite(R)) continue;
-    const s0 = R + 4, s1 = R + 12 + rnd() * 34, nx = -d[1], ny = d[0], wd = 1 + rnd() * 2.2;
-    g.beginPath(); g.moveTo(c[0] + d[0] * s0 + nx * wd, c[1] + d[1] * s0 + ny * wd); g.lineTo(c[0] + d[0] * s1, c[1] + d[1] * s1); g.lineTo(c[0] + d[0] * s0 - nx * wd, c[1] + d[1] * s0 - ny * wd); g.fill();
-  }
+/** Soft rounded-rectangle outline with a little hand wobble (the clear centre the photo shows through). */
+function blob(r, rnd, wob = 5) {
+  const rad = Math.min(r.w, r.h) * 0.26, pts = [], ph = [rnd() * 6.3, rnd() * 6.3];
+  const arcs = [[r.x + r.w - rad, r.y + rad, -1.5708], [r.x + r.w - rad, r.y + r.h - rad, 0], [r.x + rad, r.y + r.h - rad, 1.5708], [r.x + rad, r.y + rad, 3.1416]];
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  for (const [ax, ay, a0] of arcs) for (let i = 0; i <= 14; i++) { const a = a0 + (i / 14) * 1.5708, x = ax + Math.cos(a) * rad, y = ay + Math.sin(a) * rad, t = Math.atan2(y - cy, x - cx);
+    const o = wob * (Math.sin(t * 5 + ph[0]) * 0.6 + Math.sin(t * 11 + ph[1]) * 0.4); pts.push([x + Math.cos(t) * o, y + Math.sin(t) * o]); }
+  return pts;
 }
 
 /** Screentone: 45° dot lattice whose dots shrink with distance from (cx,cy); optionally clipped. */
@@ -111,9 +111,9 @@ function burst(g, cx, cy, rx, ry, rnd, spikes = 13) {
   const pts = []; for (let i = 0; i < spikes * 2; i++) { const a = (i / (spikes * 2)) * 6.2832 + 0.2, r = i % 2 ? 0.62 + rnd() * 0.08 : 0.98 + rnd() * 0.18; pts.push([cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r]); }
   return pts;
 }
-function sfx(g, text, x, y, size, rot, skew, font = 'MangaBlack') {
+function sfx(g, text, x, y, size, rot, skew, font = 'MangaBlack', fill = INK) {
   g.save(); g.translate(x, y); g.rotate(rot); g.transform(1, 0, skew, 1, 0, 0); g.font = `${size}px "${font}", "Noto Sans CJK JP", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineJoin = 'round'; g.lineWidth = size * 0.16; g.strokeStyle = INK; g.strokeText(text, 0, 0); g.fillStyle = INK; g.fillText(text, 0, 0);
+  g.lineJoin = 'round'; g.lineWidth = size * 0.16; g.strokeStyle = INK; g.strokeText(text, 0, 0); g.fillStyle = fill; g.fillText(text, 0, 0);
   g.restore();
 }
 function bubble(g, cx, cy, rx, ry, tailTo, text, size, rot, rnd) {
@@ -127,49 +127,61 @@ function bubble(g, cx, cy, rx, ry, tailTo, text, size, rot, rnd) {
   g.restore();
 }
 
-/** Returns draw(g, W, H, slots, B) for scripts/build-frames.mjs. */
+/** Returns draw(g, W, H, slots, B, layoutId) for scripts/build-frames.mjs. Page structure follows the reference sheets:
+ *  panels alternate between "focus-line" panels (dense radial lines around the photo) and plain panels with halftone corners;
+ *  ドン!! burst, 最高! bubble and ゴゴゴ… lettering overlap panel corners. */
 export async function manga() {
   return (g, W, H, slots, B, layoutId = 'x') => {
     const rnd = mulberry(hash(layoutId)), n = slots.length;
-    const u = Math.max(0.55, Math.min(1, slots[0].w / 880)); // scale of the lettering/effects for small (2x2) panels
+    const u = Math.max(0.5, Math.min(1, slots[0].w / 880));
     paper(g, W, H, rnd);
-    // panel quads (irregular windows inside each rectangular slot)
-    const quads = slots.map((s, i) => {
-      const k = Math.max(0.6, Math.min(1.25, Math.min(s.w, s.h) / 540)), p = PRESETS[i % 4], wide = s.w > 600 ? 38 * k : 0;
-      const exL = i % 4 === 1 ? wide : 0, exR = i % 4 === 3 ? wide : 0;
-      return [[s.x + p[0][0] * k + exL, s.y + p[0][1] * k], [s.x + s.w - p[1][0] * k - exR, s.y + p[1][1] * k],
-        [s.x + s.w - p[2][0] * k - exR, s.y + s.h - p[2][1] * k], [s.x + p[3][0] * k + exL, s.y + s.h - p[3][1] * k]];
+    const lines = slots.map((_, i) => n === 1 || (n === 2 ? i === 0 : i === 0 || i === n - 1));
+    const tilt = [[[0, 10], [14, 0], [0, 12], [10, 0]], [[10, 0], [0, 12], [14, 0], [0, 10]], [[0, 14], [8, 0], [0, 6], [12, 0]], [[12, 0], [0, 8], [10, 0], [0, 14]]];
+    const wins = [], quads = [];
+    slots.forEach((s, i) => {
+      const k = Math.max(0.6, Math.min(1.2, Math.min(s.w, s.h) / 600));
+      if (lines[i]) {
+        const ring = 0.13 * Math.min(s.w, s.h), ext = 16 * k, t = tilt[i % 4];
+        wins.push(blob({ x: s.x + ring, y: s.y + ring, w: s.w - 2 * ring, h: s.h - 2 * ring }, rnd, 5 * k));
+        quads.push([[s.x - ext + t[0][0], s.y - ext + t[0][1]], [s.x + s.w + ext - t[1][0], s.y - ext + t[1][1]], [s.x + s.w + ext - t[2][0], s.y + s.h + ext - t[2][1] * 0.6], [s.x - ext + t[3][0], s.y + s.h + ext - t[3][1] * 0.6]]);
+      } else {
+        const t = tilt[i % 4], m = 22 * k, b = 7;
+        const w = [[s.x + t[0][0] * k * 1.4, s.y + t[0][1] * k * 1.4], [s.x + s.w - t[1][0] * k * 1.4, s.y + t[1][1] * k * 1.4], [s.x + s.w - t[2][0] * k * 1.4, s.y + s.h - t[2][1] * k * 1.4], [s.x + t[3][0] * k * 1.4, s.y + s.h - t[3][1] * k * 1.4]];
+        wins.push(w); quads.push(w.map((p, j) => [p[0] + (j === 0 || j === 3 ? -b : b), p[1] + (j < 2 ? -b : b)]));
+        void m;
+      }
     });
-    const hero = (i) => n === 1 || (n === 4 && layoutId === 'grid-2x2' ? i === 0 || i === 3 : i % 2 === 0);
-    // paper-side effects (under windows): outward speed strokes + margin screentone
-    quads.forEach((q, i) => { if (hero(i)) speedOut(g, q, rnd, 80); });
-    tone(g, W, H, 230 * u + 80, 13, 4.4, null);                                // bottom-right page corner
-    tone(g, 0, 0, 170, 13, 4.0, null);                                           // top-left page corner
-    if (n >= 3) slots.slice(0, -1).forEach((s, i) => tone(g, i % 2 ? 0 : W, s.y + s.h + 24, 200, 12, 4.4, null)); // gutter tone drifting in from alternating edges
-    // cut photo windows
-    g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
-    quads.forEach((q) => { polyPath(g, q); g.fill(); }); g.restore();
-    // inked borders (thick, hand-drawn, overshooting corners)
-    quads.forEach((q, i) => { for (let e = 0; e < 4; e++) inkLine(g, q[e], q[(e + 1) % 4], rnd, hero(i) ? 12.5 : 10.5); });
-    // inside the panels: speed-line rims on hero panels, screentone corners on the others (drawn over the photo edge, like the reference)
-    quads.forEach((q, i) => {
-      if (hero(i)) speedIn(g, q, rnd, n === 1 ? 0.11 : 0.1, n === 1 ? 190 : 170);
-      else { const corner = i % 4 === 1 ? q[3] : q[2]; const clip = (c) => { polyPath(c, q); c.clip(); }; tone(g, corner[0], corner[1], 190 * u + 50, 11, 4.4, clip); }
-    });
-    // impact burst (top-right of the first panel) with ドン!!
-    { const q = quads[layoutId === 'grid-2x2' ? 1 : 0], rx = 165 * u, ry = 100 * u, bx = Math.min(q[1][0] - 60 * u, W - rx - 36), by = Math.max(ry + 34, q[1][1] - 6 * u), pts = burst(g, bx, by, rx, ry, rnd);
-      g.save(); g.lineJoin = 'miter'; polyPath(g, pts); g.fillStyle = INK; g.save(); g.translate(7, 7); g.fill(); g.restore();
+    quads.forEach((q, i) => { if (lines[i]) speedRing(g, q, wins[i], rnd, Math.max(0.6, Math.min(1.2, slots[i].w / 700)), n === 1 ? 460 : 400); });
+    // cut the photo windows
+    g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; wins.forEach((w) => { polyPath(g, w); g.fill(); }); g.restore();
+    // thick inked borders, overshooting corners
+    quads.forEach((q, i) => { for (let e = 0; e < 4; e++) inkLine(g, q[e], q[(e + 1) % 4], rnd, lines[i] ? 14 : 10.5); });
+    const clipTo = (q) => (c) => { polyPath(c, q); c.clip(); };
+    const bi = n > 1 ? 1 : 0, ci = n > 2 ? 2 : n - 1;
+    // halftone corners (over the photo edge, as in the references)
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    if (!lines[bi]) tone(g, quads[bi][1][0], quads[bi][1][1], 300 * u, 15 * u + 3, 7 * u + 1.5, clipTo(quads[bi]));
+    if (n > 2 && !lines[ci]) tone(g, quads[ci][3][0], quads[ci][3][1], 280 * u, 15 * u + 3, 7 * u + 1.5, clipTo(quads[ci]));
+    else if (n === 2) tone(g, quads[0][3][0], quads[0][3][1], 230 * u, 13 * u + 2, 4.5 * u + 1, clipTo(quads[0]));
+    if (n > 1 && n !== 2) { const L = quads[n - 1]; tone(g, L[3][0], L[3][1], 300 * u, 15 * u + 3, 7 * u + 1.5, clipTo(L)); }
+    if (n === 1) { const L = quads[0]; tone(g, L[3][0], L[3][1], 330 * u, 14, 5.5, clipTo(L)); }
+    void mid;
+    // ドン!! burst on the top-right corner of the burst panel
+    { const q = quads[bi], rx = 170 * u, ry = 105 * u, bx = Math.min(W - rx * 1.2 - 6, q[1][0] - rx * 0.62), by = q[1][1] + ry * 0.55, pts = burst(g, bx, by, rx, ry, rnd, 12);
+      g.save(); g.lineJoin = 'miter'; polyPath(g, pts); g.fillStyle = INK; g.save(); g.translate(8, 8); g.fill(); g.restore();
       g.fillStyle = PAPER_CSS; g.fill(); g.lineWidth = 7; g.strokeStyle = INK; g.stroke(); g.restore();
-      tone(g, bx + rx * 0.2, by + ry * 0.4, rx * 0.8, 11, 3.6, (c) => { polyPath(c, pts); c.clip(); });
-      sfx(g, 'ドン!!', bx - 6, by, 84 * u, -0.2, -0.12); }
-    // footer: ゴゴゴ… on screentone, bubble 最高! tucked against the last panel
-    { const last = quads[n - 1], fy = Math.min(H - 62, B.maxY + (H - B.maxY) * 0.5);
-      tone(g, 20, H - 10, 250 * u + 40, 13, 4.4, null);
-      sfx(g, 'ゴゴゴ…', 70 + 170 * u, fy, 70 * u, -0.07, -0.28);
-      bubble(g, W - 150 * u - 60, last[2][1] + 40 * u + 30, 128 * u, 70 * u, [-70 * u, -112 * u], '最高!', 72 * u, 0.08, rnd); }
-    // ink speckle: tiny paper-colour nicks in the lines so the ink reads as printed, not vector
+      tone(g, bx + rx * 0.5, by + ry * 0.6, rx * 1.0, 11, 3.4, (c) => { polyPath(c, pts); c.clip(); });
+      sfx(g, 'ドン!!', bx - 4, by, 92 * u, -0.2, -0.12, 'MangaBlack', '#3a3836'); }
+    // 最高! bubble, top-left corner of the bubble panel
+    { const q = quads[ci === bi && n > 1 ? bi : ci], bu = 112 * u;
+      const bx = q[0][0] + bu * 1.05 + 10, by = q[0][1] + (ci === bi ? 0.62 * H / Math.max(n, 2) * 0.5 : 40 * u) + bu * 0.45;
+      const cy = n === 1 ? slots[0].y + slots[0].h - bu * 0.7 : by;
+      bubble(g, bx, cy, bu, bu * 0.58, [bu * 0.5, bu * 1.0], '最高!', 62 * u, -0.06, rnd); }
+    // ゴゴゴ… on the last panel's halftone corner
+    { const q = quads[n - 1]; sfx(g, 'ゴゴゴ…', q[3][0] + 215 * u + 24, q[3][1] - 70 * u - 14, 84 * u, -0.14, -0.28); }
+    // ink nicks
     g.fillStyle = PAPER_CSS;
     quads.forEach((q) => { for (let e = 0; e < 4; e++) { const a = q[e], b = q[(e + 1) % 4], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      for (let i = 0; i < l / 38; i++) { const t = rnd(), x = a[0] + (b[0] - a[0]) * t + (rnd() - 0.5) * 6, y = a[1] + (b[1] - a[1]) * t + (rnd() - 0.5) * 6; g.beginPath(); g.arc(x, y, 0.8 + rnd() * 1.3, 0, 6.2832); g.fill(); } } });
+      for (let i = 0; i < l / 45; i++) { const t = rnd(), x = a[0] + (b[0] - a[0]) * t + (rnd() - 0.5) * 6, y = a[1] + (b[1] - a[1]) * t + (rnd() - 0.5) * 6; g.beginPath(); g.arc(x, y, 0.8 + rnd() * 1.2, 0, 6.2832); g.fill(); } } });
   };
 }
