@@ -6,6 +6,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { knockout, drawSliced } from './frames-slice.mjs';
 import { SLICED } from './frames-config.mjs';
+import { manga } from './frames-manga.mjs';
 
 const S = 3, UNITS = 384;
 const layouts = JSON.parse(readFileSync('docs/frame-layouts.json', 'utf8'));
@@ -177,7 +178,7 @@ async function justUs() {
   };
 }
 
-const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether], 'just-us': ['just-us', justUs] };
+const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether], 'just-us': ['just-us', justUs], 'manga-panel': ['manga', manga] };
 const only = process.argv.slice(2);
 // WebP (q92, alpha kept) is ~10x smaller than PNG, which keeps the offline cache small; hand-made PNGs in the same folders still work.
 const done = (dir, layoutId, c) => { rmSync(`src/assets/frames/${dir}/${layoutId}.png`, { force: true }); writeFileSync(`src/assets/frames/${dir}/${layoutId}.webp`, c.toBuffer('image/webp', 92)); console.log(`${dir}/${layoutId}.webp  ${c.width}x${c.height}`); };
@@ -190,7 +191,7 @@ for (const [id, [dir, make]] of Object.entries(FRAMES)) {
   for (const [layoutId, L] of Object.entries(layouts[id])) {
     const c = createCanvas(UNITS * S, L.h * S), g = c.getContext('2d'), { slots, B } = geom(L);
     g.imageSmoothingQuality = 'high';
-    draw(g, c.width, c.height, slots, B);
+    draw(g, c.width, c.height, slots, B, layoutId);
     done(dir, layoutId, c);
   }
 }

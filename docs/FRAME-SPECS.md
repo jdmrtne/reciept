@@ -422,3 +422,41 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 - window 2: 162, 831, 828 × 621
 - window 3: 162, 1500, 828 × 621
 - window 4: 162, 2169, 828 × 621
+
+## Manga Panel (`manga-panel`, folder `src/assets/frames/manga/`)
+
+### `single.png` — 1152 × 1509 px (aspect 0.7634), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 972 × 1215
+
+### `strip-2.png` — 1152 × 1800 px (aspect 0.6400), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 972 × 729
+- window 2: 90, 867, 972 × 729
+
+### `strip-3.png` — 1152 × 2577 px (aspect 0.4470), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 972 × 729
+- window 2: 90, 867, 972 × 729
+- window 3: 90, 1644, 972 × 729
+
+### `strip-4.png` — 1152 × 3354 px (aspect 0.3435), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 972 × 729
+- window 2: 90, 867, 972 × 729
+- window 3: 90, 1644, 972 × 729
+- window 4: 90, 2421, 972 × 729
+
+### `grid-2x2.png` — 1152 × 1266 px (aspect 0.9100), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 462 × 462
+- window 2: 600, 90, 462 × 462
+- window 3: 90, 600, 462 × 462
+- window 4: 600, 600, 462 × 462
+
+### `classic.png` — 1152 × 3354 px (aspect 0.3435), header band 0 px, footer band 66 px
+
+- window 1: 90, 90, 972 × 729
+- window 2: 90, 867, 972 × 729
+- window 3: 90, 1644, 972 × 729
+- window 4: 90, 2421, 972 × 729

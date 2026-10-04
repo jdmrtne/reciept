@@ -66,7 +66,9 @@ export const IMAGE_FRAMES: FrameDef[] = [
   imageFrame('pink-you-me', 'You & Me', 'pink-you-me', { padding: 50, headerHeight: 0, footerHeight: 15 }),
   imageFrame('stay-real', 'Stay Real', 'stay-real', { padding: 56, headerHeight: 0, footerHeight: 19 }),
   imageFrame('summer-vibes', 'Summer Vibes', 'summer-vibes', { padding: 57, headerHeight: 0, footerHeight: 29 }),
-  imageFrame('neon-gaming', 'Neon Gaming', 'neon-gaming', { padding: 54, headerHeight: 0, footerHeight: 18 })
+  imageFrame('neon-gaming', 'Neon Gaming', 'neon-gaming', { padding: 54, headerHeight: 0, footerHeight: 18 }),
+  // Procedural vintage-manga page (scripts/frames-manga.mjs): irregular inked panel windows cut inside each slot, cream paper, screentone, speed lines.
+  imageFrame('manga-panel', 'Manga Panel', 'manga', { padding: 30, headerHeight: 0, footerHeight: 22 })
 ];
 FRAMES.push(...IMAGE_FRAMES);
 
