@@ -1,7 +1,7 @@
 # Frame artwork
 
 Drop PNG or WebP files here as `<folder>/<layoutId>.png|webp` (`single`, `strip-2`, `strip-3`, `strip-4`, `grid-2x2`, `classic`), plus an optional `<folder>/default.png`.
-Folders in use: `kawaii/`, `retro/`, `better-together/`, `just-us/`, `kawaii-pets/`, `retro-memories/`, `halloween/`, `pink-you-me/`, `stay-real/`, `summer-vibes/`, `neon-gaming/` (see `IMAGE_FRAMES` in `src/frames/registry.ts`).
+Folders in use: `kawaii/`, `retro/`, `better-together/`, `just-us/`, `kawaii-pets/`, `retro-memories/`, `halloween/`, `pink-you-me/`, `stay-real/`, `summer-vibes/`, `neon-gaming/`, `manga/`, `sticker-doodle/`, `manga-comic/` (see `IMAGE_FRAMES` in `src/frames/registry.ts`).
 
 The current WebP files are GENERATED from the flat designs in `design-src/` by `npm run build-frames` (artwork cut out of the designs, borders rebuilt around each layout's real photo slots). Re-run `npm run frame-specs` then `npm run build-frames` (optionally `npm run build-frames -- halloween` for one frame) after changing bands/padding or a layout. Hand-made PNGs dropped in here work too.
 

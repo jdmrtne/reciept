@@ -460,3 +460,79 @@ The canvas aspect must match within 1.5% (a test checks any PNG you add). Slot r
 - window 2: 42, 891, 1068 × 801
 - window 3: 42, 1740, 1068 × 801
 - window 4: 42, 2589, 1068 × 801
+
+## Sticker Doodle (`sticker-doodle`, folder `src/assets/frames/sticker-doodle/`)
+
+### `single.png` — 1152 × 1632 px (aspect 0.7059), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 720 × 900
+
+### `strip-2.png` — 1152 × 1860 px (aspect 0.6194), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 720 × 540
+- window 2: 216, 990, 720 × 540
+
+### `strip-3.png` — 1152 × 2448 px (aspect 0.4706), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 720 × 540
+- window 2: 216, 990, 720 × 540
+- window 3: 216, 1578, 720 × 540
+
+### `strip-4.png` — 1152 × 3036 px (aspect 0.3794), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 720 × 540
+- window 2: 216, 990, 720 × 540
+- window 3: 216, 1578, 720 × 540
+- window 4: 216, 2166, 720 × 540
+
+### `grid-2x2.png` — 1152 × 1452 px (aspect 0.7934), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 336 × 336
+- window 2: 600, 402, 336 × 336
+- window 3: 216, 786, 336 × 336
+- window 4: 600, 786, 336 × 336
+
+### `classic.png` — 1152 × 3036 px (aspect 0.3794), header band 138 px, footer band 66 px
+
+- window 1: 216, 402, 720 × 540
+- window 2: 216, 990, 720 × 540
+- window 3: 216, 1578, 720 × 540
+- window 4: 216, 2166, 720 × 540
+
+## Manga Comic (`manga-comic`, folder `src/assets/frames/manga-comic/`)
+
+### `single.png` — 1152 × 1749 px (aspect 0.6587), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 864 × 1080
+
+### `strip-2.png` — 1152 × 2013 px (aspect 0.5723), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 864 × 648
+- window 2: 144, 969, 864 × 648
+
+### `strip-3.png` — 1152 × 2709 px (aspect 0.4252), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 864 × 648
+- window 2: 144, 969, 864 × 648
+- window 3: 144, 1665, 864 × 648
+
+### `strip-4.png` — 1152 × 3405 px (aspect 0.3383), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 864 × 648
+- window 2: 144, 969, 864 × 648
+- window 3: 144, 1665, 864 × 648
+- window 4: 144, 2361, 864 × 648
+
+### `grid-2x2.png` — 1152 × 1533 px (aspect 0.7515), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 408 × 408
+- window 2: 600, 273, 408 × 408
+- window 3: 144, 729, 408 × 408
+- window 4: 600, 729, 408 × 408
+
+### `classic.png` — 1152 × 3405 px (aspect 0.3383), header band 81 px, footer band 204 px
+
+- window 1: 144, 273, 864 × 648
+- window 2: 144, 969, 864 × 648
+- window 3: 144, 1665, 864 × 648
+- window 4: 144, 2361, 864 × 648

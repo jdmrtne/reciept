@@ -199,5 +199,5 @@ for (const [id, cfg] of Object.entries(SLICED)) {
   if (only.length && !only.includes(id)) continue;
   const k = knockout(await loadImage(`design-src/${id}.png`), cfg);
   mkdirSync(`src/assets/frames/${cfg.dir}`, { recursive: true });
-  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); done(cfg.dir, layoutId, drawSliced(k, { ...cfg, id }, L, slots, B)); }
+  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); const c = drawSliced(k, { ...cfg, id }, L, slots, B), sc = c.width / k.w; done(cfg.dir, layoutId, cfg.post ? cfg.post(c, slots, { hx0: k.hole.x0 * sc, hx1: k.hole.x1 * sc, topH: cfg.cutA * sc, botH: (k.h - cfg.cutB) * sc }) : c); }
 }
