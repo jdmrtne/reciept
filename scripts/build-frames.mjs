@@ -4,8 +4,9 @@
 // background, border lines and window cut-outs are rebuilt around the real photo slots of each layout.
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { knockout, drawSliced } from './frames-slice.mjs';
-import { SLICED } from './frames-config.mjs';
+import { knockout, drawSliced, drawPlanned } from './frames-slice.mjs';
+import { SLICED, PLANNED } from './frames-config.mjs';
+import { pop } from './frames-pop.mjs';
 import { manga } from './frames-manga.mjs';
 
 const S = 3, UNITS = 384;
@@ -178,7 +179,7 @@ async function justUs() {
   };
 }
 
-const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether], 'just-us': ['just-us', justUs], 'manga-panel': ['manga', manga] };
+const FRAMES = { kawaii: ['kawaii', kawaii], 'retro-film': ['retro', retro], 'better-together': ['better-together', betterTogether], 'just-us': ['just-us', justUs], 'manga-panel': ['manga', manga], 'pop-stickers': ['pop-stickers', pop] };
 const only = process.argv.slice(2);
 // WebP (q92, alpha kept) is ~10x smaller than PNG, which keeps the offline cache small; hand-made PNGs in the same folders still work.
 const done = (dir, layoutId, c) => { rmSync(`src/assets/frames/${dir}/${layoutId}.png`, { force: true }); writeFileSync(`src/assets/frames/${dir}/${layoutId}.webp`, c.toBuffer('image/webp', 92)); console.log(`${dir}/${layoutId}.webp  ${c.width}x${c.height}`); };
@@ -199,5 +200,11 @@ for (const [id, cfg] of Object.entries(SLICED)) {
   if (only.length && !only.includes(id)) continue;
   const k = knockout(await loadImage(`design-src/${id}.png`), cfg);
   mkdirSync(`src/assets/frames/${cfg.dir}`, { recursive: true });
-  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); const c = drawSliced(k, { ...cfg, id }, L, slots, B), sc = c.width / k.w; done(cfg.dir, layoutId, cfg.post ? cfg.post(c, slots, { hx0: k.hole.x0 * sc, hx1: k.hole.x1 * sc, topH: cfg.cutA * sc, botH: (k.h - cfg.cutB) * sc }) : c); }
+  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); done(cfg.dir, layoutId, drawSliced(k, { ...cfg, id }, L, slots, B)); }
+}
+for (const [id, cfg] of Object.entries(PLANNED)) {
+  if (only.length && !only.includes(id)) continue;
+  const k = knockout(await loadImage(`design-src/${id}.png`), cfg);
+  mkdirSync(`src/assets/frames/${cfg.dir}`, { recursive: true });
+  for (const [layoutId, L] of Object.entries(layouts[id])) { const { slots, B } = geom(L); done(cfg.dir, layoutId, drawPlanned(k, { ...cfg, id }, L, slots, B)); }
 }

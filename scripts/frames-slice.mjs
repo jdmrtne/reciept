@@ -16,11 +16,21 @@ export function knockout(img, o) {
   const ok = (p) => lo(p) >= o.thr && chroma(p) <= o.sat;
   const hole = new Uint8Array(W * H), seed = (o.seed ? o.seed[1] * W + o.seed[0] : (H >> 1) * W + (W >> 1));
   if (!ok(seed)) throw new Error('knockout seed is not window paper');
+  // o.open = N: only paper that survives an N px erosion counts as "window" (stops the flood leaking through hairline gaps / thin white slivers
+  // between ink lines), then the hole is grown back by N px over the paper it came from.
+  let okm = null;
+  if (o.open) {
+    okm = new Uint8Array(W * H); for (let p = 0; p < W * H; p++) okm[p] = ok(p) ? 1 : 0;
+    for (let it = 0; it < o.open; it++) { const nx = okm.slice(); for (let p = 0; p < W * H; p++) if (okm[p]) { const x = p % W; if (x === 0 || x === W - 1 || p < W || p >= W * (H - 1) || !okm[p - 1] || !okm[p + 1] || !okm[p - W] || !okm[p + W]) nx[p] = 0; } okm = nx; }
+    if (!okm[seed]) throw new Error('knockout seed vanished after erosion');
+  }
+  const inside = (q) => (okm ? okm[q] === 1 : ok(q));
   const st = [seed]; hole[seed] = 1;
   while (st.length) {
     const p = st.pop(), x = p % W;
-    for (const q of [p - W, p + W, x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1]) if (q >= 0 && q < W * H && !hole[q] && ok(q)) { hole[q] = 1; st.push(q); }
+    for (const q of [p - W, p + W, x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1]) if (q >= 0 && q < W * H && !hole[q] && inside(q)) { hole[q] = 1; st.push(q); }
   }
+  if (okm) for (let it = 0; it < (o.grow ?? 4); it++) { const add = []; for (let p = 0; p < W * H; p++) if (!hole[p] && ok(p)) { const x = p % W; if (hole[p - W] || hole[p + W] || (x > 0 && hole[p - 1]) || (x < W - 1 && hole[p + 1])) add.push(p); } for (const p of add) hole[p] = 1; }
   const nb = (p) => { const x = p % W; return [p - W, p + W, x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1].filter((q) => q >= 0 && q < W * H); };
   for (let it = 0; it < (o.fringe ?? 2); it++) { // eat the light anti-alias halo along the window edge
     const add = []; for (let p = 0; p < W * H; p++) if (!hole[p] && lo(p) >= 205 && chroma(p) <= o.sat + 10 && nb(p).some((q) => hole[q])) add.push(p);
@@ -90,5 +100,63 @@ export function drawSliced(k, cfg, L, slotsPx, B) {
   // 5. original top and bottom bands, untouched
   g.drawImage(k.canvas, 0, 0, k.w, cfg.cutA, 0, 0, W, topH);
   g.drawImage(k.canvas, 0, cfg.cutB, k.w, k.h - cfg.cutB, 0, H - botH, W, botH);
+  return out;
+}
+
+/**
+ * Like drawSliced, but NEVER rescales the side borders (no squashed speed lines / screentone, whatever the layout height).
+ * cfg (design px of the knocked-out master): tCut = row where the top band ends, bCut = row where the bottom band starts,
+ * sides.L / sides.R = { headEnd, divStart, tile: [a, b] }. Each side column is rebuilt top to bottom as
+ *   head  = rows [tCut, headEnd] (the first panel and its divider line; shortened from its middle on very short layouts, divider kept),
+ *   tail  = the uniform screentone rows [a, b] repeated at 1:1 scale and phased so the last row is exactly bCut.
+ * The top and bottom bands (bursts, angled panel edges) are the original pixels, untouched.
+ */
+export function drawPlanned(k, cfg, L, slotsPx, B) {
+  const W = UNITS * S, H = L.h * S, sc = W / k.w, { hole } = k;
+  const out = createCanvas(W, H), g = out.getContext('2d');
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  const topH = cfg.tCut * sc, botH = (k.h - cfg.bCut) * sc, G = H - topH - botH;
+  if (G < 4) throw new Error(`${cfg.id}: layout too short for the design's bands (${G.toFixed(0)}px of filler)`);
+  const hx0 = hole.x0 * sc, hx1 = hole.x1 * sc, hy0 = hole.y0 * sc, hy1 = H - (k.h - hole.y1) * sc;
+  g.fillStyle = cfg.paper; g.fillRect(Math.min(hx0, B.minX) - 4, Math.min(hy0, B.minY) - 4, Math.max(hx1, B.maxX) - Math.min(hx0, B.minX) + 8, Math.max(hy1, B.maxY) - Math.min(hy0, B.minY) + 8);
+  g.save(); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
+  for (const s of slotsPx) { rr(g, s.x, s.y, s.w, s.h, cfg.r ?? 0); g.fill(); }
+  g.restore();
+  if (slotsPx.length > 1 && cfg.stroke) { // ink gutter lines where two photos meet
+    g.strokeStyle = cfg.stroke.color; g.lineWidth = cfg.stroke.w; const hw = cfg.stroke.w / 2;
+    for (let i = 0; i < slotsPx.length; i++) for (let j = 0; j < slotsPx.length; j++) {
+      const a = slotsPx[i], b = slotsPx[j];
+      if (i !== j && Math.abs(a.y + a.h - b.y) < 60 && a.x < b.x + b.w && b.x < a.x + a.w && b.y > a.y) { g.beginPath(); g.moveTo(a.x - hw, a.y + a.h + hw); g.lineTo(a.x + a.w + hw, a.y + a.h + hw); g.moveTo(b.x - hw, b.y - hw); g.lineTo(b.x + b.w + hw, b.y - hw); g.stroke(); }
+      if (i !== j && Math.abs(a.x + a.w - b.x) < 60 && a.y < b.y + b.h && b.y < a.y + a.h && b.x > a.x) { g.beginPath(); g.moveTo(a.x + a.w + hw, a.y - hw); g.lineTo(a.x + a.w + hw, a.y + a.h + hw); g.moveTo(b.x - hw, b.y - hw); g.lineTo(b.x - hw, b.y + b.h + hw); g.stroke(); }
+    }
+  }
+  const iL = cfg.inset?.L ?? cfg.inset ?? 8, iR = cfg.inset?.R ?? cfg.inset ?? 8;
+  const strips = [['L', 0, 0, hole.x0 + iL], ['R', k.w - (k.w - hole.x1 + iR), W - (k.w - hole.x1 + iR) * sc, k.w - hole.x1 + iR]];
+  const piece = (sx, sw, dx, srcY, srcH, dstY, dstH) => g.drawImage(k.canvas, sx, srcY, sw, srcH, dx, dstY, sw * sc, dstH + 0.75);
+  for (const [side, sx, dx, sw] of strips) {
+    const p = cfg.sides[side], gDesign = G / sc; // filler length in design rows
+    let headRows = p.headEnd - cfg.tCut;
+    const segs = []; // [srcRow, rows]
+    if (gDesign < headRows) { // very short layout: drop the middle of the first panel but keep the divider line
+      const keepEnd = p.headEnd - p.divStart, first = Math.max(0, gDesign - keepEnd);
+      segs.push([cfg.tCut, first], [p.divStart + 0, Math.min(keepEnd, gDesign)]);
+    } else {
+      segs.push([cfg.tCut, headRows]);
+      let X = gDesign - headRows; const [a, b] = p.tile, Lr = b - a;
+      if (X > 0) { // tail aligned: last row of the last tile is exactly bCut
+        const first = X % Lr || Lr; segs.push([b - first, first]); X -= first;
+        while (X > 0.5) { segs.push([a, Lr]); X -= Lr; }
+      }
+    }
+    let y = topH;
+    for (const [sr, rows] of segs) { if (rows <= 0) continue; piece(sx, sw, dx, sr, rows, y, rows * sc); y += rows * sc; }
+  }
+  g.drawImage(k.canvas, 0, 0, k.w, cfg.tCut, 0, 0, W, topH);
+  g.drawImage(k.canvas, 0, cfg.bCut, k.w, k.h - cfg.bCut, 0, H - botH, W, botH);
+  // the master's knocked-out window is bigger than (and a different shape from) the real slots: put paper behind every pixel that is not a slot,
+  // so only the photo slots are ever transparent
+  // (the band artwork stays over the slot edges on purpose: the angled panel borders and the burst cut into the photo like on a manga page)
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); for (const sl of slotsPx) g.rect(sl.x, sl.y, sl.w, sl.h); g.clip('evenodd');
+  g.globalCompositeOperation = 'destination-over'; g.fillStyle = cfg.paper; g.fillRect(0, 0, W, H); g.restore();
   return out;
 }

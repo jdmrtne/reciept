@@ -1,4 +1,3 @@
-import { comicPanels } from './frames-comic.mjs';
 // Per-design settings for the slice builder. thr/sat = how "white" the window paper is; cutA/cutB = plain rows (design px) where the
 // top band ends / bottom band starts; paper = colour between photos; stroke = divider line between photos.
 export const SLICED = {
@@ -8,8 +7,13 @@ export const SLICED = {
   'pink-you-me':    { dir: 'pink-you-me',    thr: 248, sat: 22, cutA: 335, cutB: 775,  paper: 'rgb(253,206,226)', stroke: { color: 'rgb(222,40,95)', w: 6 }, r: 28 },
   'summer-vibes':   { dir: 'summer-vibes',   thr: 248, sat: 22, cutA: 495, cutB: 630,  paper: 'rgb(54,150,240)',  stroke: { color: 'rgb(30,120,230)', w: 8 }, r: 30 },
   'neon-gaming':    { dir: 'neon-gaming',    thr: 205, sat: 20, cutA: 540, cutB: 720,  paper: 'rgb(4,4,30)',      stroke: { color: 'rgb(0,200,255)', w: 6 }, r: 4 },
-  'stay-real':      { dir: 'stay-real',      thr: 244, sat: 14, cutA: 380, cutB: 830,  paper: 'rgb(10,10,10)',    stroke: { color: 'rgb(235,235,235)', w: 6 }, r: 0, erode: 12, inset: 34 },
-  // Sticker Doodle / Manga Comic: references upscaled 6× into design-src/ (window = flat white). cutA/cutB = the window's top/bottom rows, so the whole side border is the tiled stretch.
-  'sticker-doodle': { dir: 'sticker-doodle', thr: 250, sat: 12, cutA: 428, cutB: 1816, paper: 'rgb(255,255,255)', stroke: { color: 'rgb(214,178,120)', w: 6 }, r: 6 },
-  'manga-comic':    { dir: 'manga-comic',    thr: 250, sat: 8,  cutA: 298, cutB: 1633, paper: 'rgb(255,255,255)', r: 0, post: comicPanels }
+  'stay-real':      { dir: 'stay-real',      thr: 244, sat: 14, cutA: 380, cutB: 830,  paper: 'rgb(10,10,10)',    stroke: { color: 'rgb(235,235,235)', w: 6 }, r: 0, erode: 12, inset: 34 }
+};
+
+// "Slice & plan" designs (see drawPlanned in frames-slice.mjs): the design's rows are in px of the knocked-out master in design-src/.
+// manga-comic: master = design-src/manga-comic.png (2x of the reference, cropped to its ink border).
+export const PLANNED = {
+  'manga-comic': { dir: 'manga-comic', thr: 240, sat: 24, paper: 'rgb(255,255,255)', stroke: { color: 'rgb(12,12,12)', w: 9 }, r: 0, fringe: 3, open: 14, inset: { L: 44, R: 90 },
+    tCut: 732, bCut: 1942,
+    sides: { L: { headEnd: 1462, divStart: 1382, tile: [1572, 1942] }, R: { headEnd: 1602, divStart: 1512, tile: [1632, 1942] } } }
 };

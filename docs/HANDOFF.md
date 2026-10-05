@@ -1,12 +1,5 @@
 # HANDOFF
 
-## Session 11: two new image frames (Sticker Doodle, Manga Comic)
-- Added `sticker-doodle` and `manga-comic` to `IMAGE_FRAMES` (`src/frames/registry.ts`); the picker lists `FRAMES` so they appear automatically. Existing frames/assets untouched (12 image + 11 vector before; 14 image + 11 vector = 25 now).
-- Sources: `design-src/sticker-doodle.png` and `design-src/manga-comic.png` are the supplied ~200 px references upscaled 6x (Lanczos + unsharp; manga also contrast-curved to keep ink black). Both built by the slice builder (`scripts/frames-config.mjs` entries). Manga adds `scripts/frames-comic.mjs` (`post` hook): cuts a tilted inked panel (shape measured from the reference) inside each photo slot; paper is filled BEHIND the art so speed lines stay intact.
-- Artwork: `src/assets/frames/{sticker-doodle,manga-comic}/<layout>.webp` x 6 layouts. Rebuild: `npm run frame-specs && npm run build-frames -- sticker-doodle manga-comic`.
-- Verified: `npm test` 913 pass, `npm run typecheck` clean, `npm run build` OK. NOT tested on a real tablet/printer or in a browser.
-- Known: references were tiny so art is soft at full size; manga has small ink stubs at the panel's left edge; side borders tile (mirrored) on tall layouts.
-
 ## Session 10: Phase 14 (Production prep) — IN PROGRESS: prep written and browser-checked, release gate NOT run (latest)
 **Sandbox again had no registry access** (`npm install` -> 403). So `npm test`, `npm run typecheck` (real React types) and `npm run build` did NOT run, for the third session in a row. Nothing here is claimed as passing that was not run. Phases 10, 13 and 14 all stay open on the same blocker: a machine with a working `npm install` and the owner's real tablet + printer. **`docs/RELEASE-CHECKLIST.md` is the Phase 14 gate**; work through it.
 What I added (all small, all optional to keep):

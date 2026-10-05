@@ -76,7 +76,7 @@ describe('registry', () => {
     for (const id of ['classic-receipt', 'minimal-receipt', 'retro-receipt', 'ticket-stub', 'wanted-bounty', 'straw-hat-wanted', 'birthday', 'graduation', 'friends', 'couple', 'event'])
       expect(isImageFrame(getFrame(id)), id).toBe(false);
     expect(FRAMES[0].id).toBe('classic-receipt');
-    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together', 'kawaii-pets', 'just-us', 'retro-memories', 'halloween', 'pink-you-me', 'stay-real', 'summer-vibes', 'neon-gaming', 'manga-panel', 'sticker-doodle', 'manga-comic']);
+    expect(IMAGE_FRAMES.map((f) => f.id)).toEqual(['kawaii', 'retro-film', 'better-together', 'kawaii-pets', 'just-us', 'retro-memories', 'halloween', 'pink-you-me', 'stay-real', 'summer-vibes', 'neon-gaming', 'manga-panel', 'pop-stickers', 'manga-comic']);
     expect(IMAGE_FRAMES.every((f) => isImageFrame(f) && FRAMES.includes(f))).toBe(true);
     expect(new Set(FRAMES.map((f) => f.id)).size).toBe(FRAMES.length);
   });
