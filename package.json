@@ -15,6 +15,7 @@
     "frame-specs": "vitest run src/frames/frameSpecs.test.ts -u",
     "frame-bands": "node scripts/frame-bands.mjs",
     "build-frames": "node scripts/build-frames.mjs",
+    "build-icons": "node scripts/build-icons.mjs design-src/logo/logo.svg --small design-src/logo/logo-small.svg --bg \"#ffffff\"",
     "frame-knockout": "node scripts/frame-knockout.mjs"
   },
   "dependencies": {

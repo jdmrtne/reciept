@@ -10,15 +10,15 @@ export default defineConfig({
       // 'autoUpdate' would swap the running app out from under a guest mid-photoshoot. main.tsx (via
       // src/pwa/updateGate.ts) applies the update itself, but only once the kiosk is idle at standby.
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'icons/*.png'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'favicon-*.png', 'apple-touch-icon.png', 'og-image.png', 'icons/*.png'],
       manifest: {
         name: 'Receipt Photobooth',
         short_name: 'Photobooth',
         description: 'Self-service receipt photobooth',
         display: 'standalone',
         orientation: 'any',
-        background_color: '#000000',
-        theme_color: '#000000',
+        background_color: '#ffffff',
+        theme_color: '#ffffff',
         id: '/',
         scope: '/',
         lang: 'en',
