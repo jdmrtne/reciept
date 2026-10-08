@@ -1,23 +1,95 @@
+/*
+ * Design tokens. This is the ONLY place theme colours are defined.
+ *
+ * Semantic names, not colour names: components say "surface" / "ink" / "edge", and each theme decides what those are.
+ *   --bg         page background             --ink     primary text, icons, strokes, filled bits
+ *   --surface    cards, buttons, trays       --text    body text
+ *   --surface-2  stages, hover/pressed fill  --muted   secondary text (>= 4.5:1 on surface and surface-2)
+ *   --edge       outline colour              --on-ink  text drawn ON an --ink fill (selected tabs)
+ *
+ * "Paper" is deliberately NOT themed: the receipt, sticker tiles and 1-bit previews represent the physical print,
+ * which is always white paper with black ink. Dark mode changes the room around the paper, not the paper itself.
+ * `.paper` / `.receipt` re-point the semantic tokens at the paper palette so everything inside keeps working unchanged.
+ *
+ * Themes: light (the original look, unchanged), dark. `data-theme` on <html> is set before first paint by the inline
+ * script in index.html and kept in sync by src/theme/theme.ts. With no attribute the app is light.
+ */
 :root {
-  --black: #111;
-  --white: #fff;
+  /* theme-independent: the physical print */
+  --paper: #fff;
+  --paper-ink: #111;
+  --paper-text: #2b2b2b;
+  --paper-muted: #6b6b6b;
+  --paper-fill: #f5f5f5;
+  /* theme-independent: drawn over the live camera picture, which is never themed */
+  --on-media: #fff;
+  --on-media-edge: #111;
+
+  /* light theme (default) */
+  color-scheme: light;
+  --bg: #fff;
+  --bg-soft: #f5f5f5;      /* phone result page background */
+  --surface: #fff;
+  --surface-2: #f5f5f5;
   --ink: #111;
   --text: #2b2b2b;
-  --gray-1: #f5f5f5;   /* very subtle fill accent */
-  --gray-3: #b5b5b5;
-  --gray-5: #6b6b6b;
-  --line: 2.5px solid var(--ink);
-  --line-thin: 1.5px solid var(--ink);
+  --muted: #6b6b6b;
+  --edge: #111;
+  --shadow-ink: #111;
+  --on-ink: #fff;
+  --hairline: #d4d4d4;     /* quiet dividers (settings rows) */
+
   --radius: 14px;
   --radius-s: 8px;
-  --shadow: 3px 3px 0 var(--ink); /* hard offset "ink" shadow, no blur, no gradient */
+  --shadow-off: 3px;
   --font: 'Courier Prime', 'Courier New', ui-monospace, monospace;
   --fs-body: clamp(14px, 1.6vmin, 18px);
   --fs-xl: clamp(40px, 11vmin, 120px);
   --tap-min: 56px; /* minimum touch target */
   --ease: cubic-bezier(.2, .7, .2, 1);
   --t-fast: 160ms;
+
+  /* derived: re-declared in .paper below because custom properties resolve where they are declared */
+  --line: 2.5px solid var(--edge);
+  --line-thin: 1.5px solid var(--edge);
+  --shadow: var(--shadow-off) var(--shadow-off) 0 var(--shadow-ink); /* hard offset "ink" shadow, no blur, no gradient */
 }
+
+/* Dark theme: slate, not black. Surfaces step up in lightness; outlines are a notch softer than the text so the sketchy
+   borders stay crisp without glaring. All text pairs are checked >= 4.5:1 by src/theme/contrast.test.ts. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14171c;
+  --bg-soft: #14171c;
+  --surface: #1c2027;
+  --surface-2: #252a33;
+  --ink: #eef0f4;
+  --text: #d5d9e0;
+  --muted: #9ca5b3;
+  --edge: #aeb7c4;
+  --shadow-ink: #454d5b;
+  --on-ink: #14171c;
+  --hairline: #343b47;
+}
+
+/* A patch of paper inside any theme. */
+.paper, .receipt {
+  --bg: var(--paper);
+  --surface: var(--paper);
+  --surface-2: var(--paper-fill);
+  --ink: var(--paper-ink);
+  --text: var(--paper-text);
+  --muted: var(--paper-muted);
+  --edge: var(--paper-ink);
+  --shadow-ink: var(--paper-ink);
+  --on-ink: var(--paper);
+  --hairline: #d4d4d4;
+  --line: 2.5px solid var(--edge);
+  --line-thin: 1.5px solid var(--edge);
+  --shadow: var(--shadow-off) var(--shadow-off) 0 var(--shadow-ink);
+  color: var(--ink);
+}
+
 @font-face { font-family: 'Courier Prime'; font-weight: 400; font-style: normal; font-display: swap; src: url('../assets/fonts/courier-prime-latin-400-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Rye'; font-weight: 400; font-style: normal; font-display: swap; src: url('../assets/fonts/rye-latin-400-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Courier Prime'; font-weight: 700; font-style: normal; font-display: swap; src: url('../assets/fonts/courier-prime-latin-700-normal.woff2') format('woff2'); }

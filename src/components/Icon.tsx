@@ -26,7 +26,18 @@ const P: Record<string, ReactNode> = {
   play: <path d="M8 5l11 7-11 7z" />,
   photo: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M3.5 17l5-4.5 4 3.5 3-2.5 5 4" /></>,
   save: <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />,
-  film: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9h4M3.5 14.5h4M16.5 9h4M16.5 14.5h4" /></>
+  film: <><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9h4M3.5 14.5h4M16.5 9h4M16.5 14.5h4" /></>,
+  // --- owner settings
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8" /></>,
+  moon: <path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" />,
+  monitor: <><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M9 20h6M12 16.5V20" /></>,
+  contrast: <><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5a8.5 8.5 0 000 17z" fill="currentColor" /></>,
+  sliders: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  qr: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><path d="M14 14h2.5v2.5H14zM20 14v2.5M17.5 20H20M14 20v.1" /></>,
+  lock: <><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V8a4 4 0 018 0v2.5M12 14.5v2" /></>,
+  search: <><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l5.5 5.5" /></>,
+  alert: <><path d="M12 4l9 16H3z" /><path d="M12 10v4.5M12 17.2v.1" /></>,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.7v.1" /></>
 };
 
 export function Icon({ name }: { name: keyof typeof P | string }) {

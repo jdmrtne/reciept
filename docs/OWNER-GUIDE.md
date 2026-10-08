@@ -42,3 +42,20 @@ Written for the person running the booth, not the developer. Android menu names 
 
 ## What the booth never does
 No text entry for guests, no accounts, no uploads, no saved photos.
+
+## Settings layout and dark mode (ADMIN)
+
+ADMIN is now grouped by topic. On a tablet/laptop the sections are listed on the left; on a phone they are a menu under the search box.
+
+| Section | What is in it |
+|---|---|
+| **Printer** | Printer type, connection details (Windows printer name, printer IP, BRIDGE URL, Bluetooth chunk/delay), PAIR / CHECK PRINTER, TEST PRINT |
+| **Print quality** | PRESET, DITHER, BRIGHTNESS, CONTRAST, DENSITY, SHARPEN, AUTO LEVEL, THRESHOLD, PAPER, SIDE MARGIN, FEED LINES, CUT, plus a pinned TEST PRINT preview |
+| **Photo sharing** | SHARE QR, PUBLIC / SITE URL, upload address, CHECK SHARE |
+| **Appearance** | LIGHT / DARK / SYSTEM theme |
+| **Security** | CHANGE PIN |
+
+- **Search** (top of the panel) finds a setting by name or plain words: try "brightness", "dark mode", "qr", "pin".
+- **Saving:** there is still no Save button. Every change is stored the instant you make it; the SAVED badge confirms it. If the device refuses to store settings, a message says so.
+- **Dark mode:** ADMIN → Appearance, or the moon/sun button in the panel header. The choice is kept on this device and applies to the whole booth, including the screens customers see. SYSTEM follows the tablet's own light/dark setting. The default is LIGHT, so a booth looks as before until you change it. Receipts, the print preview and stickers stay black-on-white in every theme, because that is how they print.
+- Control names (BRIGHTNESS, CUT, etc.) are unchanged, so the troubleshooting table above still applies. The old "+" buttons that cycled PAPER, PRESET, DITHER, SHARE QR and CUT are now clearly labelled choices and switches.

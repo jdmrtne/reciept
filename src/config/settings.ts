@@ -100,10 +100,13 @@ export function loadSettings(): BoothSettings {
   }
 }
 
-export function saveSettings(s: BoothSettings): void {
+/** Returns false when the browser refused the write (private mode, quota). The booth still runs on what is in memory/defaults. */
+export function saveSettings(s: BoothSettings): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
+    return true;
   } catch {
     /* storage may be unavailable; booth still works with defaults */
+    return false;
   }
 }
