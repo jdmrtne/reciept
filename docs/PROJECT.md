@@ -8,7 +8,7 @@ STANDBY → TAP TO START → SELECT LAYOUT → CAMERA → COUNTDOWN → CAPTURE 
 
 ## Hard rules
 - App ALWAYS boots to standby. Inactivity (default 60s) or "new session" wipes everything (photos, stickers, layout, frame, editor, camera).
-- NO text tools of any kind (no add-text, input, font/color). Text exists only inside predefined frame designs (WANTED, PHOTOBOOTH, THANK YOU, DATE, TIME, EVENT NAME, BOUNTY).
+- NO text tools for GUESTS of any kind (no add-text, input, font/color): guests never type anything. Guest-visible text exists only inside predefined frame designs (WANTED, PHOTOBOOTH, THANK YOU, DATE, TIME, EVENT NAME, BOUNTY) and in the OWNER-configured event profile (`BoothSettings.events`: event name, header, detail lines, thank-you, branding line; see ARCHITECTURE "Event profiles"). Owner-configured text is a setting, not a guest tool: it is meant to be edited only in the PIN-protected ADMIN (the ADMIN controls arrive in EP-3; until then it is only reachable through stored settings), is length-limited and character-filtered, and nothing in the guest flow can change it.
 - Wanted/Bounty frame must be ORIGINAL (no One Piece characters, logos, art or poster layouts). Must render well in 1-bit monochrome.
 - Photos are never stored long-term on the booth device. Only settings/config go in localStorage. Exception (opt-in, `docs/SHARE.md`): with SHARE QR on, the finished photo + GIF are uploaded to the owner's print bridge and auto-deleted after 24 h so customers can scan them.
 - No account; core flow works offline.
