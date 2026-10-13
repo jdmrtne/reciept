@@ -224,3 +224,18 @@ This section updates the table in section 4 for the A rows only. The audit above
 | A7 owner-only | UNCHANGED | no ADMIN event controls yet (EP-3) |
 
 Section 8 decisions: 1 (profile list with one active) adopted as briefed. 5 (text rules) adopted with the limits in ARCHITECTURE "Event profiles". 6 (branding toggle plus editable text, default on) adopted. 9 (PROJECT.md wording) done. 2, 3 and 4 stay open for EP-2; 7 and 8 stay open for EP-5. No owner answer was given for any of these; the choices above are the audit's recommendations plus the owner's EP-1 brief.
+
+## 12. EP-2 update (2026-10-12, session 14): receipt information is rendered
+Updates section 4 for the B rows and section 8 decisions 2, 3, 4. The audit above is left as written. Real `npm run typecheck`, `npm test` (31 files, 1466 tests) and `npm run build` passed. Nothing was printed on a thermal printer.
+
+| ID | Status after EP-2 | What exists now |
+|---|---|---|
+| B1 event name | IMPLEMENTED AND VERIFIED (software); legibility REQUIRES PHYSICAL DEVICE TESTING | Printed on all 25 frames exactly once: by the 4 vector frames that already print it (`prints.event`), by the info block everywhere else |
+| B2 date | IMPLEMENTED AND VERIFIED (software) | Exactly once on every frame (9 vector frames print it themselves, the block adds it on the rest); value is `session.stamp` |
+| B3 time | IMPLEMENTED AND VERIFIED (software) | Same rule as B2 (4 vector frames print it) |
+| B4 thank-you | IMPLEMENTED AND VERIFIED (software) | `classic-receipt` now prints the profile text through a `{THANKS}` token; every other frame gets it from the block; empty means none |
+| B5 branding | IMPLEMENTED AND VERIFIED (software); legibility REQUIRES PHYSICAL DEVICE TESTING | "Printed by Memorys" (or the owner's text) on every frame when enabled |
+| A1/A2 header, details | RENDERED | Printed by the block on every frame; still no ADMIN control (EP-3) |
+| B6 QR | IMPLEMENTED AND VERIFIED (software, now also with the block); REQUIRES PHYSICAL DEVICE TESTING | 630 existing placement/plan checks untouched and green; new matrix checks and a jsQR decode of the rendered canvas and of the simulated 1-bit bitmap |
+
+Decisions adopted (no owner answer, audit recommendations): 2 print only what the drawn frame lacks; 3 block between the design and the cut line; 4 thank-you, branding and the other block text also appear on the colour JPEG and the GIF (they share the plan). Inventory re-checked against the code: 11 vector frames (event on 4, date on 9, time on 4, thank-you on 1; `wanted-bounty` and `straw-hat-wanted` print none) and 14 PNG frames (no text), matching the audit.

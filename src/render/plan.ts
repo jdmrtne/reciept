@@ -7,7 +7,8 @@ import { getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { getFrameAsset, type AssetFit } from '../frames/assets';
 import { framePrims } from '../frames/prims';
 import { photoRect } from '../editor/model';
-import { occupiedRegions, placeQr, qrAreaFor, collisions, within, cutBand, overlaps, inflate, CUT_SW, QrPlacementError, type Occupied, type OccupancyInput, type QrOptions } from '../qr/placement';
+import { occupiedRegions, placeQr, qrAreaFor, collisions, within, cutBand, overlaps, inflate, rotatedBounds, CUT_SW, QrPlacementError, type Occupied, type OccupancyInput, type QrOptions } from '../qr/placement';
+import { INFO_PAD_BOTTOM, infoItems, layoutInfo, type InfoLine } from './info';
 
 /** Editor/layout units: everything in a Snapshot lives on a 384-unit-wide canvas (58mm @203dpi). */
 export const UNITS_W = 384;
@@ -17,9 +18,12 @@ export type Cmd =
   | { op: 'frame'; prims: Prim[] }
   | { op: 'image-frame'; src: string; fit: AssetFit; w: number; h: number } // PNG overlay over the whole canvas (units); transparent windows show the photos
   | { op: 'sticker'; stickerId: string; cx: number; cy: number; w: number; h: number; rotation: number }
+  // EP-2 receipt info block: the owner's event text, BELOW the frame canvas (and below any sticker hanging past it), full paper width. Frame-independent:
+  // every frame gets the same block, minus whatever that frame already prints (FramePrints). Built BEFORE the QR is placed, so the QR strip starts below it.
+  | { op: 'info'; rect: Rect; prims: Prim[]; lines: InfoLine[] }
   // The page QR. ALWAYS the last command, and only present when the caller asked for one. `slots` = every photo slot (kept so the plan can be
   // re-verified on its own); `rect` was chosen by qr/placement.ts so it touches nothing (see verifyPlanQr).
-  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone, before any strip */ designHeight: number; /** strip mode: y (units) of the dashed cut line between the design and the QR */ cutY?: number };
+  | { op: 'qr'; matrix: boolean[][]; rect: Rect; margin: number; mode: 'safe-area' | 'strip'; slots: Rect[]; /** height of the design alone (frame + info block when there is one), before any strip */ designHeight: number; /** present only with an info block: the frame canvas height the placement geometry was measured against */ frameHeight?: number; /** strip mode: y (units) of the dashed cut line between the design and the QR */ cutY?: number };
 
 /**
  * PURE description of the final image: no DOM, no canvas. The canvas executor (render.ts) just runs it.
@@ -46,12 +50,19 @@ export function buildPlan(snap: Snapshot, ctx: FrameCtx, widthPx: number, qr?: P
   else cmds.push({ op: 'frame', prims: framePrims(vectorFrameOf(frame), L, ctx) });
   for (const o of snap.objects.filter(isSticker).filter((s) => s.visible).sort((a, b) => a.layer - b.layer))
     cmds.push({ op: 'sticker', stickerId: o.stickerId, cx: o.x + o.w / 2, cy: o.y + o.h / 2, w: o.w, h: o.h, rotation: o.rotation });
-  let unitsH = L.height;
+  // EP-2 info block: below the frame canvas and below any sticker that hangs past it, still BEFORE the QR so the design height is final when the QR is placed.
+  const stickerBottom = Math.max(0, ...cmds.flatMap((c) => (c.op === 'sticker' ? [rotatedBounds({ x: c.cx - c.w / 2, y: c.cy - c.h / 2, w: c.w, h: c.h, rotation: c.rotation })] : [])).map((r) => r.y + r.h));
+  const prints = asset ? undefined : vectorFrameOf(frame).prints; // an image frame prints no text; a vector fallback only counts while it is what is drawn
+  const info = layoutInfo(infoItems(ctx, prints), L.width, Math.max(L.height, stickerBottom));
+  if (info) cmds.push({ op: 'info', rect: info.rect, prims: info.prims, lines: info.lines });
+  const designHeight = info ? info.rect.y + info.rect.h : L.height;
+  let unitsH = designHeight + (info ? INFO_PAD_BOTTOM : 0); // no QR: a little paper under the last line
   if (qr) {
+    // Occupancy is measured against the FRAME canvas (L.height) exactly as before; the info text is part of `cmds`, so the QR also keeps clear of it.
     const placed = placeQr({ modules: qr.matrix.length, occ: occupancy(L.width, L.height, L.slots, cmds, !!asset), area: qrAreaFor(frame, snap.layoutId), allowStrip: qr.allowStrip, options: qr.options, paperDots: qr.paperDots });
     if (!placed.ok) throw new QrPlacementError(placed.reason, placed.message, placed.hits);
-    cmds.push({ op: 'qr', matrix: qr.matrix, rect: placed.rect, margin: placed.margin, mode: placed.mode, slots: L.slots, designHeight: L.height, ...(placed.cutY !== undefined ? { cutY: placed.cutY } : {}) });
-    unitsH = placed.canvasHeight;
+    cmds.push({ op: 'qr', matrix: qr.matrix, rect: placed.rect, margin: placed.margin, mode: placed.mode, slots: L.slots, designHeight, ...(info ? { frameHeight: L.height } : {}), ...(placed.cutY !== undefined ? { cutY: placed.cutY } : {}) });
+    unitsH = Math.max(placed.canvasHeight, unitsH); // strip mode: the strip's own padding; safe-area mode: never shorter than the design incl. the info block
   }
   return { width: Math.round(widthPx), height: Math.round(unitsH * k), k, unitsW: L.width, unitsH, cmds };
 }
@@ -61,7 +72,7 @@ function occupancy(width: number, height: number, slots: Rect[], cmds: Cmd[], ar
   return {
     width, height, slots, artwork,
     stickers: cmds.flatMap((c) => (c.op === 'sticker' ? [{ x: c.cx - c.w / 2, y: c.cy - c.h / 2, w: c.w, h: c.h, rotation: c.rotation }] : [])),
-    prims: cmds.flatMap((c) => (c.op === 'frame' ? c.prims : []))
+    prims: cmds.flatMap((c) => (c.op === 'frame' || c.op === 'info' ? c.prims : []))
   };
 }
 
@@ -74,7 +85,7 @@ export function verifyPlanQr(plan: RenderPlan): { ok: true } | { ok: false; hits
   const q = plan.cmds.find((c): c is Extract<Cmd, { op: 'qr' }> => c.op === 'qr');
   if (!q) return { ok: true };
   const img = plan.cmds.some((c) => c.op === 'image-frame');
-  const occ = occupancy(plan.unitsW, q.designHeight, q.slots, plan.cmds, img);
+  const occ = occupancy(plan.unitsW, q.frameHeight ?? q.designHeight, q.slots, plan.cmds, img);
   if (!within(q.rect, { x: 0, y: 0, w: plan.unitsW, h: plan.unitsH })) return { ok: false, hits: [] };
   const regions = occupiedRegions(occ);
   const hits = collisions(q.rect, regions, q.margin);

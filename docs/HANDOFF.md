@@ -1,6 +1,6 @@
 # HANDOFF
 
-> NEWEST ENTRY: **Session 13** (Event Pack EP-1, event profile data model, 2026-10-12) is at the bottom of this file, after Session 12. Start with `docs/FEATURE-AUDIT.md` (sections 8 and 11), then Session 12, then Session 13. Older sessions below are unchanged history; the "Instructions for Next Claude" in the middle of this file predate the Event Pack.
+> NEWEST ENTRY: **Session 14** (Event Pack EP-2, receipt info block, 2026-10-12) is at the bottom of this file, after Session 13. Start with `docs/FEATURE-AUDIT.md` (sections 8, 11 and 12), then Sessions 12, 13 and 14. Older sessions below are unchanged history; the "Instructions for Next Claude" in the middle of this file predate the Event Pack.
 
 ## Session 10: Phase 14 (Production prep) — IN PROGRESS: prep written and browser-checked, release gate NOT run (latest)
 **Sandbox again had no registry access** (`npm install` -> 403). So `npm test`, `npm run typecheck` (real React types) and `npm run build` did NOT run, for the third session in a row. Nothing here is claimed as passing that was not run. Phases 10, 13 and 14 all stay open on the same blocker: a machine with a working `npm install` and the owner's real tablet + printer. **`docs/RELEASE-CHECKLIST.md` is the Phase 14 gate**; work through it.
@@ -276,3 +276,52 @@ What did run: a throwaway vitest-compatible shim (about 70 lines, written for th
 
 ### Continuation prompt
 Continue the Receipt Photobooth project (Event Pack track). Read `docs/FEATURE-AUDIT.md` (sections 8 and 11), the "Event Pack track" at the bottom of `docs/PHASES.md`, then HANDOFF Sessions 12 and 13. EP-1 (event profile data model) is implemented but not signed off: run `npm ci && npm run typecheck && npm test && npm run build` first (expect 28 files, 1020 tests) and, if green, tick EP-1 in PHASES.md. Then do EP-2 only, exactly as listed under "EXACT NEXT STEP" in Session 13. Event text is read only through `getActiveEvent`. The QR code is already printed on the receipt: never reimplement or alter it. Keep the black-and-white tablet-first UI. Keep CRLF in HANDOFF.md. Update HANDOFF.md and PHASES.md honestly (what ran, what did not) and give the next continuation prompt.
+
+## Session 14: Event Pack EP-2 (frame-independent receipt information), 2026-10-12. IMPLEMENTED AND VERIFIED IN SOFTWARE; no hardware run
+Owner brief: render event name, header, details, date, time, thank-you and optional "Printed by Memorys" on every frame without duplicating what a frame already prints, keep the QR strip and cut line untouched, same composition in editor/preview/print/JPEG/GIF. Stopped after EP-2; EP-3 (ADMIN) NOT started.
+
+### Preflight (what was actually run)
+Input was `reciept__2_.zip` (full repo, dirty tree). The first upload (`ep1-changes.zip`) held only EP-1 files, so work was blocked until the repo arrived. `git status`: 27 files modified, all CRLF-only (`git diff --ignore-cr-at-eol` empty); left untouched. EP-1 schema verified in source (`EventProfile`: id, name, header, details[max 3], thankYou, brandingEnabled, brandingText; 40 chars per line; `getActiveEvent` is the single reader; legacy `eventName` is a derived mirror that seeds the first profile only when no list exists). Baseline BEFORE changes: `npm ci` OK, `npm run typecheck` clean, `npm test` 28 files / 1020 tests passing, `npm run build` exit 0. So EP-1 is signed off and ticked.
+
+### Final rendering strategy
+1. One new plan command `{ op: 'info', rect, prims, lines }` built in `render/plan.ts` from `render/info.ts` (pure). No second renderer; `render.ts` only draws it (two branches, `renderPlan` and `renderOverlay`, placed before the QR `else`). `drawPlanQr`, `drawCutLine`, `assertQrSpotClear` and `qr/placement.ts` are unchanged.
+2. The block sits BELOW the frame canvas (and below any sticker hanging past it), before `placeQr`. Because the QR strip is "below everything on the paper", the cut line and QR simply start under the block. FEATURE-AUDIT decisions 2 (print only what the frame lacks), 3 (between design and cut line) and 4 (also on JPEG and GIF) were adopted as recommended; the owner never answered them.
+3. `FrameCtx` gained optional `info` (the FINAL profile). Without it nothing changes, which is why every pre-existing test passed unmodified.
+
+### How duplicate event text is prevented
+Explicit metadata `FrameDef.prints = { event, date, time, thankYou }` in `frames/types.ts`, declared in `frames/registry.ts`; `infoItems` omits exactly those items. No rendered-text matching anywhere in the app. Inventory re-checked in code: 11 vector frames (event: classic, minimal, ticket-stub, event; date: those four plus retro, birthday, graduation, friends, couple; time: classic, minimal, ticket-stub, event; thank-you: classic only; `wanted-bounty` and `straw-hat-wanted` print nothing) and 14 PNG frames (no text, no fallback set). Classic's fixed "THANK YOU" became the `{THANKS}` token so the profile controls it (old text when no profile, no line when cleared). `frames/prints.test.ts` verifies every flag behaviourally (change one stamp field, see if that frame's text reacts); `render/info.test.ts` asserts event, date, time and thank-you each appear exactly once on every frame.
+
+### Date and time policy
+`session.stamp` stays the single source (made at Standby tap). New `state/stamp.ts`: `newSessionStamp()` (Standby) and `ensureSessionStamp()` (Preview, Print, Share, Edit fallback; creates and STORES one stamp if missing instead of each screen minting its own). Time zone = the booth device's local clock, nothing forced (documented in PRINTING). `makeCtx` no longer prints NaN for an invalid Date (falls back to now); a damaged stamp value is skipped by the block. The stamp also snapshots the profile, so editing settings mid-session does not change that customer's output.
+
+### Design-height changes
+`unitsH` = block bottom + 8 units when there is no QR. With a QR: strip starts below the block text (block prims are in the occupancy); `qr.designHeight` = frame + block, new optional `qr.frameHeight` (only with a block) = frame canvas, used for occupancy so geometry is exactly as before; safe-area mode keeps the canvas at least as tall as the block. Sizes: name 16 bold, header 13 bold, details 11, date/time 11, thank-you 12 bold, branding 10; floor 9 (project minimum). Lines shrink to 360 units, never wrap; "..." only as a last resort for hand-built input. Text is re-sanitised (EP-1 rules) before drawing.
+
+### QR regression checks
+Existing `qr/placement.test.ts` (321) and `qr/plan.test.ts` (309) unchanged and green. New: matrix over all 25 frames x 6 layouts x 58/80 mm x QR on/off (`verifyPlanQr` ok, cut line and QR below the block, QR last, no qr command when off, canvas height consistent); tamper tests (QR onto text, cut line onto text, text onto cut line are rejected); `allowStrip: false` still throws `QrPlacementError`; sticker hanging below the frame; real-pixel gap checks (white above the cut line, no ink in side margins); jsQR decodes the QR from the rendered colour canvas and from the simulated 1-bit bitmap (a SOFTWARE simulation only).
+
+### Output paths verified (software)
+Preview and print widths 384/576/768/1152, GIF 320: identical `info` lines/rect/prims from one stamp; colour JPEG and GIF use the same plan; GIF overlay carries the text exactly once (overlay over white equals the finished render in the block rows) and the layering-equals-render test was extended to the block for every layout x 3 frame kinds; real `renderGifVersion` first frame shows the text. Visual montage of 6 frames (kawaii, classic, birthday, straw-hat-wanted, manga-comic, minimal) at 58 mm with QR was rendered and inspected: block under the art, no duplicates, cut line and QR intact.
+
+### Files changed
+Modified: `src/frames/types.ts`, `src/frames/registry.ts`, `src/frames/prims.ts`, `src/render/plan.ts`, `src/render/render.ts`, `src/screens/Standby.tsx`, `PreviewScreen.tsx`, `PrintScreen.tsx`, `ShareScreen.tsx`, `Edit.tsx`; docs PHASES, HANDOFF, FEATURE-AUDIT, PRINTING, QR-PLACEMENT, ARCHITECTURE. New: `src/render/info.ts`, `src/state/stamp.ts`, `src/frames/prints.test.ts`, `src/render/info.test.ts`, `src/render/infoRender.test.ts`. `tsconfig.tsbuildinfo` was rewritten by `tsc -b` and restored with `git checkout`. Nothing committed.
+
+### Actual commands and results
+`npm ci` OK; `npm run typecheck` clean; `npm test` 31 files, **1466 tests passed** (1020 + 35 + 385 + 26; no existing test edited or deleted); `npm run build` exit 0 (PWA 128 precache entries). Not run: browser run, tablet, printer, real QR scan.
+
+### Known limitations
+- Physical legibility of 9 to 10 dot text on the XPT80A at 58 and 80 mm is unverified. Do not claim it.
+- Font glyph coverage (Latin-1 accents, euro) of the bundled Courier Prime subset is still an assumption from EP-1; the woff2 was not inspected.
+- The editor stage does not show the block (it is under the design); Preview is the first screen that does. Picker thumbnails show none.
+- A frame that prints only the date (birthday etc.) gets a lone `19:30` line from the block; accepted, easy to change in `infoItems`.
+- Owner decisions 2, 3, 4 are assumptions, not owner answers. 7 and 8 (EP-5) remain open.
+- Branding text is mixed case while frame text is upper case; deliberate (matches the string in the brief).
+
+### Physical tests still required (EP-6)
+Print at 58 and 80 mm on every frame family (PNG, text vector, text-free vector) and read all block lines; scan the printed QR with the block above it; check the paper cut position and the 10/8 unit spacing; check the date/time equal the tap time across Preview, print, JPEG and GIF on the tablet; confirm settings and stamp behave after a power cycle.
+
+### EXACT NEXT STEP: EP-3 (ADMIN "Event" section, owner-only)
+Prerequisites: this EP-2 tree (baseline 31 files / 1466 tests, typecheck and build clean); EP-1 helpers `addEventProfile`, `updateEventProfile`, `setActiveEvent` (delete and duplicate do not exist yet, add them pure and tested); limits only from `EVENT_LIMITS`; read text only through `getActiveEvent`. First action: run `npm ci && npm run typecheck && npm test && npm run build`, then read PHASES EP-3, `screens/admin/sections.ts`, `types.ts`, `search.ts` and `admin.test.tsx` (extend the control inventory, do not weaken it). For the live receipt preview call `buildPlan` with `makeEventCtx(getActiveEvent(draftSettings))`, a fixed `Date` and a sample snapshot, so it is the real plan. Remember ADMIN edits call `mergeSettings` per keystroke (draft-safe text), while the receipt must use the FINAL level. Do not touch `qr/placement.ts`. Stop after EP-3.
+
+### Continuation prompt
+Continue the Receipt Photobooth project (Event Pack track). Read `docs/FEATURE-AUDIT.md` (sections 8, 11, 12), the "Event Pack track" in `docs/PHASES.md`, then HANDOFF Sessions 12, 13 and 14 and ARCHITECTURE "Receipt info block (EP-2)". Run `npm ci && npm run typecheck && npm test && npm run build` first (expect 31 files, 1466 tests). Do EP-3 only, exactly as in Session 14 "EXACT NEXT STEP". Event text is read only through `getActiveEvent`. Never alter the QR, cut line or `qr/placement.ts`. Keep the black-and-white tablet-first UI. Keep CRLF in HANDOFF.md. Update HANDOFF.md and PHASES.md honestly (what ran, what did not) and give the next continuation prompt.

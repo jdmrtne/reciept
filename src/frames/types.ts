@@ -1,5 +1,7 @@
+import type { EventProfile } from '../config/events';
+
 export type Rule = 'dashed' | 'solid' | 'double';
-/** Text may use tokens: {EVENT} {DATE} {TIME} {YEAR} {SERIAL}. Users never edit frame text. Units: reference dots @58mm. */
+/** Text may use tokens: {EVENT} {DATE} {TIME} {YEAR} {SERIAL} {THANKS}. Users never edit frame text. Units: reference dots @58mm. */
 export interface TextLine { text: string; size: number; y: number; weight?: 400 | 700; ls?: number; align?: 'left' | 'center' | 'right' } // y = vertical centre, fraction of band
 export interface Block { lines: TextLine[]; rule?: Rule; barcode?: { y: number; h: number } }
 export type Decor = 'corners' | 'stars' | 'notches' | 'slot-border' | 'slot-border-double' | 'torn' | 'nails' | 'sketch-border' | 'wanted-poster';
@@ -30,8 +32,18 @@ export interface ImageFrameDef {
 export interface QrArea { safeArea: { x: number; y: number; w: number; h: number }; size?: number }
 /** Per-frame QR reservation: `default` for every layout, `byLayout` overrides for one layout (artwork usually differs per layout). */
 export interface FrameQr { default?: QrArea; byLayout?: Partial<Record<string, QrArea>> }
+/**
+ * Which receipt information the DRAWN frame already prints (EP-2). The frame-independent info block (render/info.ts) prints only what is
+ * NOT listed here, so nothing appears twice. Declared explicitly (never guessed from rendered text); `frames/prints.test.ts` checks every
+ * flag against the `{EVENT}` `{DATE}` `{TIME}` `{THANKS}` tokens the frame's own text uses, so metadata and artwork cannot drift apart.
+ * A flag means "prints the ACTIVE EVENT's value": `event` = ctx.event, `date`/`time` = the session stamp, `thankYou` = the profile's thank-you.
+ * Bitmap (PNG) frames print no text, so they declare nothing; a vector fallback's flags apply only while that fallback is what is drawn.
+ */
+export interface FramePrints { event?: boolean; date?: boolean; time?: boolean; thankYou?: boolean }
 export interface FrameDef {
   id: string; name: string;
+  /** What this frame's own artwork already prints (see FramePrints). Absent = nothing, so the info block prints everything. */
+  prints?: FramePrints;
   type?: 'vector' | 'image'; // default 'vector'
   image?: ImageFrameDef;      // present when type === 'image'
   headerHeight: number; footerHeight: number;
@@ -40,7 +52,13 @@ export interface FrameDef {
   /** Optional QR-safe area inside the design. Without one the QR goes in a reserved strip below the design (see qr/placement.ts). */
   qr?: FrameQr;
 }
-export interface FrameCtx { event: string; date: string; time: string; year: string; serial: string }
+/**
+ * date/time/serial are fixed ONCE per customer (`session.stamp`, set when the customer taps start) so Edit, Preview, Print, the colour
+ * photo and the GIF all agree. Time zone: the booth device's own local clock at that moment (documented in docs/PRINTING.md).
+ * `info` is the FINAL (trimmed, repaired) active event profile captured at the same moment; without it no info block is drawn and the
+ * plan is exactly what it was before EP-2.
+ */
+export interface FrameCtx { event: string; date: string; time: string; year: string; serial: string; info?: EventProfile }
 
 /** Renderer-independent drawing list. SVG (editor) and canvas (Phase 8 renderer) both draw these. */
 export type Prim =
