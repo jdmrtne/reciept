@@ -1,6 +1,8 @@
 import type { Bands, FrameDef, TextLine } from './types';
 import { resolveLayout } from '../layouts/engine';
 import { getLayout } from '../layouts/registry';
+import { TICKET_DEFAULTS, TICKET_FRAME_ID } from '../ticket/config';
+import { TICKET_TEMPLATES, buildTicket, isTicketLayoutId } from '../ticket/layout';
 
 const T = (text: string, size: number, y: number, o: Partial<TextLine> = {}): TextLine => ({ text, size, y, weight: 400, ls: 2, align: 'center', ...o });
 const B = (text: string, size: number, y: number, o: Partial<TextLine> = {}) => T(text, size, y, { weight: 700, ...o });
@@ -9,18 +11,21 @@ const none = { style: 'none' as const, width: 0, inset: 0 };
 const line = (w: number) => ({ style: 'solid' as const, width: w, inset: 6 });
 const dbl = (w: number) => ({ style: 'double' as const, width: w, inset: 6 });
 
-/** Add a frame = add an entry (pure data, all monochrome line art: black ink on white paper, hand-drawn ornaments in frames/art.ts). Vector-defined; bitmap art can later go in src/assets/frames. */
+/**
+ * `prints` = what the frame's own text already shows for the active event (EP-2 duplicate prevention; see FramePrints). Frames without the
+ * field print none of it. Keep it in step with the {EVENT}/{DATE}/{TIME}/{THANKS} tokens used in header/footer (frames/prints.test.ts enforces it).
+ * Add a frame = add an entry (pure data, all monochrome line art: black ink on white paper, hand-drawn ornaments in frames/art.ts). Vector-defined; bitmap art can later go in src/assets/frames. */
 export const FRAMES: FrameDef[] = [
-  { id: 'classic-receipt', name: 'Classic Receipt', headerHeight: 64, footerHeight: 92, border: none,
+  { id: 'classic-receipt', name: 'Classic Receipt', prints: { event: true, date: true, time: true, thankYou: true }, headerHeight: 64, footerHeight: 92, border: none,
     header: { lines: [B('{EVENT}', 26, .42, { ls: 6 }), T('SELF-SERVICE PHOTO STATION', 9, .85)], rule: 'dashed' },
-    footer: { lines: [T('DATE', 10, .14, L), T('{DATE}', 10, .14, R), T('TIME', 10, .3, L), T('{TIME}', 10, .3, R), B('THANK YOU', 16, .52, { ls: 5 })], rule: 'dashed', barcode: { y: .7, h: .28 } } },
-  { id: 'minimal-receipt', name: 'Minimal Receipt', headerHeight: 36, footerHeight: 44, border: none,
+    footer: { lines: [T('DATE', 10, .14, L), T('{DATE}', 10, .14, R), T('TIME', 10, .3, L), T('{TIME}', 10, .3, R), B('{THANKS}', 16, .52, { ls: 5 })], rule: 'dashed', barcode: { y: .7, h: .28 } } },
+  { id: 'minimal-receipt', name: 'Minimal Receipt', prints: { event: true, date: true, time: true }, headerHeight: 36, footerHeight: 44, border: none,
     header: { lines: [T('{EVENT}', 11, .5, { ls: 6 })], rule: 'solid' },
     footer: { lines: [T('{DATE}  {TIME}', 10, .5, { ls: 3 })], rule: 'solid' } },
-  { id: 'retro-receipt', name: 'Retro Receipt', headerHeight: 76, footerHeight: 84, border: dbl(2), decor: ['corners'], ornaments: [{ at: 'header', y: .4, size: 22, left: 'sparkle', right: 'sparkle' }],
+  { id: 'retro-receipt', name: 'Retro Receipt', prints: { date: true }, headerHeight: 76, footerHeight: 84, border: dbl(2), decor: ['corners'], ornaments: [{ at: 'header', y: .4, size: 22, left: 'sparkle', right: 'sparkle' }],
     header: { lines: [B('RETRO BOOTH', 24, .4, { ls: 4 }), T('EST. {YEAR}', 10, .8, { ls: 5 })], rule: 'double' },
     footer: { lines: [B('COME AGAIN SOON', 13, .28), T('{DATE}', 10, .55, { ls: 3 })], rule: 'double', barcode: { y: .68, h: .28 } } },
-  { id: 'ticket-stub', name: 'Ticket / Stub', headerHeight: 70, footerHeight: 88, border: line(2), decor: ['notches'], ornaments: [{ at: 'header', y: .42, size: 26, left: 'star', right: 'star' }],
+  { id: 'ticket-stub', name: 'Ticket / Stub', prints: { event: true, date: true, time: true }, headerHeight: 70, footerHeight: 88, border: line(2), decor: ['notches'], ornaments: [{ at: 'header', y: .42, size: 26, left: 'star', right: 'star' }],
     header: { lines: [B('ADMIT ONE', 28, .42, { ls: 5 }), T('{EVENT} PHOTO PASS', 10, .85)], rule: 'dashed' },
     footer: { lines: [T('NO. {SERIAL}', 12, .18, { ls: 3 }), T('{DATE}  {TIME}', 10, .38, { ls: 3 })], rule: 'dashed', barcode: { y: .54, h: .4 } } },
   { id: 'wanted-bounty', name: 'Wanted / Bounty', headerHeight: 124, footerHeight: 96, border: dbl(3), decor: ['torn', 'nails', 'stars', 'slot-border-double'], ornaments: [{ at: 'footer', y: .56, size: 30, left: 'bones', right: 'bones' }],
@@ -29,19 +34,19 @@ export const FRAMES: FrameDef[] = [
   // Full-colour poster frame: geometry comes from frames/wanted.ts, so it works with every layout. Header/footer heights only reserve the bands.
   { id: 'straw-hat-wanted', name: 'STRAW HAT WANTED', headerHeight: 92, footerHeight: 150, border: none, decor: ['wanted-poster'],
     header: { lines: [] }, footer: { lines: [] } },
-  { id: 'birthday', name: 'Birthday', headerHeight: 80, footerHeight: 70, border: none, decor: ['stars'], ornaments: [{ at: 'header', y: .4, size: 34, left: 'balloon', right: 'party-hat' }],
+  { id: 'birthday', name: 'Birthday', prints: { date: true }, headerHeight: 80, footerHeight: 70, border: none, decor: ['stars'], ornaments: [{ at: 'header', y: .4, size: 34, left: 'balloon', right: 'party-hat' }],
     header: { lines: [B('HAPPY', 13, .18, { ls: 8 }), B('BIRTHDAY', 30, .55, { ls: 3 })], rule: 'dashed' },
     footer: { lines: [T('MAKE A WISH', 12, .3, { ls: 4 }), T('{DATE}', 10, .68, { ls: 3 })], rule: 'dashed' } },
-  { id: 'graduation', name: 'Graduation', headerHeight: 76, footerHeight: 76, border: line(2), ornaments: [{ at: 'header', y: .5, size: 34, left: 'cap', right: 'star' }],
+  { id: 'graduation', name: 'Graduation', prints: { date: true }, headerHeight: 76, footerHeight: 76, border: line(2), ornaments: [{ at: 'header', y: .5, size: 34, left: 'cap', right: 'star' }],
     header: { lines: [T('CLASS OF', 12, .25, { ls: 8 }), B('{YEAR}', 34, .68, { ls: 4 })], rule: 'solid' },
     footer: { lines: [B('CONGRATULATIONS', 14, .3), T('{DATE}', 10, .7, { ls: 3 })], rule: 'solid' } },
-  { id: 'friends', name: 'Friends', headerHeight: 80, footerHeight: 72, border: none, decor: ['stars'], ornaments: [{ at: 'header', y: .36, size: 26, left: 'smile', right: 'heart' }],
+  { id: 'friends', name: 'Friends', prints: { date: true }, headerHeight: 80, footerHeight: 72, border: none, decor: ['stars'], ornaments: [{ at: 'header', y: .36, size: 26, left: 'smile', right: 'heart' }],
     header: { lines: [B('BEST FRIENDS', 24, .36, { ls: 3 }), T('SINCE FOREVER', 10, .66, { ls: 4 })], rule: 'dashed' },
     footer: { lines: [B('FOREVER', 16, .3, { ls: 8 }), T('{DATE}', 10, .68, { ls: 3 })], rule: 'dashed' } },
-  { id: 'couple', name: 'Couple', headerHeight: 76, footerHeight: 76, border: line(2), ornaments: [{ at: 'header', y: .45, size: 32, left: 'heart', right: 'heart' }, { at: 'footer', y: .3, size: 18, left: 'sparkle', right: 'sparkle' }],
+  { id: 'couple', name: 'Couple', prints: { date: true }, headerHeight: 76, footerHeight: 76, border: line(2), ornaments: [{ at: 'header', y: .45, size: 32, left: 'heart', right: 'heart' }, { at: 'footer', y: .3, size: 18, left: 'sparkle', right: 'sparkle' }],
     header: { lines: [B('YOU + ME', 32, .45, { ls: 5 }), T('A LOVE STORY', 9, .85, { ls: 6 })], rule: 'dashed' },
     footer: { lines: [T('FOREVER & ALWAYS', 12, .3, { ls: 3 }), T('{DATE}', 10, .68, { ls: 3 })], rule: 'dashed' } },
-  { id: 'event', name: 'Event', headerHeight: 76, footerHeight: 88, border: line(2), decor: ['slot-border'],
+  { id: 'event', name: 'Event', prints: { event: true, date: true, time: true }, headerHeight: 76, footerHeight: 88, border: line(2), decor: ['slot-border'],
     header: { lines: [B('{EVENT}', 28, .42, { ls: 5 }), T('OFFICIAL PHOTO PASS', 10, .8, { ls: 3 })], rule: 'dashed' },
     footer: { lines: [T('{DATE}  {TIME}', 10, .16, { ls: 3 }), T('NO. {SERIAL}', 10, .88, { ls: 3 })], rule: 'dashed', barcode: { y: .32, h: .38 } } }
 ];
@@ -75,6 +80,24 @@ export const IMAGE_FRAMES: FrameDef[] = [
   imageFrame('manga-comic', 'Manga Comic', 'manga-comic', { padding: 44, headerHeight: 8, footerHeight: 54 })
 ];
 FRAMES.push(...IMAGE_FRAMES);
+
+/**
+ * Landscape boarding-pass tickets (src/ticket/). ONE frame; the layout (ticket-4/1/2/3) picks the template. It prints every owner field
+ * itself (`all`), and declares the stub's empty QR-safe area per layout, so the existing page QR lands on the stub and nowhere else.
+ */
+const ticketQr = Object.fromEntries(TICKET_TEMPLATES.map((t) => {
+  const b = buildTicket(t.id, TICKET_DEFAULTS), a = b.qrArea;
+  return [t.id, { safeArea: { x: a.x / b.W, y: a.y / b.H, w: a.w / b.W, h: a.h / b.H }, size: a.w / b.W }];
+}));
+FRAMES.push({ id: TICKET_FRAME_ID, name: 'Event Boarding Pass', prints: { all: true, event: true, thankYou: true }, headerHeight: 0, footerHeight: 0, border: none, decor: ['ticket'],
+  header: { lines: [] }, footer: { lines: [] }, qr: { byLayout: ticketQr } });
+
+/** The frame to draw for a layout: tickets only ever use the ticket frame, and no other layout may use it. Every entry point goes through this. */
+export const frameForLayout = (layoutId: string | null | undefined, frameId: string | null | undefined): string =>
+  isTicketLayoutId(layoutId) ? TICKET_FRAME_ID : !frameId || frameId === TICKET_FRAME_ID ? DEFAULT_FRAME : frameId;
+/** Frames the picker may offer for a layout. */
+export const framesForLayout = (layoutId: string | null | undefined): FrameDef[] =>
+  isTicketLayoutId(layoutId) ? FRAMES.filter((f) => f.id === TICKET_FRAME_ID) : FRAMES.filter((f) => f.id !== TICKET_FRAME_ID);
 
 export const DEFAULT_FRAME = 'classic-receipt';
 export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id === id) ?? FRAMES[0];

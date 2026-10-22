@@ -126,6 +126,11 @@ h1, h2 { color: var(--ink); }
 .edit-tray { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 1.5vmin; padding: 2vmin; overflow-x: auto; background: var(--surface); border-top: var(--line); }
 .edit-tray .lay-card { flex: 0 0 18vmin; min-width: 96px; }
 .edit-tray .lay-svg { height: 16vmin; min-height: 70px; }
+/* Landscape event tickets: the thumbnail keeps the ticket's real shape (wider than tall) instead of being squeezed into the portrait slot. */
+.lay-svg.wide { height: auto; width: 100%; }
+.lay-grid .lay-card.wide { grid-column: span 2; }
+.edit-tray .lay-card.wide { flex-basis: 34vmin; min-width: 180px; }
+.edit-tray .lay-svg.wide { height: auto; min-height: 0; }
 .lay-card.on { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 5px var(--edge); }
 .edit .cam-bar .btn { min-width: 0; padding: 0 .5em; font-size: .9em; }
 .edit .cam-bar { flex-wrap: wrap; }

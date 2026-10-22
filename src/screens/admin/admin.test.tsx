@@ -7,7 +7,7 @@ import { searchSettings } from './search';
 import type { AdminCtx } from './types';
 
 const noop = () => {};
-const ctxFor = (s: BoothSettings): AdminCtx => ({ s, set: noop, tune: noop, busy: false, testUrl: null, notify: noop, clearNotice: noop, actions: { pair: noop, testPrint: noop, testShare: noop, changePin: noop } });
+const ctxFor = (s: BoothSettings): AdminCtx => ({ s, set: () => true, tune: noop, busy: false, testUrl: null, notify: noop, clearNotice: noop, actions: { pair: noop, testPrint: noop, testShare: noop, changePin: noop } });
 const html = (s: BoothSettings) => SECTIONS.flatMap((sec) => sec.cards.map((c) => renderToStaticMarkup(<>{c.render(ctxFor(s))}</>))).join('\n');
 const decode = (h: string) => h.replace(/&amp;/g, '&').replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"');
 

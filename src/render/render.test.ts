@@ -11,7 +11,8 @@ import { DEFAULT_THERMAL } from '../print/types';
 import { PAPER_DOTS } from '../layouts/engine';
 import { buildSnapshot, withFilter, withFrame, addSticker, commit, newEditor } from '../editor/model';
 import { FRAMES } from '../frames/registry';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { makeCtx } from '../frames/prims';
 import { isPhoto, type PhotoObject } from '../editor/types';
 
@@ -95,7 +96,7 @@ describe('renderPlan (real pixels)', () => {
     expect(c.width).toBe(384);
   });
   it('renders every frame × layout at 58mm and 80mm without throwing, with sane sizes', async () => {
-    for (const w of [384, 576]) for (const l of LAYOUTS) for (const f of FRAMES) {
+    for (const w of [384, 576]) for (const l of LAYOUTS) for (const f of FRAMES.filter((f) => f.id !== 'boarding-pass')) {
       const snap = withFrame(buildSnapshot(l.id, srcs), f.id);
       const plan = buildPlan(snap, ctx, w);
       const c = await renderPlan(plan, env);
@@ -135,7 +136,7 @@ describe('renderPrint → canvasToRGBA → toThermalBitmap (end to end, what Pri
 
 describe('GIF layering re-uses the print layout exactly', () => {
   it('white + photo tiles + overlay === renderPlan for every layout × frame (with a sticker and a filter)', async () => {
-    for (const l of LAYOUTS) for (const f of FRAMES) {
+    for (const l of LAYOUTS) for (const f of FRAMES.filter((f) => f.id !== 'boarding-pass')) {
       let snap = withFilter(withFrame(buildSnapshot(l.id, srcs), f.id), 'grayscale');
       snap = addSticker(snap, 'heart', 384, 700).snap;
       const plan = buildPlan(snap, ctx, 320);

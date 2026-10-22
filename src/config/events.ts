@@ -90,6 +90,24 @@ export function cleanText(raw: unknown, max: number = EVENT_LIMITS.lineMax): str
 /** Final text: cleaned, then trimmed. */
 export const finalText = (raw: unknown, max: number = EVENT_LIMITS.lineMax): string => cleanText(raw, max).trim();
 
+/**
+ * The distinct characters `cleanText` would REMOVE from `raw` (so a form can tell the owner instead of silently dropping them).
+ * Whitespace is not listed: it is folded to a single space, never removed. Invisible characters are listed as `U+XXXX` because
+ * the owner cannot see them. Never throws; non-strings give [].
+ */
+export function unsupportedChars(raw: unknown): string[] {
+  if (typeof raw !== 'string') return [];
+  const out: string[] = [];
+  for (const ch of raw.normalize('NFC')) {
+    const hidden = ch.replace(INVISIBLE, '') !== ch;
+    if (!hidden && /\s/.test(ch)) continue;
+    if (!hidden && ch.replace(DISALLOWED, '') === ch) continue;
+    const shown = hidden || /[\u0000-\u001F\u007F-\u009F]/.test(ch) ? `U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}` : ch;
+    if (!out.includes(shown)) out.push(shown);
+  }
+  return out;
+}
+
 export const isValidEventId = (v: unknown): v is string => typeof v === 'string' && v.length <= EVENT_LIMITS.idMax && ID_RE.test(v);
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);

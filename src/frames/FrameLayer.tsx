@@ -35,7 +35,7 @@ export function FramePreview({ frameId, layoutId }: { frameId: string; layoutId:
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
   const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH'));
   return (
-    <svg viewBox={`0 0 ${L.width} ${L.height}`} className="lay-svg" aria-hidden="true">
+    <svg viewBox={`0 0 ${L.width} ${L.height}`} className={`lay-svg${L.width > L.height ? ' wide' : ''}`} aria-hidden="true">
       <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />
       {L.slots.map((s, i) => (
         <g key={i}>

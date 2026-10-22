@@ -33,3 +33,6 @@ rejects a cut line that touches the design or a QR that touches the line.
 - No editor overlay for the safe area yet (the QR is system-placed, not draggable).
 - Not run on a real printer: confirm the printed QR scans (owner thermal margins > 0 resample the image slightly).
 - The printed QR is committed before the upload: if the upload then fails, that QR shows "PHOTO NOT FOUND" until RETRY succeeds.
+
+## Clarification (EP-2): the event info block sits inside "the design"
+Behaviour above is unchanged and `qr/placement.ts` was not modified. Since EP-2 the owner's event text (`info` command, `render/info.ts`) is part of the finished design: it is added below the frame canvas BEFORE `placeQr`, as drawn text, so the existing rule "strip below EVERYTHING on the paper" puts the cut line and QR below it. Consequences: `designHeight` on the `qr` command is now frame + info block when a block exists; a new optional `frameHeight` (only then) keeps the occupancy measured against the frame canvas exactly as before; `verifyPlanQr` includes the block's text in its occupancy, so a QR or cut line moved onto it is rejected. With no event info on the ctx the plan, `designHeight` and every existing test are byte-identical to before. `docs/PRINTING.md` has the block's rules.

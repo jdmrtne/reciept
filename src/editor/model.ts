@@ -1,6 +1,6 @@
 import type { Carry, Crop, EditorObject, EditorState, PhotoObject, Snapshot, StickerObject } from './types';
 import { isSticker } from './types';
-import { DEFAULT_FRAME, resolveFramed } from '../frames/registry';
+import { DEFAULT_FRAME, frameForLayout, resolveFramed } from '../frames/registry';
 import { DEFAULT_FILTER, getFilter } from '../filters/registry';
 import { stickerAspect } from '../stickers/registry';
 
@@ -9,6 +9,7 @@ export interface PhotoSrc { src: string; iw: number; ih: number }
 
 /** Fills every layout slot with a photo (photos repeat if the layout has more slots than photos). */
 export function buildSnapshot(layoutId: string, photos: PhotoSrc[], frameId: string = DEFAULT_FRAME, filterId: string = DEFAULT_FILTER): Snapshot {
+  frameId = frameForLayout(layoutId, frameId); // landscape tickets lock their frame
   const L = resolveFramed(layoutId, frameId);
   filterId = getFilter(filterId).id;
   if (!photos.length) return { layoutId, frameId, filterId, objects: [] };
@@ -23,6 +24,7 @@ export function buildSnapshot(layoutId: string, photos: PhotoSrc[], frameId: str
 
 /** Switch frame: slots may move (different header/footer heights) but crops and photos are kept. */
 export function withFrame(s: Snapshot, frameId: string): Snapshot {
+  frameId = frameForLayout(s.layoutId, frameId);
   const L = resolveFramed(s.layoutId, frameId);
   let pi = 0;
   const objects = s.objects.map((o): EditorObject => (o.type === 'photo' ? { ...o, ...L.slots[pi++] } : o));

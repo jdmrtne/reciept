@@ -3,7 +3,7 @@ import { Barcode } from '../components/Barcode';
 import { Doodles, Scribble, Tear } from '../components/Doodles';
 import { sessionStore } from '../state/session';
 import { loadSettings } from '../config/settings';
-import { makeCtx } from '../frames/prims';
+import { newSessionStamp } from '../state/stamp';
 import { usePrinterHealth } from '../hooks/usePrinterHealth';
 
 const HEALTH_LABEL = { ready: 'PRINTER READY', attention: 'CHECK PAPER', offline: 'PRINTER OFFLINE' } as const;
@@ -23,7 +23,7 @@ export function Standby() {
 
   return (
     <>
-    <button className="standby" onClick={() => sessionStore.update({ stamp: makeCtx(eventName), screen: 'layout' })} aria-label="Tap to start">
+    <button className="standby" onClick={() => sessionStore.update({ stamp: newSessionStamp(), screen: 'layout' })} aria-label="Tap to start">
       <Doodles onHeart={() => sessionStore.go('admin')} />
       <div className="receipt">
         <p className="receipt-head">{eventName}</p>

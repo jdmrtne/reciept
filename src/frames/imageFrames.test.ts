@@ -13,7 +13,8 @@ vi.mock('./assets', async (orig) => {
 
 import { buildAssetIndex, resolveFrameAsset } from './assets';
 import { FRAMES, IMAGE_FRAMES, getFrame, getFrameBands, isImageFrame, resolveFramed, vectorFrameOf } from './registry';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { resolveLayout } from '../layouts/engine';
 import { getLayout } from '../layouts/registry';
 import { buildSnapshot, withFrame, addSticker, keepStickers } from '../editor/model';

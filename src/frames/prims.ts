@@ -2,22 +2,34 @@ import type { Block, FrameCtx, FrameDef, PathCmd, Prim } from './types';
 import type { Rect as Rect0 } from '../layouts/types';
 import { ornament, sketchRect, tornRect } from './art';
 import { wantedPrims } from './wanted';
+import { buildTicket, isTicketLayoutId } from '../ticket/layout';
+import { resolveTicketInfo } from '../ticket/config';
 import type { ResolvedLayout } from '../layouts/types';
+import { DEFAULT_THANK_YOU, type EventProfile } from '../config/events';
 
 const REF = 384;
 const CHAR_W = 0.6; // monospace glyph width / font size
 
-export function makeCtx(event: string, d = new Date()): FrameCtx {
+/**
+ * The session stamp: date, time and serial from ONE moment, in the booth device's local time zone (no zone is forced, so a booth shows
+ * the venue's own clock). An invalid Date is replaced by "now" instead of printing "NaN". `info` = the final active event profile.
+ */
+export function makeCtx(event: string, d: Date = new Date(), info?: EventProfile): FrameCtx {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
   const date = `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
   let h = 7;
   for (const c of date + time + event) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return { event, date, time, year: String(d.getFullYear()), serial: String(h % 1000000).padStart(6, '0') };
+  return { event, date, time, year: String(d.getFullYear()), serial: String(h % 1000000).padStart(6, '0'), ...(info ? { info } : {}) };
 }
 
+/** The stamp for a customer: the FINAL active event profile (from `getActiveEvent`) supplies the name and the receipt info. */
+export const makeEventCtx = (profile: EventProfile, d: Date = new Date()): FrameCtx => makeCtx(profile.name, d, profile);
+
 const fill = (t: string, c: FrameCtx) =>
-  t.replace('{EVENT}', c.event).replace('{DATE}', c.date).replace('{TIME}', c.time).replace('{YEAR}', c.year).replace('{SERIAL}', c.serial);
+  t.replace('{EVENT}', c.event).replace('{DATE}', c.date).replace('{TIME}', c.time).replace('{YEAR}', c.year).replace('{SERIAL}', c.serial)
+    .replace('{THANKS}', c.info ? c.info.thankYou : DEFAULT_THANK_YOU); // the profile's thank-you; the old fixed text when no profile is attached
 
 export function barcodeRects(seed: string, x: number, y: number, w: number, h: number): Prim[] {
   let hs = 2166136261;
@@ -53,6 +65,7 @@ function rule(y: number, x: number, w: number, style: 'dashed' | 'solid' | 'doub
 function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[]) {
   for (const l of b.lines) {
     const text = fill(l.text, ctx);
+    if (!text.trim()) continue; // an owner who cleared the thank-you leaves no empty text behind
     let size = l.size * k, ls = (l.ls ?? 0) * k;
     const width = text.length * (CHAR_W * size + ls);
     if (width > r.w) { const f = r.w / width; size *= f; ls *= f; } // long event names shrink to fit
@@ -68,6 +81,7 @@ function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[]) {
 }
 
 export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[] {
+  if (f.decor?.includes('ticket')) return isTicketLayoutId(L.id) ? buildTicket(L.id, resolveTicketInfo(ctx), L.width, L.height).prims : []; // landscape ticket: the layout id picks the template
   if (f.decor?.includes('wanted-poster')) return wantedPrims(L, ctx); // full-colour parchment drawn around the layout's slots
   const k = L.width / REF, out: Prim[] = [];
   const W = L.width, H = L.height, off = 8 * k;

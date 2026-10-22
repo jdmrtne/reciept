@@ -11,7 +11,8 @@ import { createBridge } from '../../bridge/server.mjs';
 import { createShareServer, createShareStore } from '../../bridge/share.mjs';
 import { buildSnapshot } from '../editor/model';
 import { buildPlan } from '../render/plan';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { slotCount } from '../layouts/engine';
 import { makeCtx } from '../frames/prims';
 import type { RenderEnv } from '../render/render';

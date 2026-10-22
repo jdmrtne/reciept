@@ -8,8 +8,8 @@ export interface Notice { id: number; kind: NoticeKind; text: string }
 /** Everything a settings card needs from the panel. Cards stay dumb: they read `s` and call `set`/`tune`/`actions`. */
 export interface AdminCtx {
   s: BoothSettings;
-  /** Merge-and-save, exactly as the old panel did (mergeSettings repairs the value, saveSettings persists it). */
-  set: (p: Partial<BoothSettings>) => void;
+  /** Merge-and-save, exactly as the old panel did (mergeSettings repairs the value, saveSettings persists it). Returns false when the device refused the write. */
+  set: (p: Partial<BoothSettings>) => boolean;
   tune: (p: Partial<ThermalSettings>) => void;
   busy: boolean;
   /** Object URL of the last 1-bit test page, or null. */
@@ -19,7 +19,7 @@ export interface AdminCtx {
   actions: { pair: () => void; testPrint: () => void; testShare: () => void; changePin: () => void };
 }
 
-export type SectionId = 'printer' | 'quality' | 'sharing' | 'appearance' | 'security';
+export type SectionId = 'events' | 'printer' | 'quality' | 'sharing' | 'appearance' | 'security';
 
 export interface CardDef {
   id: string;

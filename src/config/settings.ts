@@ -2,8 +2,10 @@ import type { PrinterErrorCode } from '../print/errors';
 import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
 import {
+  DEFAULT_EVENT_NAME,
   DEFAULT_EVENT_PROFILE,
   EVENT_LIMITS,
+  finalText,
   getActiveEvent,
   nextEventId,
   normalizeEventProfile,
@@ -188,4 +190,46 @@ export function updateEventProfile(s: BoothSettings, id: string, patch: EventPro
 /** Makes an existing profile the active event. An unknown id leaves the selection as it was. */
 export function setActiveEvent(s: BoothSettings, id: string): BoothSettings {
   return s.events.some((e) => e.id === id) ? mergeSettings({ ...s, activeEventId: id }) : s;
+}
+
+/** Why a profile cannot be deleted right now (EP-3). `ok` = it can. */
+export type DeleteCheck = { ok: true } | { ok: false; reason: 'unknown' | 'active' | 'last' };
+
+/**
+ * Only an INACTIVE profile can be deleted, and never the last one. The active profile is protected on purpose: the owner must
+ * first make another profile active (or create one), so the booth is never left without a valid event and a customer session
+ * can never start on a profile that is being removed.
+ */
+export function canDeleteEvent(s: BoothSettings, id: string): DeleteCheck {
+  if (!s.events.some((e) => e.id === id)) return { ok: false, reason: 'unknown' };
+  if (s.events.length <= 1) return { ok: false, reason: 'last' };
+  if (s.activeEventId === id) return { ok: false, reason: 'active' };
+  return { ok: true };
+}
+
+/** Deletes an inactive profile (see `canDeleteEvent`); returns the input unchanged when that is not allowed. The active id never changes. */
+export function deleteEventProfile(s: BoothSettings, id: string): BoothSettings {
+  if (!canDeleteEvent(s, id).ok) return s;
+  return mergeSettings({ ...s, events: s.events.filter((e) => e.id !== id) });
+}
+
+/**
+ * Copies a profile into a NEW profile (new stable id, same text, name ending in " COPY", kept within the name limit). The copy is appended
+ * and is NOT made active: duplicating never changes which event customers get. Unknown id or profile limit reached: unchanged.
+ */
+export function duplicateEventProfile(s: BoothSettings, id: string): BoothSettings {
+  const src = s.events.find((e) => e.id === id);
+  if (!src || s.events.length >= EVENT_LIMITS.maxEvents) return s;
+  const SUFFIX = ' COPY';
+  const base = finalText(src.name) || DEFAULT_EVENT_NAME;
+  const name = base.slice(0, EVENT_LIMITS.lineMax - SUFFIX.length).trimEnd() + SUFFIX;
+  return addEventProfile(s, { ...src, name, details: [...src.details] }, false);
+}
+
+/** Puts every editable field of a profile back to the defaults. The id (and so whether it is the active one) is kept. */
+export function resetEventProfile(s: BoothSettings, id: string): BoothSettings {
+  if (!s.events.some((e) => e.id === id)) return s;
+  const { id: _id, ...defaults } = normalizeEventProfile({}, id);
+  void _id;
+  return updateEventProfile(s, id, defaults);
 }

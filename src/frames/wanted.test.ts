@@ -4,7 +4,8 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { buildPlan } from '../render/plan';
 import { renderPlan, type RenderEnv } from '../render/render';
 import { buildSnapshot, withFilter, withFrame } from '../editor/model';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { FRAMES, getFrame, resolveFramed } from './registry';
 import { framePrims, makeCtx } from './prims';
 

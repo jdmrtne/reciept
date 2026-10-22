@@ -13,6 +13,8 @@ export interface LayoutDef {
   headerHeight: number; // reserved band for frame header (Phase 5 fills it)
   footerHeight: number;
   background: '#fff' | '#000';
+  /** Locks the frame: this layout is only drawn with that frame (landscape tickets; see ticket/). Other frames are hidden for it. */
+  frame?: string;
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }

@@ -136,3 +136,42 @@ select.adm-in { text-transform: uppercase; }
   .adm-pick { display: flex; flex-direction: column; gap: .4em; letter-spacing: .1em; margin-bottom: 12px; }
   .adm-pane { overflow: visible; padding: 4px 0 calc(24px + env(safe-area-inset-bottom)); }
 }
+
+/* ---- EP-3 events section ---- */
+.ev-now { margin: 0; display: flex; align-items: center; gap: .5em; letter-spacing: .08em; }
+.ev-now .ic { width: 1.2em; height: 1.2em; flex: none; }
+.ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ev-item { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 8px 14px; background: var(--surface); color: var(--ink); border: var(--line-thin); border-radius: var(--radius-s); font: inherit; text-align: left; letter-spacing: .06em; cursor: pointer; }
+.ev-item[aria-current='true'] { border: 4px double var(--edge); padding: 6px 12px; }
+.ev-item:active { background: var(--surface-2); }
+.ev-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ev-name { font-weight: 700; overflow-wrap: anywhere; }
+.ev-sub { color: var(--muted); font-size: .82em; overflow-wrap: anywhere; }
+.ev-id { margin-left: .8em; font-style: normal; opacity: .8; }
+.ev-tag { flex: none; padding: .2em .7em; background: var(--ink); color: var(--on-ink); border-radius: 999px; font-size: .72em; font-weight: 700; letter-spacing: .14em; margin-left: .6em; }
+.ev-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-actions .btn { flex: 1 1 9em; }
+/* Save / Cancel stay at the TOP of the form and stick there, so the on-screen keyboard (which covers the bottom) never hides them. */
+.ev-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 0; background: var(--surface); border-bottom: 1.5px dashed var(--hairline); }
+.ev-bar .btn { flex: 0 1 auto; }
+.ev-state { flex: 1 1 14em; margin: 0; display: flex; align-items: center; gap: .5em; letter-spacing: .08em; font-weight: 700; color: var(--muted); }
+.ev-state.dirty { color: var(--ink); }
+.ev-state .ic { width: 1.2em; height: 1.2em; flex: none; }
+.ev-edit-of { margin: 0; display: flex; flex-wrap: wrap; align-items: center; letter-spacing: .08em; overflow-wrap: anywhere; }
+.ev-edit-of b { margin-left: .4em; }
+.field-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.field-n { flex: none; color: var(--muted); font-size: .8em; letter-spacing: .06em; }
+.field-n.bad { color: var(--ink); font-weight: 700; text-decoration: underline; }
+.field-err { color: var(--ink); font-weight: 700; letter-spacing: .04em; line-height: 1.4; padding-left: .7em; border-left: 4px double var(--edge); }
+.field.has-err .adm-in { border: 4px double var(--edge); }
+.ev-prev { display: grid; place-items: center; min-height: 160px; padding: 10px; background: var(--paper); border: 1.5px dashed var(--hairline); border-radius: var(--radius-s); }
+.ev-prev-img { display: block; width: 100%; max-width: 340px; height: auto; background: var(--paper); }
+.btn.danger { border: 4px double var(--edge); }
+
+/* confirmation dialog */
+.dlg-back { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .55); }
+.dlg { width: min(100%, 460px); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: clamp(14px, 3vmin, 22px); background: var(--surface); color: var(--ink); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.dlg-t { margin: 0; letter-spacing: .14em; }
+.dlg-b { margin: 0; line-height: 1.5; letter-spacing: .03em; overflow-wrap: anywhere; }
+.dlg-a { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.dlg-a .btn { flex: 1 1 10em; }

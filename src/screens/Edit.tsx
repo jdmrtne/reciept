@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { LAYOUTS } from '../layouts/registry';
-import { FRAMES, DEFAULT_FRAME, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
+import { DEFAULT_FRAME, frameForLayout, framesForLayout, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { getFrameAsset } from '../frames/assets';
 import { FrameLayer, FramePreview, ImageFrameLayer } from '../frames/FrameLayer';
-import { framePrims, makeCtx } from '../frames/prims';
+import { framePrims } from '../frames/prims';
+import { ensureSessionStamp, newSessionStamp } from '../state/stamp';
 import { StickerGlyph, StickerTray } from '../stickers/StickerTray';
 import { FilterDefs, filterAttr } from '../filters/FilterLayer';
 import { FilterTray } from '../filters/FilterTray';
@@ -35,8 +36,9 @@ export function Edit() {
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const fallbackCtx = useMemo(() => makeCtx(loadSettings().eventName), []);
+  const fallbackCtx = useMemo(() => newSessionStamp(), []);
   const ctx = stamp ?? fallbackCtx;
+  useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
   const svg = useRef<SVGSVGElement>(null);
   const g = useRef<Gesture | null>(null);
 
@@ -229,7 +231,7 @@ export function Edit() {
         {tray === 'filter' && <FilterTray src={snap.objects.find(isPhoto)?.src ?? photos[0]} active={snap.filterId} onPick={pickFilter} />}
         {tray === 'frame' && (
           <div className="edit-tray">
-            {FRAMES.map((f) => (
+            {framesForLayout(snap.layoutId).map((f) => (
               <button key={f.id} className={`lay-card${f.id === snap.frameId ? ' on' : ''}`} onClick={() => pickFrame(f.id)}>
                 <FramePreview frameId={f.id} layoutId={snap.layoutId} /><span>{f.name.toUpperCase()}</span>
               </button>
@@ -239,8 +241,8 @@ export function Edit() {
         {tray === 'layout' && (
           <div className="edit-tray">
             {LAYOUTS.map((l) => (
-              <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
-                <FramePreview frameId={snap.frameId} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
+              <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}${l.frame ? ' wide' : ''}`} onClick={() => pickLayout(l.id)}>
+                <FramePreview frameId={frameForLayout(l.id, snap.frameId)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>
             ))}
           </div>

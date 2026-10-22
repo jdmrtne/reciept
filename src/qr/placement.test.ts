@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { collisions, inflate, occupiedRegions, overlaps, placeQr, primRegions, qrAreaFor, qrMinSide, regionIsClear, rotatedBounds, canPlaceQr, type OccupancyInput } from './placement';
 import { FRAMES, isImageFrame, resolveFramed } from '../frames/registry';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { framePrims, makeCtx } from '../frames/prims';
 import { vectorFrameOf, getFrame } from '../frames/registry';
 import type { FrameDef } from '../frames/types';
@@ -45,7 +46,7 @@ describe('occupancy', () => {
 });
 
 describe('strip placement (default, every frame): centered below the design, nothing is covered or moved', () => {
-  for (const f of FRAMES) for (const l of LAYOUTS) for (const paperDots of [384, 576]) {
+  for (const f of FRAMES.filter((f) => f.id !== 'boarding-pass')) for (const l of LAYOUTS) for (const paperDots of [384, 576]) {
     it(`${f.id} × ${l.id} (${paperDots} dots)`, () => {
       const o = occ(f, l.id), p = placeQr({ modules: MODULES, occ: o, paperDots });
       expect(p.ok).toBe(true);

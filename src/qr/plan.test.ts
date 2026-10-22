@@ -5,7 +5,8 @@ import { buildPlan, verifyPlanQr } from '../render/plan';
 import { renderPlan, renderPrint, type RenderEnv } from '../render/render';
 import { buildSnapshot } from '../editor/model';
 import { FRAMES } from '../frames/registry';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 import { makeCtx } from '../frames/prims';
 import { QrPlacementError, cutBand, CUT_SW } from './placement';
 import { QUIET } from '../share/qr';
@@ -19,7 +20,7 @@ describe('buildPlan with a QR', () => {
   it('without a QR the plan is unchanged: no qr command', () => {
     expect(buildPlan(buildSnapshot('single', photos), ctx, 384).cmds.some((c) => c.op === 'qr')).toBe(false);
   });
-  for (const f of FRAMES) for (const l of LAYOUTS) {
+  for (const f of FRAMES.filter((f) => f.id !== 'boarding-pass')) for (const l of LAYOUTS) {
     it(`${f.id} × ${l.id}: the design is byte-identical, the QR is last, below it, and verified`, () => {
       const snap = buildSnapshot(l.id, photos, f.id);
       const plain = buildPlan(snap, ctx, 384), withQr = buildPlan(snap, ctx, 384, { matrix });
@@ -42,7 +43,7 @@ describe('buildPlan with a QR', () => {
 describe('cut line between the design and the QR', () => {
   type QrCmd = Extract<ReturnType<typeof buildPlan>['cmds'][number], { op: 'qr' }>;
   const qrOf = (p: ReturnType<typeof buildPlan>) => p.cmds[p.cmds.length - 1] as QrCmd;
-  for (const f of FRAMES) for (const l of LAYOUTS) {
+  for (const f of FRAMES.filter((f) => f.id !== 'boarding-pass')) for (const l of LAYOUTS) {
     it(`${f.id} × ${l.id}: the cut line is below the design and above the QR`, () => {
       const plan = buildPlan(buildSnapshot(l.id, photos, f.id), ctx, 384, { matrix }), q = qrOf(plan);
       expect(q.mode).toBe('strip');

@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { IMAGE_FRAMES, getFrameBands, resolveFramed } from './registry';
-import { LAYOUTS } from '../layouts/registry';
+import { LAYOUTS as ALL_LAYOUTS } from '../layouts/registry';
+const LAYOUTS = ALL_LAYOUTS.filter((l) => !l.frame); // landscape tickets (own frame, own shape) are covered in ticket/ticket.test.ts
 
 const S = 3; // artwork scale: 3 px per layout unit (1152 px wide, ~ native size of the supplied designs)
 
