@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Icon } from '../../components/Icon';
 import type { Notice } from './types';
 
@@ -68,12 +68,19 @@ export function ChoiceRow<T extends string | number>({ label, hint, value, optio
   );
 }
 
-export function TextField({ label, hint, value, onChange, placeholder, inputMode, disabled }: { label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string; inputMode?: 'url' | 'decimal' | 'text'; disabled?: boolean }) {
+/**
+ * `error` / `counter` are optional (EP-3 event form): the error text is shown under the input and wired with aria-invalid /
+ * aria-describedby; the counter ("12/40") sits next to the label. Neither limits what can be typed: nothing is truncated while typing.
+ */
+export function TextField({ label, hint, value, onChange, placeholder, inputMode, disabled, error, counter }: { label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string; inputMode?: 'url' | 'decimal' | 'text'; disabled?: boolean; error?: string; counter?: string }) {
+  const errId = useId();
   return (
-    <label className="field">
-      <span className="field-l">{label}</span>
+    <label className={error ? 'field has-err' : 'field'}>
+      <span className="field-top"><span className="field-l">{label}</span>{counter && <span className={error ? 'field-n bad' : 'field-n'}>{counter}</span>}</span>
       {hint && <small className="field-h">{hint}</small>}
-      <input className="adm-in" value={value} placeholder={placeholder} inputMode={inputMode} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+      <input className="adm-in" value={value} placeholder={placeholder} inputMode={inputMode} disabled={disabled} aria-invalid={error ? true : undefined} aria-describedby={error ? errId : undefined}
+        onChange={(e) => onChange(e.target.value)} onFocus={(e) => e.currentTarget.scrollIntoView?.({ block: 'center', behavior: 'smooth' })} />
+      {error && <small id={errId} className="field-err" role="alert">{error}</small>}
     </label>
   );
 }
@@ -104,6 +111,28 @@ export function Toast({ notice, onDismiss }: { notice: Notice | null; onDismiss:
           <button type="button" className="toast-x" onClick={onDismiss} aria-label="Dismiss message"><Icon name="close" /></button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Yes/no question in front of everything else (delete, reset, leaving with unsaved changes). The SAFE choice has the focus, Escape
+ * and the backdrop mean "no". `danger` marks the confirm button as the destructive one.
+ */
+export function ConfirmDialog({ title, body, confirmLabel, cancelLabel = 'CANCEL', danger, onConfirm, onCancel }: { title: string; body: string; confirmLabel: string; cancelLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void }) {
+  const tid = useId(), bid = useId();
+  const safe = useRef<HTMLButtonElement>(null);
+  useEffect(() => { safe.current?.focus(); }, []);
+  return (
+    <div className="dlg-back" onClick={onCancel}>
+      <div className="dlg" role="alertdialog" aria-modal="true" aria-labelledby={tid} aria-describedby={bid} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}>
+        <h4 id={tid} className="dlg-t">{title}</h4>
+        <p id={bid} className="dlg-b">{body}</p>
+        <div className="dlg-a">
+          <button type="button" className="btn ghost" ref={safe} onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className={danger ? 'btn danger' : 'btn'} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
     </div>
   );
 }

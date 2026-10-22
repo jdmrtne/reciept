@@ -4,7 +4,8 @@ import { LAYOUTS } from '../layouts/registry';
 import { FRAMES, DEFAULT_FRAME, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { getFrameAsset } from '../frames/assets';
 import { FrameLayer, FramePreview, ImageFrameLayer } from '../frames/FrameLayer';
-import { framePrims, makeCtx } from '../frames/prims';
+import { framePrims } from '../frames/prims';
+import { ensureSessionStamp, newSessionStamp } from '../state/stamp';
 import { StickerGlyph, StickerTray } from '../stickers/StickerTray';
 import { FilterDefs, filterAttr } from '../filters/FilterLayer';
 import { FilterTray } from '../filters/FilterTray';
@@ -35,8 +36,9 @@ export function Edit() {
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const fallbackCtx = useMemo(() => makeCtx(loadSettings().eventName), []);
+  const fallbackCtx = useMemo(() => newSessionStamp(), []);
   const ctx = stamp ?? fallbackCtx;
+  useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
   const svg = useRef<SVGSVGElement>(null);
   const g = useRef<Gesture | null>(null);
 

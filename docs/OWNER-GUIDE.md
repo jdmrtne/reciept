@@ -19,6 +19,7 @@ Written for the person running the booth, not the developer. Android menu names 
    - Turn off auto-updates during the event if you can, so Chrome or Android does not restart mid-event.
 
 ## Before each event (2 minutes)
+- Choose the event: **ADMIN → Events**, tap the event, then **MAKE ACTIVE** (see "Events" below). The next guest gets it.
 - Tablet charged and plugged in; printer powered, paper loaded, cover closed.
 - Open the booth: the top-left dot on standby should say **PRINTER READY**. *CHECK PAPER* = paper low/out or cover open; *PRINTER OFFLINE* = not connected/powered.
 - Do one full test strip yourself, then let it return to standby.
@@ -49,6 +50,7 @@ ADMIN is now grouped by topic. On a tablet/laptop the sections are listed on the
 
 | Section | What is in it |
 |---|---|
+| **Events** | The events you can run, which one is active, the text printed on every receipt, and a preview. See "Events" below |
 | **Printer** | Printer type, connection details (Windows printer name, printer IP, BRIDGE URL, Bluetooth chunk/delay), PAIR / CHECK PRINTER, TEST PRINT |
 | **Print quality** | PRESET, DITHER, BRIGHTNESS, CONTRAST, DENSITY, SHARPEN, AUTO LEVEL, THRESHOLD, PAPER, SIDE MARGIN, FEED LINES, CUT, plus a pinned TEST PRINT preview |
 | **Photo sharing** | SHARE QR, PUBLIC / SITE URL, upload address, CHECK SHARE |
@@ -56,6 +58,20 @@ ADMIN is now grouped by topic. On a tablet/laptop the sections are listed on the
 | **Security** | CHANGE PIN |
 
 - **Search** (top of the panel) finds a setting by name or plain words: try "brightness", "dark mode", "qr", "pin".
-- **Saving:** there is still no Save button. Every change is stored the instant you make it; the SAVED badge confirms it. If the device refuses to store settings, a message says so.
+- **Saving:** every setting is stored the instant you change it; the SAVED badge confirms it. The one exception is **Events**, which has a **SAVE** button (see below). If the device refuses to store settings, a message says so.
 - **Dark mode:** ADMIN → Appearance, or the moon/sun button in the panel header. The choice is kept on this device and applies to the whole booth, including the screens customers see. SYSTEM follows the tablet's own light/dark setting. The default is LIGHT, so a booth looks as before until you change it. Receipts, the print preview and stickers stay black-on-white in every theme, because that is how they print.
 - Control names (BRIGHTNESS, CUT, etc.) are unchanged, so the troubleshooting table above still applies. The old "+" buttons that cycled PAPER, PRESET, DITHER, SHARE QR and CUT are now clearly labelled choices and switches.
+
+## Events (ADMIN → Events)
+An *event* is the text printed on every receipt: name, header, up to three detail lines, a thank-you and a small branding line. You can keep several events (a wedding, a birthday, ...) and switch between them without any rebuild.
+
+- **Pick the event for the next guest:** tap the event in the list, then **MAKE ACTIVE**. The ACTIVE tag moves. A guest who has already started keeps the event they started with; the next guest gets the new one.
+- **Edit an event:** tap it, change the fields under **Event text**, then **SAVE**. Nothing changes for guests until you press SAVE, even if it is the active event. **CANCEL** throws your changes away. The bar with SAVE and CANCEL stays at the top of the form so the on-screen keyboard does not cover it.
+- **The fields:** EVENT NAME (required), HEADER / TITLE, DETAIL LINE 1 to 3 (use these for venue, host or date; blank lines are skipped), THANK-YOU MESSAGE (leave blank to print none), SHOW BRANDING and BRANDING TEXT (blank prints "Printed by Memorys"). Each line holds up to 40 characters. A line that is too long, or has emoji or other characters the receipt cannot print, is marked and cannot be saved; nothing is cut off for you.
+- **Some frames already print the name, date, time or a thank-you.** The booth never prints the same thing twice: it adds only what that frame lacks, under the picture.
+- **Leaving with unsaved changes:** switching events, changing section, searching, EXIT or closing the page asks first (KEEP EDITING / DISCARD).
+- **NEW EVENT** adds an event (not active yet). **DUPLICATE** copies the selected one (not active). **RESET TEXT** puts the selected event's text back to the defaults (asks first). **DELETE** removes an event (asks first). You cannot delete the active event (make another one active first) or the last remaining event.
+- **Two events may share a name.** They stay separate; the small `#event-2` code under each name tells them apart.
+- **Preview:** shows your unsaved text on a sample receipt (pick the frame). It uses a sample photo, date and time; nothing is printed, saved or sent, and the QR code is not drawn in it. Check the real receipt with a test strip.
+- **If the booth times out while you type,** your unsaved text is still there when you come back through the PIN, until the page is reloaded.
+- **Known limits:** the PIN is stored on the tablet and only keeps casual guests out; see the audit notes. Tiny text on 58 mm paper must be checked on the real printer.

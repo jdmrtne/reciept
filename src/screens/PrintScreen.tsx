@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
-import { makeCtx } from '../frames/prims';
+import { ensureSessionStamp } from '../state/stamp';
 import { canvasToBlob, renderPrint } from '../render/render';
 import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
@@ -32,8 +32,8 @@ export function PrintScreen() {
   useEffect(() => {
     if (!editor) { setPrepFailed(true); return; }
     let dead = false, made: string | null = null;
-    const { eventName, paperWidthMm, thermal } = loadSettings();
-    renderPrint(editor.present, stamp ?? makeCtx(eventName), paperWidthMm, undefined, frameQrForSession() ?? undefined)
+    const { paperWidthMm, thermal } = loadSettings();
+    renderPrint(editor.present, stamp ?? ensureSessionStamp(), paperWidthMm, undefined, frameQrForSession() ?? undefined)
       .then(async (c) => {
         const rgba = canvasToRGBA(c);
         const bits = toThermalBitmap(rgba, thermal, PAPER_DOTS[paperWidthMm]);

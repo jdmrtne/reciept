@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
-import { makeCtx } from '../frames/prims';
+import { ensureSessionStamp } from '../state/stamp';
 import { canvasToBlob, renderPreview } from '../render/render';
 import { Icon } from '../components/Icon';
 import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
@@ -15,8 +15,8 @@ export function PreviewScreen() {
   useEffect(() => {
     if (!editor) return;
     let dead = false, made: string | null = null;
-    const { eventName, paperWidthMm } = loadSettings();
-    renderPreview(editor.present, stamp ?? makeCtx(eventName), paperWidthMm, undefined, frameQrForSession() ?? undefined)
+    const { paperWidthMm } = loadSettings();
+    renderPreview(editor.present, stamp ?? ensureSessionStamp(), paperWidthMm, undefined, frameQrForSession() ?? undefined)
       .then((c) => canvasToBlob(c))
       .then((b) => { if (dead) return; made = URL.createObjectURL(b); setUrl(made); })
       .catch((e) => { if (!dead) setError(qrErrorText(e) ?? 'Could not prepare your receipt. Go back and try again.'); });

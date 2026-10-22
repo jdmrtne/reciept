@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { sessionStore } from '../../state/session';
 import { loadSettings, mergeSettings, saveSettings, type BoothSettings } from '../../config/settings';
 import { PAPER_DOTS } from '../../layouts/engine';
@@ -13,7 +13,8 @@ import { Icon } from '../../components/Icon';
 import '../../styles/admin.css';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
-import { SaveStatus, SettingsCard, Toast, type SaveState } from './ui';
+import { ConfirmDialog, SaveStatus, SettingsCard, Toast, type SaveState } from './ui';
+import { eventEditorStore, isDirty } from './eventEditor';
 import { ThemeToggle } from './ThemeToggle';
 import type { AdminCtx, Notice, NoticeKind, SectionId } from './types';
 
@@ -43,6 +44,7 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
   const [active, setActive] = useState<SectionId>(initialSection);
   const [query, setQuery] = useState('');
   const [save, setSave] = useState<{ status: SaveState; n: number }>({ status: 'idle', n: 0 });
+  const [leaving, setLeaving] = useState<(() => void) | null>(null); // what the owner wanted to do, waiting for an answer about unsaved event text
   const rootRef = useRef<HTMLElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -63,14 +65,26 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
     return () => window.clearTimeout(t);
   }, [save]);
 
-  const apply = (next: BoothSettings) => {
+  const apply = (next: BoothSettings): boolean => {
     const ok = saveSettings(next);
     setS(next);
     setSave((p) => ({ status: ok ? 'saved' : 'error', n: p.n + 1 }));
     if (!ok) notify('error', 'COULD NOT SAVE \u2014 THIS DEVICE REFUSED TO STORE SETTINGS. THEY WILL BE LOST WHEN THE PAGE CLOSES');
+    return ok;
   };
-  const set = (p: Partial<BoothSettings>) => apply(mergeSettings({ ...s, ...p }));
-  const tune = (p: Partial<ThermalSettings>) => set({ thermal: { ...s.thermal, ...p } });
+  const set = (p: Partial<BoothSettings>): boolean => apply(mergeSettings({ ...s, ...p }));
+  const tune = (p: Partial<ThermalSettings>) => { set({ thermal: { ...s.thermal, ...p } }); };
+
+  // EP-3: unsaved event text. Everything that would throw it away (another section, search, EXIT, closing the page) asks first.
+  const editor = useSyncExternalStore(eventEditorStore.subscribe, eventEditorStore.get, eventEditorStore.get);
+  const dirty = isDirty(s, editor);
+  const leave = (action: () => void) => { if (dirty) setLeaving(() => action); else action(); };
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const pair = async () => {
     notify('info', s.printer === 'network' || s.printer === 'windows' ? 'CHECKING PRINTER' : 'CHOOSE YOUR PRINTER IN THE POP-UP');
@@ -110,7 +124,7 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
   const shown = searching ? hits : section.cards.map((card) => ({ section, card }));
   const hasAside = !searching && shown.some((h) => h.card.aside);
 
-  const go = (id: SectionId) => { setQuery(''); setActive(id); };
+  const go = (id: SectionId) => { if (id === active && !searching) return; leave(() => { setQuery(''); setActive(id); }); };
   useEffect(() => { paneRef.current?.scrollTo?.({ top: 0 }); rootRef.current?.scrollTo?.({ top: 0 }); }, [active, searching]);
 
   return (
@@ -119,12 +133,12 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
         <h2 className="prt-title adm-title">OWNER SETTINGS</h2>
         <div className="adm-tools">
           <ThemeToggle onFail={() => notify('error', 'THEME CHANGED, BUT THIS DEVICE WOULD NOT REMEMBER IT')} />
-          <button type="button" className="btn ghost adm-exit" onClick={() => sessionStore.reset()}><Icon name="close" />EXIT</button>
+          <button type="button" className="btn ghost adm-exit" onClick={() => leave(() => sessionStore.reset())}><Icon name="close" />EXIT</button>
         </div>
         <div className="adm-search" role="search">
           <Icon name="search" />
           <input type="search" className="adm-in" aria-label="Search settings" placeholder="SEARCH SETTINGS" value={query} autoComplete="off"
-            onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }} />
+            onChange={(e) => { const v = e.target.value; if (query.trim() === '' && v.trim() !== '') leave(() => setQuery(v)); else setQuery(v); }} onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }} />
           {searching && <button type="button" className="adm-clear" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" /></button>}
         </div>
       </header>
@@ -172,6 +186,10 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
         </div>
       </div>
       <Toast notice={notice} onDismiss={clearNotice} />
+      {leaving && (
+        <ConfirmDialog title="UNSAVED CHANGES" body="You changed an event but did not save it. Leaving now throws those changes away." confirmLabel="DISCARD AND LEAVE" cancelLabel="KEEP EDITING" danger
+          onCancel={() => setLeaving(null)} onConfirm={() => { const go = leaving; setLeaving(null); eventEditorStore.cancel(); go(); }} />
+      )}
     </main>
   );
 }

@@ -224,3 +224,34 @@ This section updates the table in section 4 for the A rows only. The audit above
 | A7 owner-only | UNCHANGED | no ADMIN event controls yet (EP-3) |
 
 Section 8 decisions: 1 (profile list with one active) adopted as briefed. 5 (text rules) adopted with the limits in ARCHITECTURE "Event profiles". 6 (branding toggle plus editable text, default on) adopted. 9 (PROJECT.md wording) done. 2, 3 and 4 stay open for EP-2; 7 and 8 stay open for EP-5. No owner answer was given for any of these; the choices above are the audit's recommendations plus the owner's EP-1 brief.
+
+## 12. EP-2 update (2026-10-12, session 14): receipt information is rendered
+Updates section 4 for the B rows and section 8 decisions 2, 3, 4. The audit above is left as written. Real `npm run typecheck`, `npm test` (31 files, 1466 tests) and `npm run build` passed. Nothing was printed on a thermal printer.
+
+| ID | Status after EP-2 | What exists now |
+|---|---|---|
+| B1 event name | IMPLEMENTED AND VERIFIED (software); legibility REQUIRES PHYSICAL DEVICE TESTING | Printed on all 25 frames exactly once: by the 4 vector frames that already print it (`prints.event`), by the info block everywhere else |
+| B2 date | IMPLEMENTED AND VERIFIED (software) | Exactly once on every frame (9 vector frames print it themselves, the block adds it on the rest); value is `session.stamp` |
+| B3 time | IMPLEMENTED AND VERIFIED (software) | Same rule as B2 (4 vector frames print it) |
+| B4 thank-you | IMPLEMENTED AND VERIFIED (software) | `classic-receipt` now prints the profile text through a `{THANKS}` token; every other frame gets it from the block; empty means none |
+| B5 branding | IMPLEMENTED AND VERIFIED (software); legibility REQUIRES PHYSICAL DEVICE TESTING | "Printed by Memorys" (or the owner's text) on every frame when enabled |
+| A1/A2 header, details | RENDERED | Printed by the block on every frame; still no ADMIN control (EP-3) |
+| B6 QR | IMPLEMENTED AND VERIFIED (software, now also with the block); REQUIRES PHYSICAL DEVICE TESTING | 630 existing placement/plan checks untouched and green; new matrix checks and a jsQR decode of the rendered canvas and of the simulated 1-bit bitmap |
+
+Decisions adopted (no owner answer, audit recommendations): 2 print only what the drawn frame lacks; 3 block between the design and the cut line; 4 thank-you, branding and the other block text also appear on the colour JPEG and the GIF (they share the plan). Inventory re-checked against the code: 11 vector frames (event on 4, date on 9, time on 4, thank-you on 1; `wanted-bounty` and `straw-hat-wanted` print none) and 14 PNG frames (no text), matching the audit.
+
+## 13. EP-3 update (2026-10-12, session 15): ADMIN event management
+Updates section 4 rows A1 to A7. Real `npm run typecheck`, `npm test` and `npm run build` passed (see HANDOFF Session 15). No tablet or printer run.
+
+| ID | Status after EP-3 | What exists now |
+|---|---|---|
+| A1 header, per event | IMPLEMENTED AND VERIFIED (software) | ADMIN > Events > Event text: HEADER / TITLE, per profile, printed by the EP-2 block |
+| A2 details, per event | IMPLEMENTED AND VERIFIED (software) | Three DETAIL LINE inputs (the schema has no separate venue/host field; a detail line is where venue, host or date go) |
+| A3 event name | IMPLEMENTED AND VERIFIED (software) | EVENT NAME, required, per profile, 40-character limit enforced and shown, no silent truncation |
+| A4 thank-you | IMPLEMENTED AND VERIFIED (software) | THANK-YOU MESSAGE, blank allowed (prints none) |
+| A5 branding on/off and text | IMPLEMENTED AND VERIFIED (software) | SHOW BRANDING switch and BRANDING TEXT (blank = "Printed by Memorys") |
+| A6 several events, pick one | IMPLEMENTED AND VERIFIED (software) | New, duplicate, make active, delete (inactive only, never the last), reset; stable ids; same names allowed |
+| A7 owner-only | PARTIALLY IMPLEMENTED (unchanged gaps) | The section exists only inside ADMIN behind the existing PIN gate; guest screens contain no event controls (tests). The three access gaps of D4 are NOT fixed (EP-5) |
+| Receipt preview | IMPLEMENTED AND VERIFIED (software for the plan; drawing needs a browser/tablet check) | Uses `buildPlan` + `renderPreview` with the unsaved draft; no print, no upload, no stored session, no QR |
+
+Still open from the audit: inactivity timeout and countdown seconds have no ADMIN control (not requested in the EP-3 brief). Idle note under D4 is now handled for event text: an unsaved draft survives the idle reset (memory only, lost on page reload).

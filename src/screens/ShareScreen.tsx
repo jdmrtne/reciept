@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QrCode } from '../components/QrCode';
 import { Icon } from '../components/Icon';
 import { loadSettings } from '../config/settings';
-import { makeCtx } from '../frames/prims';
+import { ensureSessionStamp } from '../state/stamp';
 import { sessionStore, useSession } from '../state/session';
 import { renderColorPhoto, renderGifVersion } from '../share/assets';
 import { getShareStore, makeSessionId } from '../share/backend';
@@ -46,7 +46,7 @@ export function ShareScreen() {
   const getColor = () => {
     if (!editor) return Promise.reject(new Error('no-editor'));
     if (!color.current) {
-      const p = renderColorPhoto(editor.present, stamp ?? makeCtx(cfg.eventName), cfg.paper);
+      const p = renderColorPhoto(editor.present, stamp ?? ensureSessionStamp(), cfg.paper);
       color.current = p;
       p.then((r) => { if (alive.current) setPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(new Blob([r.asset.bytes as BlobPart], { type: r.asset.type })); }); },
         () => { if (color.current === p) color.current = null; }); // failed: let RETRY render again
@@ -63,7 +63,7 @@ export function ShareScreen() {
         if (!editor) return null; // no photo at all
         if (file === 'photo.jpg') return (await getColor()).asset;
         // The GIF is its own render of the same layout (independent of the JPEG, so one failing never blocks the other).
-        return renderGifVersion(editor.present, stamp ?? makeCtx(cfg.eventName), footage);
+        return renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage);
       },
       env: { fetch: (i, o) => fetch(i, o), bridgeUrl: cfg.bridge, publicBase: cfg.publicBase, pageBase: cfg.pageBase, store: getShareStore() ?? undefined }
     });

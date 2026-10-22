@@ -229,6 +229,7 @@ export async function renderOverlay(plan: RenderPlan, env: RenderEnv = browserEn
     else if (c.op === 'frame') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); }
     else if (c.op === 'image-frame') { const a = artSize(c, k); drawImageFrame(g, imageFrameSource(env, await load(c.src), c, k, a.w, a.h)); }
     else if (c.op === 'sticker') drawSticker(g, c, await stickerSource(env, c, k, load), k);
+    else if (c.op === 'info') { g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); } // EP-2 event text: part of the overlay, so the GIF carries it too
     else drawQrStrip(g, c, k, plan.unitsW);
   }
   return out;
@@ -269,6 +270,8 @@ export async function renderPlan(plan: RenderPlan, env: RenderEnv = browserEnv):
       drawImageFrame(g, frames.get(c)!);
     } else if (c.op === 'sticker') {
       drawSticker(g, c, stickers.get(c)!, k);
+    } else if (c.op === 'info') {
+      g.save(); g.scale(k, k); drawPrims(g, c.prims); g.restore(); // EP-2 event text, same prim drawing as the frame; always before the QR
     } else {
       assertQrSpotClear(g, c, k, plan.width, plan.height); // part 2 of the gate, then the QR itself (always the last command)
       drawQrStrip(g, c, k, plan.unitsW);
