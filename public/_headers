@@ -1,0 +1,18 @@
+# Netlify + Cloudflare Pages format. Other hosts: see docs/DEPLOYMENT.md for the equivalent settings.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(self), usb=(self), bluetooth=(self), microphone=(), geolocation=(), payment=()
+
+# The shell and the service worker must always be revalidated, or a stale copy can pin the kiosk to an old build.
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Hashed build output never changes for a given filename.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
