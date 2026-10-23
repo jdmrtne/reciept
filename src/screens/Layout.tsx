@@ -1,14 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { LAYOUTS } from '../layouts/registry';
-import { groupedLayouts, photoCount, photoCountLabel, type LayoutGroup } from '../layouts/groups';
+import { pickerEntries, photoCount, photoCountLabel, type LayoutGroup } from '../layouts/groups';
 import { DEFAULT_FRAME, frameForLayout } from '../frames/registry';
 import { FramePreview } from '../frames/FrameLayer';
 import { sessionStore, useSession } from '../state/session';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
 
-/** Computed once: the registry is static data. Ordinary layouts stay cards; layouts sharing a `group` become one card + modal. */
-const ENTRIES = groupedLayouts(LAYOUTS);
+/** Computed once: the registry is static data. Layouts sharing a `group` become ONE featured card + modal, listed FIRST; ordinary layouts follow as cards. */
+const ENTRIES = pickerEntries(LAYOUTS);
 
 const choose = (layoutId: string) =>
   sessionStore.update({ layoutId, frameId: frameForLayout(layoutId, sessionStore.get().frameId), screen: 'camera' });
@@ -26,25 +26,26 @@ export function Layout() {
       <div className="lay-grid">
         {ENTRIES.map((e) => e.kind === 'layout' ? (
           <button key={e.layout.id} className="lay-card" onClick={() => choose(e.layout.id)}>
-            <FramePreview frameId={frameForLayout(e.layout.id, DEFAULT_FRAME)} layoutId={e.layout.id} />
+            <FramePreview frameId={frameForLayout(e.layout.id, DEFAULT_FRAME)} layoutId={e.layout.id} qr />
             <span>{e.layout.name.toUpperCase()}</span>
           </button>
         ) : (
           <button
             key={e.group.id}
-            className={`lay-card lay-group${e.group.layouts.some((l) => l.id === layoutId) ? ' on' : ''}`}
+            className={`lay-card lay-group lay-feature${e.group.layouts.some((l) => l.id === layoutId) ? ' on' : ''}`}
             aria-haspopup="dialog"
             aria-current={e.group.layouts.some((l) => l.id === layoutId) || undefined}
             data-group={e.group.id}
             onClick={(ev) => { opener.current = ev.currentTarget; setOpenGroup(e.group); }}
           >
+            <em className="lay-badge" aria-hidden="true">★ EVENT SPECIAL</em>
             <div className="lay-stack">
               <div className="lay-stack-in">
-                <FramePreview frameId={frameForLayout(e.group.layouts[0].id, DEFAULT_FRAME)} layoutId={e.group.layouts[0].id} />
+                <FramePreview frameId={frameForLayout(e.group.layouts[0].id, DEFAULT_FRAME)} layoutId={e.group.layouts[0].id} qr />
               </div>
             </div>
             <span>{e.group.name}</span>
-            <small className="lay-sub">{e.group.layouts.length} LAYOUTS</small>
+            <small className="lay-sub">{e.group.layouts.length} LAYOUTS · TAP TO OPEN</small>
           </button>
         ))}
       </div>
@@ -55,7 +56,7 @@ export function Layout() {
           <div className="modal-grid">
             {openGroup.layouts.map((l) => (
               <button key={l.id} className={`lay-card${l.id === layoutId ? ' on' : ''}`} aria-current={l.id === layoutId || undefined} onClick={() => { choose(l.id); close(); }}>
-                <FramePreview frameId={frameForLayout(l.id, DEFAULT_FRAME)} layoutId={l.id} />
+                <FramePreview frameId={frameForLayout(l.id, DEFAULT_FRAME)} layoutId={l.id} qr />
                 <span>{l.name.toUpperCase()}</span>
                 <small className="lay-sub">{photoCountLabel(photoCount(l))}</small>
               </button>

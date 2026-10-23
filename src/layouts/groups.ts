@@ -28,6 +28,15 @@ export function groupedLayouts(layouts: readonly LayoutDef[] = LAYOUTS): LayoutE
   return out;
 }
 
+/**
+ * The cards in the order CHOOSE YOUR STRIP shows them: groups (event specials) FIRST so customers notice them, then the ordinary layouts.
+ * Pure and stable: each kind keeps its relative order from `groupedLayouts`. Display only; the registry order is untouched.
+ */
+export function pickerEntries(layouts: readonly LayoutDef[] = LAYOUTS): LayoutEntry[] {
+  const all = groupedLayouts(layouts);
+  return [...all.filter((e) => e.kind === 'group'), ...all.filter((e) => e.kind === 'layout')];
+}
+
 /** How many photos a layout takes (slot count of the resolved layout). */
 export const photoCount = (layout: LayoutDef): number => resolveLayout(layout).slots.length;
 

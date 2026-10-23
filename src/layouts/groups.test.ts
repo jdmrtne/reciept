@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { LAYOUTS, NCL_GROUP, PASS_LAYOUTS, STANDARD_LAYOUTS } from './registry';
-import { groupedLayouts, photoCount, photoCountLabel, type LayoutEntry } from './groups';
+import { groupedLayouts, pickerEntries, photoCount, photoCountLabel, type LayoutEntry } from './groups';
 import type { LayoutDef } from './types';
 
 const GROUP_NAME = 'JLC 20th Anniv. Special';
@@ -77,5 +77,18 @@ describe('photo count shown in the modal', () => {
   it('1 PHOTO .. 4 PHOTOS for pass-1..4', () => {
     expect(PASS_LAYOUTS.map(photoCount)).toEqual([1, 2, 3, 4]);
     expect(PASS_LAYOUTS.map((l) => photoCountLabel(photoCount(l)))).toEqual(['1 PHOTO', '2 PHOTOS', '3 PHOTOS', '4 PHOTOS']);
+  });
+});
+
+describe('pickerEntries(): groups first', () => {
+  const e = pickerEntries();
+  it('the JLC group is the first card, then the six ordinary layouts in their usual order', () => {
+    expect(e).toHaveLength(7);
+    expect(e[0].kind).toBe('group');
+    expect(e.slice(1).map((x) => (x.kind === 'layout' ? x.layout.id : 'group'))).toEqual(ORDINARY);
+  });
+  it('is stable and leaves groupedLayouts() and the registry untouched', () => {
+    expect(pickerEntries().map((x) => x.kind)).toEqual(e.map((x) => x.kind));
+    expect(LAYOUTS.map((l) => l.id)).toEqual([...ORDINARY, 'pass-1', 'pass-2', 'pass-3', 'pass-4']);
   });
 });

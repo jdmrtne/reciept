@@ -120,6 +120,16 @@ h1, h2 { color: var(--ink); }
 .lay-sub { font-size: .72em; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
 /* group card ("JLC 20th Anniv. Special"): the first layout's thumbnail with two offset outlines behind it = a small stack */
 .lay-group.on { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 5px var(--edge); }
+/* FEATURED group card (event special): listed first, twice as wide, inked badge + dashed ring + a slow pulse so it is the first thing a customer sees */
+.lay-feature { grid-column: span 2; position: relative; outline: 3px dashed var(--ink); outline-offset: 5px; box-shadow: 6px 6px 0 var(--shadow-ink); }
+.lay-feature > span { font-size: 1.05em; letter-spacing: .16em; text-align: center; }
+.lay-feature .lay-stack { height: 32vmin; }
+.lay-feature .lay-stack-in > svg { max-height: 30vmin; }
+.lay-badge { font-style: normal; font-weight: 800; font-size: .78em; letter-spacing: .2em; padding: .35em 1em; border-radius: 999px; background: var(--ink); color: var(--on-ink); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .lay-badge { animation: lay-pulse 2.2s var(--ease) infinite; }
+  @keyframes lay-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+}
 .lay-stack { height: 30vmin; width: 100%; display: grid; place-items: center; }
 .lay-stack-in { position: relative; width: calc(100% - 14px); margin: 0 14px 14px 0; }
 .lay-stack-in > svg { position: relative; z-index: 2; display: block; width: 100%; height: auto; max-height: 28vmin; background: var(--surface); border-radius: 8px; }

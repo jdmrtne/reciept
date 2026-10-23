@@ -3,6 +3,8 @@ import { getFrame, resolveFramed, vectorFrameOf } from './registry';
 import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
 import { isSideways, readingMatrix } from '../render/orient';
+import { qrMatrix, qrPath, QUIET } from '../share/qr';
+import { placeQr, qrAreaFor } from '../qr/placement';
 
 import { FONT_STACK, FONT_DISPLAY_STACK } from '../render/font';
 const FONT = FONT_STACK;
@@ -30,15 +32,28 @@ export function ImageFrameLayer({ asset, w, h }: { asset: FrameAsset; w: number;
   return <image href={asset.src} x={0} y={0} width={w} height={h} preserveAspectRatio={asset.fit === 'stretch' ? 'none' : 'xMidYMid slice'} pointerEvents="none" />;
 }
 
-/** Small thumbnail for the frame picker: framed layout with placeholder photo slots under the real frame artwork. */
-export function FramePreview({ frameId, layoutId }: { frameId: string; layoutId: string }) {
+/** One fixed, valid QR used only to SHOW where the real session QR lands on a print (it is not a working link). */
+let sampleQr: boolean[][] | null = null;
+const getSampleQr = () => (sampleQr ??= qrMatrix('https://receipt-beta.vercel.app/p/sample-qr-preview'));
+
+/**
+ * Small thumbnail for the frame picker: framed layout with placeholder photo slots under the real frame artwork.
+ * `qr`: also draw a sample QR where the real one will print (same placement rules as the print: the frame's declared safe area, e.g. the
+ * NCL stub, otherwise a strip below the design with a cut line). Off by default so the editor's pickers are unchanged.
+ */
+export function FramePreview({ frameId, layoutId, qr = false }: { frameId: string; layoutId: string; qr?: boolean }) {
   const L = resolveFramed(layoutId, frameId);
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
   const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH'));
   const turn = isSideways(layoutId); // sideways (roll-printed) ticket: the thumbnail shows it the way it is READ (landscape), see render/orient.ts
+  const matrix = qr ? getSampleQr() : null;
+  const placed = matrix ? placeQr({ modules: matrix.length, occ: { width: L.width, height: L.height, slots: L.slots, stickers: [], prims, artwork: !!asset }, area: qrAreaFor(frame, layoutId) }) : null;
+  const q = placed && placed.ok ? placed : null;
+  const H = q ? q.canvasHeight : L.height; // a strip placement makes the paper taller; a safe-area placement does not
   return (
-    <svg viewBox={turn ? `0 0 ${L.height} ${L.width}` : `0 0 ${L.width} ${L.height}`} className="lay-svg" aria-hidden="true">
+    <svg viewBox={turn ? `0 0 ${H} ${L.width}` : `0 0 ${L.width} ${H}`} className="lay-svg" aria-hidden="true">
       <g transform={turn ? readingMatrix(L.width) : undefined}>
+        {q && H > L.height && <rect width={L.width} height={H} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />}
         <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />
         {L.slots.map((s, i) => (
           <g key={i}>
@@ -47,6 +62,15 @@ export function FramePreview({ frameId, layoutId }: { frameId: string; layoutId:
           </g>
         ))}
         {asset ? <ImageFrameLayer asset={asset} w={L.width} h={L.height} /> : <FrameLayer prims={prims} />}
+        {q && matrix && (
+          <g data-sample-qr={q.mode}>
+            {q.cutY !== undefined && <line x1={6} y1={q.cutY} x2={L.width - 6} y2={q.cutY} stroke="#111" strokeWidth={1.5} strokeDasharray="6 4" />}
+            <g transform={`translate(${q.rect.x} ${q.rect.y}) scale(${q.rect.w / (matrix.length + QUIET * 2)})`}>
+              <rect width={matrix.length + QUIET * 2} height={matrix.length + QUIET * 2} fill="#fff" />
+              <path transform={`translate(${QUIET} ${QUIET})`} d={qrPath(matrix)} fill="#111" shapeRendering="crispEdges" />
+            </g>
+          </g>
+        )}
       </g>
     </svg>
   );

@@ -62,12 +62,12 @@ describe.skipIf(!available)('layout picker: ordinary cards + the JLC 20th Anniv.
   };
 
   describe('main grid', () => {
-    it('shows the 6 ordinary layouts in order, then ONE group card; no pass layout is a separate card', () => {
+    it('shows the ONE group card FIRST, then the 6 ordinary layouts in order; no pass layout is a separate card', () => {
       RTL.render(<LayoutScreen />);
       const names = gridCards().map(label);
       expect(names).toHaveLength(7);
-      expect(names.slice(0, 6)).toEqual(STANDARD_LAYOUTS.map((l) => l.name.toUpperCase()));
-      expect(names[6]).toBe(GROUP_NAME);
+      expect(names.slice(1)).toEqual(STANDARD_LAYOUTS.map((l) => l.name.toUpperCase()));
+      expect(names[0]).toBe(GROUP_NAME);
       for (const l of PASS_LAYOUTS) expect(names, l.id).not.toContain(l.name.toUpperCase());
       expect(NCL_GROUP.name).toBe(GROUP_NAME);
       expect(dialog()).toBeNull();
