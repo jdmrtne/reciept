@@ -94,3 +94,13 @@ Open **ADMIN → Frames** to switch frame designs on or off for the frame list g
 - The **JLC NCL Boarding Pass** frame is not listed. It always goes with the JLC layouts, which you control under **ADMIN → Layouts**.
 - A guest who already picked a frame keeps it, even if you hide it afterwards; it just won't be offered to the next guest. If you hide the default frame (Classic Receipt), new guests start with the first frame that is still shown.
 - Changes save immediately and apply the next time a guest opens the editor (no reload). The setting is stored on this device, and new frames added in a future update appear automatically. It does not affect the frame choice in **ADMIN → Events** (that preview is for you).
+
+## Editing the text inside frames (ADMIN → Frame text)
+Open **ADMIN → Frame text** to change the wording printed inside nine built-in frames: Classic Receipt, Minimal Receipt, Retro Receipt, Ticket / Stub, Birthday, Graduation, Friends, Couple and Event. Wanted / Bounty, Straw Hat Wanted, the picture frames and the NCL Boarding Pass cannot be edited here.
+- Each frame has a card with a live preview and one field per header or footer line. The grey text in a field is the built-in wording. **Leave a field empty to keep the built-in wording.**
+- Type your own text (up to 40 characters; no emoji). Long text shrinks to fit the paper, down to the smallest readable size, then is shortened with "...".
+- **Tokens** are filled in for every customer: `{EVENT}` `{DATE}` `{TIME}` `{YEAR}` `{SERIAL}` `{THANKS}`. Any other word in braces is not printed.
+- **HIDE LINE** prints nothing on that line. **A saved empty line means hidden**, and the space for it stays reserved, so the frame keeps its size. **SHOW LINE** brings the built-in wording back.
+- Press **SAVE** to keep your changes (the same SAVE / CANCEL bar as Events; leaving with unsaved changes asks first). **RESET THIS FRAME** (asks first) puts that frame back to the built-in wording and saves right away.
+- **Edits apply to the next customer only.** A customer who already started keeps the text they started with.
+- You can edit a frame here even if you hid it under ADMIN → Frames; that only controls which frames guests can pick.

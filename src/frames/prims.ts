@@ -4,6 +4,7 @@ import { ornament, sketchRect, tornRect } from './art';
 import { wantedPrims } from './wanted';
 import type { ResolvedLayout } from '../layouts/types';
 import { DEFAULT_THANK_YOU, type EventProfile } from '../config/events';
+import { lineOverride, type FrameTextOverrides, type LinePart } from './frameText';
 
 const REF = 384;
 const CHAR_W = 0.6; // monospace glyph width / font size
@@ -12,22 +13,42 @@ const CHAR_W = 0.6; // monospace glyph width / font size
  * The session stamp: date, time and serial from ONE moment, in the booth device's local time zone (no zone is forced, so a booth shows
  * the venue's own clock). An invalid Date is replaced by "now" instead of printing "NaN". `info` = the final active event profile.
  */
-export function makeCtx(event: string, d: Date = new Date(), info?: EventProfile): FrameCtx {
+export function makeCtx(event: string, d: Date = new Date(), info?: EventProfile, frameText?: FrameTextOverrides): FrameCtx {
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
   const date = `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
   let h = 7;
   for (const c of date + time + event) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return { event, date, time, year: String(d.getFullYear()), serial: String(h % 1000000).padStart(6, '0'), ...(info ? { info } : {}) };
+  return { event, date, time, year: String(d.getFullYear()), serial: String(h % 1000000).padStart(6, '0'), ...(info ? { info } : {}), ...(frameText && Object.keys(frameText).length ? { frameText } : {}) };
 }
 
 /** The stamp for a customer: the FINAL active event profile (from `getActiveEvent`) supplies the name and the receipt info. */
-export const makeEventCtx = (profile: EventProfile, d: Date = new Date()): FrameCtx => makeCtx(profile.name, d, profile);
+export const makeEventCtx = (profile: EventProfile, d: Date = new Date(), frameText?: FrameTextOverrides): FrameCtx => makeCtx(profile.name, d, profile, frameText);
 
-const fill = (t: string, c: FrameCtx) =>
-  t.replace('{EVENT}', c.event).replace('{DATE}', c.date).replace('{TIME}', c.time).replace('{YEAR}', c.year).replace('{SERIAL}', c.serial)
-    .replace('{THANKS}', c.info ? c.info.thankYou : DEFAULT_THANK_YOU); // the profile's thank-you; the old fixed text when no profile is attached
+/** One pass, so a value that itself contains braces (an event named "{DATE}") is never expanded again. Unsupported {tokens} are removed. */
+const fill = (t: string, c: FrameCtx) => {
+  const v: Record<string, string> = { EVENT: c.event, DATE: c.date, TIME: c.time, YEAR: c.year, SERIAL: c.serial, THANKS: c.info ? c.info.thankYou : DEFAULT_THANK_YOU }; // THANKS: the profile's thank-you; the old fixed text when no profile is attached
+  return t.replace(/\{([^{}]*)\}/g, (_m, k: string) => (Object.hasOwn(v, k) ? v[k] : ''));
+};
+
+const MIN_TEXT = 9; // smallest readable text (reference dots @58mm): owner text shrinks to this, then is ellipsized
+const advance = (n: number, size: number, ls: number) => n * (CHAR_W * size + ls);
+
+/** Fits owner text into `avail` dots: shrink size + spacing together, never below the minimum size, then tighten spacing, then ellipsize. */
+function fitOwner(text: string, size0: number, ls0: number, avail: number, min: number) {
+  let size = size0, ls = ls0;
+  const w = advance(text.length, size, ls);
+  if (w <= avail) return { text, size, ls };
+  const f = avail / w;
+  if (size0 * f >= min) return { text, size: size0 * f, ls: ls0 * f };
+  size = Math.min(min, size0);
+  ls = Math.min(ls0, avail / text.length - CHAR_W * size);
+  if (ls >= 0) return { text, size, ls };
+  ls = 0;
+  const max = Math.floor(avail / (CHAR_W * size));
+  return { text: max < 1 ? '' : text.length <= max ? text : text.slice(0, max - 1).trimEnd() + '\u2026', size, ls };
+}
 
 export function barcodeRects(seed: string, x: number, y: number, w: number, h: number): Prim[] {
   let hs = 2166136261;
@@ -60,18 +81,38 @@ function rule(y: number, x: number, w: number, style: 'dashed' | 'solid' | 'doub
   return [one(y, 2 * k, style === 'dashed' ? dashOf(k) : undefined)];
 }
 
-function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[]) {
-  for (const l of b.lines) {
-    const text = fill(l.text, ctx);
-    if (!text.trim()) continue; // an owner who cleared the thank-you leaves no empty text behind
-    let size = l.size * k, ls = (l.ls ?? 0) * k;
-    const width = text.length * (CHAR_W * size + ls);
+function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[], frameId: string, part: LinePart) {
+  const items = b.lines.flatMap((l, i) => {
+    const ov = lineOverride(ctx, frameId, part, i); // owner text (ADMIN > Frame text); '' = hidden
+    const text = fill(ov ?? l.text, ctx);
+    return text.trim() ? [{ l, text, ov: ov !== undefined, size: l.size * k, ls: (l.ls ?? 0) * k }] : []; // an owner who cleared the thank-you leaves no empty text behind
+  });
+  type Item = (typeof items)[number];
+  const gap = 8 * k, min = MIN_TEXT * k;
+  const fits = new Map<Item, { text: string; size: number; ls: number }>();
+  const partnerOf = (a: Item) => (a.l.align === 'left' || a.l.align === 'right' ? items.find((c) => c.l.align === (a.l.align === 'left' ? 'right' : 'left') && c.l.y === a.l.y) : undefined);
+  for (const it of items) {
+    if (fits.has(it)) continue;
+    const mate = partnerOf(it);
+    if (it.ov || mate?.ov) { // label + value on one row must not overlap: share the band width
+      const want = [it, mate].filter((x): x is Item => !!x), nat = want.map((x) => advance(x.text.length, x.size, x.ls));
+      const total = r.w - (mate ? gap : 0), sum = nat.reduce((a, c) => a + c, 0);
+      want.forEach((x, i) => fits.set(x, fitOwner(x.text, x.size, x.ls, sum <= total ? Math.max(nat[i], 0) : total * (nat[i] / sum), min)));
+      continue;
+    }
+    let { size, ls } = it;
+    const width = advance(it.text.length, size, ls);
     if (width > r.w) { const f = r.w / width; size *= f; ls *= f; } // long event names shrink to fit
-    const align = l.align ?? 'center';
+    fits.set(it, { text: it.text, size, ls });
+  }
+  for (const it of items) {
+    const { text, size, ls } = fits.get(it)!;
+    if (!text) continue;
+    const align = it.l.align ?? 'center';
     out.push({
-      k: 'text', text, size, ls, weight: l.weight ?? 400,
+      k: 'text', text, size, ls, weight: it.l.weight ?? 400,
       x: align === 'left' ? r.x : align === 'right' ? r.x + r.w : r.x + r.w / 2,
-      y: r.y + l.y * r.h + size * 0.35,
+      y: r.y + it.l.y * r.h + size * 0.35,
       anchor: align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle'
     });
   }
@@ -95,12 +136,12 @@ export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[
   if (f.decor?.includes('nails')) for (const [nx, ny] of [[11, 11], [W / k - 11, 11], [11, H / k - 11], [W / k - 11, H / k - 11]])
     out.push({ k: 'circle', cx: nx * k, cy: ny * k, r: 2.4 * k, fill: '#fff', stroke: '#000', sw: 1.3 * k });
   if (L.header) {
-    block(f.header, L.header, ctx, k, out);
+    block(f.header, L.header, ctx, k, out, f.id, 'header');
     if (f.header.rule) out.push(...rule(L.header.y + L.header.h + off, L.header.x, L.header.w, f.header.rule, k));
     if (f.decor?.includes('stars')) [-2, -1, 0, 1, 2].forEach((i) => out.push(star(W / 2 + i * 26 * k, L.header!.y + L.header!.h * 0.9, 6 * k, 1.3 * k)));
   }
   if (L.footer) {
-    block(f.footer, L.footer, ctx, k, out);
+    block(f.footer, L.footer, ctx, k, out, f.id, 'footer');
     if (f.footer.rule) out.push(...rule(L.footer.y - off, L.footer.x, L.footer.w, f.footer.rule, k));
     if (f.decor?.includes('notches')) {
       const y = L.footer.y - off;

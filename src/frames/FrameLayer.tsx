@@ -2,6 +2,7 @@ import { pathD, type Prim } from './types';
 import { getFrame, resolveFramed, vectorFrameOf } from './registry';
 import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
+import type { FrameTextOverrides } from './frameText';
 import { isSideways, readingMatrix } from '../render/orient';
 import { qrMatrix, qrPath, QUIET } from '../share/qr';
 import { placeQr, qrAreaFor } from '../qr/placement';
@@ -38,13 +39,13 @@ const getSampleQr = () => (sampleQr ??= qrMatrix('https://receipt-beta.vercel.ap
 
 /**
  * Small thumbnail for the frame picker: framed layout with placeholder photo slots under the real frame artwork.
- * `qr`: also draw a sample QR where the real one will print (same placement rules as the print: the frame's declared safe area, e.g. the
+ * `frameText`: owner text overrides to show (ADMIN > Frame text draft; default none). `qr`: also draw a sample QR where the real one will print (same placement rules as the print: the frame's declared safe area, e.g. the
  * NCL stub, otherwise a strip below the design with a cut line). Off by default so the editor's pickers are unchanged.
  */
-export function FramePreview({ frameId, layoutId, qr = false }: { frameId: string; layoutId: string; qr?: boolean }) {
+export function FramePreview({ frameId, layoutId, qr = false, frameText }: { frameId: string; layoutId: string; qr?: boolean; frameText?: FrameTextOverrides }) {
   const L = resolveFramed(layoutId, frameId);
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
-  const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH'));
+  const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH', new Date(), undefined, frameText));
   const turn = isSideways(layoutId); // sideways (roll-printed) ticket: the thumbnail shows it the way it is READ (landscape), see render/orient.ts
   const matrix = qr ? getSampleQr() : null;
   const placed = matrix ? placeQr({ modules: matrix.length, occ: { width: L.width, height: L.height, slots: L.slots, stickers: [], prims, artwork: !!asset }, area: qrAreaFor(frame, layoutId) }) : null;

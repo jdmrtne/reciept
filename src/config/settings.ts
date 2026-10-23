@@ -3,6 +3,7 @@ import { normalizeHidden as normalizeHiddenFrames, type FrameVisibility } from '
 import type { PrinterErrorCode } from '../print/errors';
 import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
+import { normalizeFrameText, type FrameTextOverrides } from '../frames/frameText';
 import {
   DEFAULT_EVENT_NAME,
   DEFAULT_EVENT_PROFILE,
@@ -86,6 +87,8 @@ export interface BoothSettings {
   frameVisibility: FrameVisibility;
   /** Custom standby screen photo (metadata only; see StandbyPhotoSettings). */
   standbyPhoto: StandbyPhotoSettings;
+  /** Owner text inside the built-in frames (ADMIN > Frame text): frameId -> `header.<i>`/`footer.<i>` -> text. Differences only; absent = built-in text, '' = hidden line. Repaired by mergeSettings (frames/frameText.ts). */
+  frameText: FrameTextOverrides;
 }
 
 export const DEFAULT_SETTINGS: BoothSettings = {
@@ -105,7 +108,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   share: { enabled: false, publicBaseUrl: '' },
   layoutVisibility: { hidden: [] },
   frameVisibility: { hidden: [] },
-  standbyPhoto: DEFAULT_STANDBY_PHOTO
+  standbyPhoto: DEFAULT_STANDBY_PHOTO,
+  frameText: {}
 };
 
 const KEY = 'booth.settings.v1';
@@ -163,7 +167,8 @@ export function mergeSettings(raw: unknown): BoothSettings {
     },
     layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) },
     frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) },
-    standbyPhoto: normalizeStandbyPhoto(r.standbyPhoto)
+    standbyPhoto: normalizeStandbyPhoto(r.standbyPhoto),
+    frameText: normalizeFrameText(r.frameText)
   };
 }
 

@@ -65,7 +65,7 @@ export interface FrameDef {
  * `info` is the FINAL (trimmed, repaired) active event profile captured at the same moment; without it no info block is drawn and the
  * plan is exactly what it was before EP-2.
  */
-export interface FrameCtx { event: string; date: string; time: string; year: string; serial: string; info?: EventProfile }
+export interface FrameCtx { event: string; date: string; time: string; year: string; serial: string; info?: EventProfile; /** Owner text overrides (ADMIN > Frame text) at FINAL level, captured with the stamp. Absent = built-in text. */ frameText?: Record<string, Record<string, string>> }
 
 /** Renderer-independent drawing list. SVG (editor) and canvas (Phase 8 renderer) both draw these. */
 export type Prim =

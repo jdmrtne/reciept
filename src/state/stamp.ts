@@ -1,6 +1,7 @@
 import type { FrameCtx } from '../frames/types';
 import { makeEventCtx } from '../frames/prims';
 import { getActiveEvent, loadSettings } from '../config/settings';
+import { finalFrameText } from '../frames/frameText';
 import { sessionStore } from './session';
 
 /**
@@ -8,7 +9,10 @@ import { sessionStore } from './session';
  * profile captured at that same moment, so Edit, Preview, Print, the colour photo and the GIF all show the same values even if the clock
  * ticks over a minute or the owner's settings change in between. Time zone = the booth device's local clock (nothing is forced).
  */
-export const newSessionStamp = (): FrameCtx => makeEventCtx(getActiveEvent(loadSettings()));
+export const newSessionStamp = (): FrameCtx => {
+  const s = loadSettings();
+  return makeEventCtx(getActiveEvent(s), new Date(), finalFrameText(s.frameText)); // owner frame text (ADMIN > Frame text) is captured here too: edits reach the NEXT customer only
+};
 
 /**
  * The session's stamp. Standby always sets it, so a missing one only happens on an unusual entry (recovery, a direct screen jump). In that

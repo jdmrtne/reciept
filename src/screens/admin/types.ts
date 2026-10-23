@@ -19,7 +19,7 @@ export interface AdminCtx {
   actions: { pair: () => void; testPrint: () => void; testShare: () => void; changePin: () => void };
 }
 
-export type SectionId = 'events' | 'layouts' | 'frames' | 'printer' | 'quality' | 'sharing' | 'appearance' | 'security';
+export type SectionId = 'events' | 'layouts' | 'frames' | 'frameText' | 'printer' | 'quality' | 'sharing' | 'appearance' | 'security';
 
 export interface CardDef {
   id: string;

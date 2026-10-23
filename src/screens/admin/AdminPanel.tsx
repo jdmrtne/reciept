@@ -15,6 +15,7 @@ import { SECTIONS } from './sections';
 import { searchSettings } from './search';
 import { ConfirmDialog, SaveStatus, SettingsCard, Toast, type SaveState } from './ui';
 import { eventEditorStore, isDirty } from './eventEditor';
+import { frameTextEditorStore, isFrameTextDirty } from './frameTextEditor';
 import { ThemeToggle } from './ThemeToggle';
 import type { AdminCtx, Notice, NoticeKind, SectionId } from './types';
 
@@ -77,7 +78,8 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
 
   // EP-3: unsaved event text. Everything that would throw it away (another section, search, EXIT, closing the page) asks first.
   const editor = useSyncExternalStore(eventEditorStore.subscribe, eventEditorStore.get, eventEditorStore.get);
-  const dirty = isDirty(s, editor);
+  const frameDraft = useSyncExternalStore(frameTextEditorStore.subscribe, frameTextEditorStore.get, frameTextEditorStore.get);
+  const dirty = isDirty(s, editor) || isFrameTextDirty(s, frameDraft); // unsaved event text OR unsaved frame text
   const leave = (action: () => void) => { if (dirty) setLeaving(() => action); else action(); };
   useEffect(() => {
     if (!dirty) return;
@@ -187,8 +189,8 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
       </div>
       <Toast notice={notice} onDismiss={clearNotice} />
       {leaving && (
-        <ConfirmDialog title="UNSAVED CHANGES" body="You changed an event but did not save it. Leaving now throws those changes away." confirmLabel="DISCARD AND LEAVE" cancelLabel="KEEP EDITING" danger
-          onCancel={() => setLeaving(null)} onConfirm={() => { const go = leaving; setLeaving(null); eventEditorStore.cancel(); go(); }} />
+        <ConfirmDialog title="UNSAVED CHANGES" body="You changed text but did not save it. Leaving now throws those changes away." confirmLabel="DISCARD AND LEAVE" cancelLabel="KEEP EDITING" danger
+          onCancel={() => setLeaving(null)} onConfirm={() => { const go = leaving; setLeaving(null); eventEditorStore.cancel(); frameTextEditorStore.cancel(); go(); }} />
       )}
     </main>
   );
