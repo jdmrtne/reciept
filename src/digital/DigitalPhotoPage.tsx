@@ -62,8 +62,10 @@ export function DigitalPhotoPage({ id, source = defaultSource(), fetchImpl }: { 
   // A page left open when the window ends stops showing the photo. The time left comes from the server, so the phone's clock is irrelevant;
   // this is only the on-screen half: the files themselves are deleted server-side regardless of any phone.
   useEffect(() => {
-    if (lookup === 'loading' || lookup.state !== 'ok' || lookup.photo.expiresInMs === null) return;
-    const t = setTimeout(() => setLookup({ state: 'notfound' }), lookup.photo.expiresInMs);
+    if (lookup === 'loading' || lookup.state !== 'ok') return;
+    const left = lookup.photo.expiresInMs;
+    if (typeof left !== 'number') return; // no expiry record for this source: nothing to count down
+    const t = setTimeout(() => setLookup({ state: 'notfound' }), left);
     return () => clearTimeout(t);
   }, [lookup]);
   return <DigitalPhotoView lookup={lookup} source={source} onRetry={() => setAttempt((n) => n + 1)} />;

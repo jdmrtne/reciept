@@ -8,7 +8,7 @@ export interface DigitalPhoto {
   coloredImage: string | null; // public URL of the stored colour JPEG, or null when it is not there
   gif: string | null;          // public URL of the stored GIF, or null when it is not there
   createdAt: string | null;    // booth-local `YYYY-MM-DDTHH:MM:SS`, when the id carries a time (Supabase ids); else null
-  expiresInMs: number | null;  // server-clock time left in the 10-minute window (Supabase); null when the source has no expiry record
+  expiresInMs?: number | null; // server-clock time left in the 10-minute window (Supabase); null when the source has no expiry record
   status: 'active';            // a session whose files are gone is not "inactive": it simply does not resolve (notfound)
 }
 export type DigitalLookup =
