@@ -25,7 +25,7 @@ const scan = (m: boolean[][], scale = 6) => {
 /** In-memory Supabase-like storage (real createSupabaseStore on top, so retry/collision rules are the real ones). */
 function storage(opts: { failFile?: ShareFile; failTimes?: number } = {}) {
   const files = new Map<string, number>(); let failLeft = opts.failTimes ?? Infinity; const uploads: string[] = [];
-  const client = { storage: { from: (b: string) => ({
+  const client = { rpc: async () => ({ data: '2099-01-01T00:00:00Z', error: null, status: 200 }), storage: { from: (b: string) => ({
     upload: async (path: string, body: Blob, o: { upsert: boolean }) => {
       uploads.push(path);
       if (opts.failFile && path.endsWith(opts.failFile === 'photo.gif' ? 'animation.gif' : 'color.jpg') && failLeft-- > 0) throw new TypeError('Failed to fetch');
@@ -34,7 +34,7 @@ function storage(opts: { failFile?: ShareFile; failTimes?: number } = {}) {
     },
     getPublicUrl: (path: string) => ({ data: { publicUrl: `${CFG.url}/storage/v1/object/public/${b}/${path}` } })
   }) } };
-  const fetchImpl = (async (u: string) => { const p = String(u).split(`/public/${BUCKET}/`)[1], n = files.get(p); return n === undefined ? new Response(null, { status: 404 }) : new Response(null, { status: 200, headers: { 'content-length': String(n) } }); }) as unknown as typeof fetch;
+  const fetchImpl = (async (u: string) => { if (String(u).includes('/rpc/share_session_remaining_ms')) return new Response('600000', { status: 200 }); const p = String(u).split(`/public/${BUCKET}/`)[1], n = files.get(p); return n === undefined ? new Response(null, { status: 404 }) : new Response(null, { status: 200, headers: { 'content-length': String(n) } }); }) as unknown as typeof fetch;
   return { files, uploads, store: createSupabaseStore(CFG, { client: client as never, fetchImpl, retryDelays: [0], timeoutMs: 1000 }), fetchImpl };
 }
 

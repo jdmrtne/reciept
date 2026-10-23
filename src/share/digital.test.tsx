@@ -21,10 +21,11 @@ const JPG: ShareAsset = { bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3
 const GIFA: ShareAsset = { bytes: new TextEncoder().encode('GIF89a-fake-body'), type: 'image/gif' };
 
 /** A fake storage + network: which public URLs exist, plus a switch for "storage is down". */
-function world(opts: { present?: string[]; down?: boolean; status?: number } = {}) {
+function world(opts: { present?: string[]; down?: boolean; status?: number; remaining?: string } = {}) {
   const have = new Set(opts.present ?? []);
   const f = (async (u: string) => {
     if (opts.down) throw new TypeError('Failed to fetch');
+    if (String(u).includes('/rpc/share_session_remaining_ms')) return new Response(opts.remaining ?? '600000', { status: opts.status ?? 200 });
     if (opts.status) return new Response(null, { status: opts.status });
     return have.has(String(u)) ? new Response(null, { status: 200 }) : new Response(null, { status: 404 });
   }) as unknown as typeof fetch;
@@ -33,6 +34,19 @@ function world(opts: { present?: string[]; down?: boolean; status?: number } = {
 const urls = (id: string) => ({ jpg: objectPublicUrl(CFG, id, 'photo.jpg'), gif: objectPublicUrl(CFG, id, 'photo.gif') });
 
 /* ---------------------------------------------------------------- lookup */
+describe('lookupDigitalPhoto: 10-minute expiry gate (server clock)', () => {
+  it('expired or unregistered → notfound even though the files still exist; unverifiable → error, never access', async () => {
+    const id = newSessionId(), u = urls(id), present = [u.jpg, u.gif];
+    expect(await lookupDigitalPhoto(id, src, world({ present, remaining: 'null' }).f)).toEqual({ state: 'notfound' });
+    expect(await lookupDigitalPhoto(id, src, world({ present, remaining: '0' }).f)).toEqual({ state: 'notfound' });
+    expect(await lookupDigitalPhoto(id, src, world({ present, status: 404 }).f)).toEqual({ state: 'error' });
+  });
+  it('active → ok with the server-given time left', async () => {
+    const id = newSessionId(), u = urls(id);
+    expect(await lookupDigitalPhoto(id, src, world({ present: [u.jpg], remaining: '123456' }).f)).toMatchObject({ state: 'ok', photo: { expiresInMs: 123456 } });
+  });
+});
+
 describe('lookupDigitalPhoto: one id → colour image + GIF', () => {
   it('both stored → both returned, from the same id', async () => {
     const id = newSessionId(), u = urls(id);

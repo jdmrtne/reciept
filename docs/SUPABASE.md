@@ -9,7 +9,9 @@ Flow: print succeeds → ShareScreen makes ONE session id → colour JPEG and GI
 - `photos/<sessionId>/color.jpg` and `photos/<sessionId>/animation.gif`, `sessionId = YYYYMMDD-HHMMSS-<20 hex>` (e.g. `20260929-103045-a8f32c0d19e4b7a65f10`). Time prefix sorts for cleanup; 80 random bits make links unguessable.
 - Uploads use `upsert:false`: an existing file is never overwritten. A collision (practically impossible) makes the screen pick a new id and re-upload BOTH files so the QR matches. A retry/revisit of a file that already landed (same size) is accepted rather than treated as a collision, so the QR never changes.
 - QR URL = `<SITE>/p/<sessionId>` (ONE QR). `<SITE>` is ADMIN → SHARE QR → **SITE URL**, or, when blank, the address the booth app is hosted at (a `localhost` booth must set it). `/p/<id>` is the booth app's phone-side result page; it derives the two public file links from the id (`<SUPABASE_URL>/storage/v1/object/public/photobooth-media/photos/<sessionId>/color.jpg` and `animation.gif`), so no database row is needed. A session whose files were deleted shows "This digital photo is no longer available."
-- No database table: Storage alone is enough (the folder name carries the date, which is all cleanup needs).
+- **10-minute expiry.** One small table, `public.share_sessions (id, created_at, expires_at)`, holds each QR session. `expires_at = created_at + 10 min` on the DATABASE clock, set once when the booth registers the session (`register_share_session`, called before the first upload) and never updated, so scanning the QR cannot extend it. The public key has no direct table access, only three functions.
+- **After expiry:** the phone page asks `share_session_remaining_ms` first and shows "no longer available" at once (no file is probed or shown); an open page flips at the server-given deadline; the storage policy refuses uploads into an expired/unregistered session.
+- **Deletion:** the `expire-shares` Edge Function (`supabase/functions/expire-shares`), scheduled every 30 s by `pg_cron` + `pg_net` (`supabase/expiry-cron.sql`), deletes via the Storage API exactly `photos/<id>/color.jpg` and `photos/<id>/animation.gif` for each expired id, then the row. It runs on Supabase, so it works while the booth is closed. (Deleting `storage.objects` rows with SQL would leave the files behind, so SQL is not used.)
 
 ## Failure behaviour
 Transient errors (network, timeout 30 s, 5xx) are retried twice (0.8 s, 2.5 s). Policy/bucket errors (4xx) fail at once. A failed file shows "Could not save it online" + RETRY (the QR still works with the other file); if both fail there is **no QR** and: "Printed successfully. Digital QR upload is temporarily unavailable." The receipt is already printed before any of this starts, and DONE/SKIP always works.
@@ -22,15 +24,16 @@ Trade-off: the publishable key lives in the app, so anyone who extracts it can *
 ## Setup
 1. supabase.com → open (or create) your project.
 2. Dashboard → **SQL Editor** → paste `supabase/setup.sql` → Run. This creates the public bucket `photobooth-media` and the upload-only policy.
-3. **Project Settings → API Keys**: copy the *Project URL* and the *Publishable key* (`sb_publishable_…`). Do NOT copy the secret key.
-4. In `photobooth/` create `.env.local` (see `.env.example`):
+3. Deploy the cleanup (once): `npx supabase functions deploy expire-shares --no-verify-jwt`, then edit the project ref in `supabase/expiry-cron.sql` and run it in the SQL Editor. **Do this before using the new app build**: it needs the functions from step 2.
+4. **Project Settings → API Keys**: copy the *Project URL* and the *Publishable key* (`sb_publishable_…`). Do NOT copy the secret key.
+5. In `photobooth/` create `.env.local` (see `.env.example`):
        VITE_SUPABASE_URL=https://<ref>.supabase.co
        VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-5. `npm run dev` (restart after editing env). For hosting, add the same two variables in the host's build settings and rebuild.
-6. ADMIN → SHARE QR: ON → **SITE URL** (only if the booth is not served from the address phones should open) → **CHECK SHARE** (uploads a 1-pixel GIF). Then a TEST PRINTER session → scan the QR.
+6. `npm run dev` (restart after editing env). For hosting, add the same two variables in the host's build settings and rebuild.
+7. ADMIN → SHARE QR: ON → **SITE URL** (only if the booth is not served from the address phones should open) → **CHECK SHARE** (uploads a 1-pixel GIF). Then a TEST PRINTER session → scan the QR.
 
 ## Cleanup (later)
-Dry run: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/cleanup-supabase.mjs --days 30`; add `--delete` to remove. Nothing is deleted automatically.
+Expired sessions are now deleted automatically (above). `scripts/cleanup-supabase.mjs` remains as a manual sweep for files uploaded before the 10-minute expiry existed (they have no session row, so the phone page already refuses them): `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/cleanup-supabase.mjs --days 1 --delete`.
 
 ## Tests
 `npm test` → `src/share/supabase.test.ts` (fake Storage): the one QR decodes to the page URL, session A/B isolation, retry, offline, 4xx, hung upload, collision, 404 link, missing photo/GIF, phases.

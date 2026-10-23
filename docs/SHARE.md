@@ -49,7 +49,7 @@ ADMIN → SHARE QR ON → **PUBLIC URL** (what phones open; the QR is `<PUBLIC U
 
 ## Where things are stored / how long
 - Files: `./share-files/<id>/photo.jpg|photo.gif` on the bridge machine (`SHARE_DIR=` to change). Nothing is stored on the booth device; the session (blob URLs) is still wiped on reset.
-- **Links work for 24 hours** after upload (`SHARE_TTL_HOURS=` to change). Expired sessions are deleted on access and by a sweep at start and every 10 min. Survives bridge restarts (plain files).
+- **Links work for 10 minutes** after upload (fixed; reads never extend it). Expired files are refused on every request and deleted on access and by a sweep at start and every 30 s. Survives bridge restarts (plain files).
 - Unguessable ids (128-bit), one per session; a QR from an old session can only ever open that old session's page. Files are served inline with `nosniff`, `no-store`.
 - This is the one deliberate exception to "photos are never stored long-term" (PROJECT.md): opt-in, on the owner's own machine, auto-deleted. Tell customers the links expire.
 

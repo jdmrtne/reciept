@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ShareAsset } from './assets';
 import type { ShareFile } from './url';
 import type { ShareStore, StoreResult } from './service';
-import { BUCKET, objectPath, type SupabaseConfig } from './supabaseConfig';
+import { BUCKET, objectPath, SHARE_TTL_MS, type SupabaseConfig } from './supabaseConfig';
 
 export { BUCKET, FILE_NAME, objectPath, objectPublicUrl, supabaseConfigFromEnv, type SupabaseConfig } from './supabaseConfig';
 
@@ -26,7 +26,7 @@ export function createSupabaseStore(cfg: SupabaseConfig, opts: { client?: Supaba
     try {
       const body = new Blob([asset.bytes as BlobPart], { type: asset.type });
       const res = await Promise.race([
-        client.storage.from(BUCKET).upload(path, body, { contentType: asset.type, upsert: false, cacheControl: '31536000' }),
+        client.storage.from(BUCKET).upload(path, body, { contentType: asset.type, upsert: false, cacheControl: '60' }),
         new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), timeoutMs); })
       ]);
       if (res.error) {
@@ -34,14 +34,39 @@ export function createSupabaseStore(cfg: SupabaseConfig, opts: { client?: Supaba
         const status = Number((res.error as { statusCode?: string }).statusCode ?? 0);
         return status >= 400 && status < 500 ? { ok: false, code: 'upload' } : 'retry';
       }
-      return { ok: true, url: client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl, ttlMs: null };
+      return { ok: true, url: client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl, ttlMs: SHARE_TTL_MS };
     } catch { return 'retry'; } // network down / timeout
+    finally { clearTimeout(timer); }
+  };
+
+  /**
+   * Starts (or re-confirms) the session's 10-minute life on the server clock. Idempotent: the ORIGINAL expiry is kept, so a retry or the
+   * second file never extends it. 'expired' = the 10 minutes are over (nothing more may be stored); 'denied' = 4xx (e.g. setup.sql not run).
+   */
+  const register = async (sessionId: string): Promise<'ok' | 'expired' | 'denied' | 'retry'> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const res = await Promise.race([
+        client.rpc('register_share_session', { p_id: sessionId }),
+        new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), timeoutMs); })
+      ]);
+      if (res.error) { const status = Number(res.status ?? 0); return status >= 400 && status < 500 ? 'denied' : 'retry'; }
+      return res.data ? 'ok' : 'expired';
+    } catch { return 'retry'; }
     finally { clearTimeout(timer); }
   };
 
   return {
     async upload(sessionId, file, asset, signal, opts) {
       const path = objectPath(sessionId, file);
+      let reg: Awaited<ReturnType<typeof register>> = 'retry';
+      for (let i = 0; i <= delays.length; i++) {
+        if (signal?.aborted) return { ok: false, code: 'upload' };
+        reg = await register(sessionId);
+        if (reg !== 'retry') break;
+        if (i < delays.length) await sleep(delays[i]);
+      }
+      if (reg !== 'ok') return { ok: false, code: 'upload' }; // never store a file the 10-minute cleanup would not know about
       let r: StoreResult | 'retry' = 'retry';
       for (let i = 0; i <= delays.length; i++) {
         if (signal?.aborted) return { ok: false, code: 'upload' };
@@ -56,7 +81,7 @@ export function createSupabaseStore(cfg: SupabaseConfig, opts: { client?: Supaba
         const url = client.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
         try {
           const head = await doFetch(url, { method: 'HEAD', cache: 'no-store', signal });
-          if (head.ok && Number(head.headers.get('content-length')) === asset.bytes.length) return { ok: true, url, ttlMs: null };
+          if (head.ok && Number(head.headers.get('content-length')) === asset.bytes.length) return { ok: true, url, ttlMs: SHARE_TTL_MS };
         } catch { /* cannot confirm: treat as the clash it might be */ }
         return r;
       }

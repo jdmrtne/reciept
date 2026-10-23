@@ -26,7 +26,7 @@ const MESSAGES: Record<ShareFailure, string> = {
 };
 const PHASE_TEXT: Record<SharePhase, string> = { preparing: 'Preparing your digital photos...', uploading: 'Uploading photos...', qr: 'Creating your QR code...' };
 const FILE_LABEL: Record<ShareFile, { icon: string; text: string }> = { 'photo.jpg': { icon: 'photo', text: 'COLOR PHOTO' }, 'photo.gif': { icon: 'film', text: 'ANIMATED GIF' } };
-const hoursText = (ms: number) => { const h = Math.round(ms / 3600000); return h >= 48 ? `${Math.round(h / 24)} DAYS` : h === 1 ? '1 HOUR' : `${h} HOURS`; };
+const hoursText = (ms: number) => { if (ms < 3600000) { const m = Math.max(1, Math.round(ms / 60000)); return m === 1 ? '1 MINUTE' : `${m} MINUTES`; } const h = Math.round(ms / 3600000); return h >= 48 ? `${Math.round(h / 24)} DAYS` : h === 1 ? '1 HOUR' : `${h} HOURS`; };
 const INITIAL: ShareView = { files: { 'photo.jpg': { s: 'loading' }, 'photo.gif': { s: 'loading' } }, qr: null, phase: 'preparing', ttlMs: null, id: null };
 
 /**

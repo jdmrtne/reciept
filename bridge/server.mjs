@@ -13,7 +13,7 @@
 //   POST /share/<id>/photo.jpg|photo.gif   booth uploads a finished session's files (local, subject to ALLOW_ORIGIN)
 //   GET  /p/<id>                           the result page the ONE QR opens (colour photo + GIF)
 //   GET  /s/<id>/photo.jpg|photo.gif       serves them (fine on a LAN; for the internet use the separate read-only SHARE_PORT server below)
-// Files live in SHARE_DIR (default ./share-files) and expire after SHARE_TTL_HOURS (default 24).
+// Files live in SHARE_DIR (default ./share-files) and expire 10 minutes after upload.
 import http from 'node:http';
 import net from 'node:net';
 import { pathToFileURL } from 'node:url';
@@ -143,13 +143,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // ALLOW_ORIGIN=https://booth.example.com[,http://localhost:5173] restricts which web pages may call the bridge (default: any).
   const allowOrigins = (process.env.ALLOW_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
   const log = (m) => console.log(new Date().toLocaleTimeString(), m);
-  const ttlMs = Math.max(0.1, Number(process.env.SHARE_TTL_HOURS || 24)) * 3600 * 1000 || DEFAULT_TTL_MS;
+  const ttlMs = DEFAULT_TTL_MS; // QR links live 10 minutes from upload (fixed on purpose; no environment override)
   const shareStore = createShareStore({ dir: process.env.SHARE_DIR || path.resolve('share-files'), ttlMs });
   createBridge({ allowPorts, allowOrigins, log, shareStore })
     .listen(port, () => console.log(`Print bridge listening on http://localhost:${port}  (printer port(s): ${allowPorts.join(', ')}; origins: ${allowOrigins.join(', ') || 'any'})`));
   // Read-only public side for QR links. Point your tunnel / port-forward at THIS port, not the bridge port above.
   const sharePort = Number(process.env.SHARE_PORT || 9102);
-  createShareServer(shareStore).listen(sharePort, () => console.log(`Photo share (read-only) on http://localhost:${sharePort}  files: ${shareStore.root}  expire after ${ttlMs / 3600000} h`));
+  createShareServer(shareStore).listen(sharePort, () => console.log(`Photo share (read-only) on http://localhost:${sharePort}  files: ${shareStore.root}  expire after ${ttlMs / 60000} min`));
   const sweep = () => shareStore.sweep().then((n) => n && log(`share: removed ${n} expired session(s)`), () => {});
-  sweep(); setInterval(sweep, 10 * 60 * 1000).unref();
+  sweep(); setInterval(sweep, 30 * 1000).unref(); // expired files are also refused on every request; this sweep just frees the disk
 }

@@ -11,10 +11,10 @@ const URL_BASE = 'https://proj.supabase.co';
 const SITE = 'https://booth.example.com'; // where the booth app (which serves /p/<id>) is hosted
 
 /** In-memory stand-in for Supabase Storage (supabase-js `storage.from().upload / getPublicUrl`). */
-function fakeClient(opts: { failUploads?: number; error?: { message: string; statusCode: string }; throwNetwork?: boolean } = {}) {
-  const files = new Map<string, { size: number; type: string }>();
+function fakeClient(opts: { failUploads?: number; error?: { message: string; statusCode: string }; throwNetwork?: boolean; rpc?: { data: unknown; error: unknown; status?: number } } = {}) {
+  const files = new Map<string, { size: number; type: string }>(); const registered: string[] = [];
   let failLeft = opts.failUploads ?? 0, calls = 0;
-  const client = { storage: { from: (b: string) => ({
+  const client = { rpc: async (fn: string, a: { p_id: string }) => { registered.push(`${fn}:${a.p_id}`); return opts.rpc ?? { data: '2099-01-01T00:00:00Z', error: null, status: 200 }; }, storage: { from: (b: string) => ({
     upload: async (path: string, body: Blob, o: { contentType: string; upsert: boolean }) => {
       calls++;
       if (opts.throwNetwork || failLeft-- > 0) throw new TypeError('Failed to fetch');
@@ -25,7 +25,7 @@ function fakeClient(opts: { failUploads?: number; error?: { message: string; sta
     },
     getPublicUrl: (path: string) => ({ data: { publicUrl: `${URL_BASE}/storage/v1/object/public/${b}/${path}` } })
   }) } };
-  return { client: client as never, files, calls: () => calls };
+  return { client: client as never, files, registered, calls: () => calls };
 }
 const headOk = (files: Map<string, { size: number }>): typeof fetch => (async (u: string) => {
   const p = String(u).split(`/public/${BUCKET}/`)[1], f = files.get(p);
@@ -164,5 +164,19 @@ describe('Supabase share flow', () => {
 
   it('qr text length is fine for a real Supabase URL', () => {
     expect(() => qrMatrix(`https://fkwwgdpcjryxoqkcxawm.supabase.co/storage/v1/object/public/photobooth-media/photos/${newSessionId()}/animation.gif`)).not.toThrow();
+  });
+});
+
+describe('10-minute expiry (server-side session)', () => {
+  it('registers the session BEFORE storing, reports a 10-minute life, and stores nothing once expired or denied', async () => {
+    const id = newSessionId(), ok = fakeClient();
+    const r = await uploadShareFile('photo.jpg', id, async () => ({ bytes: JPG, type: 'image/jpeg' }), senv(mk(ok)));
+    expect(r).toMatchObject({ ok: true, ttlMs: 600_000 });
+    expect(ok.registered).toEqual([`register_share_session:${id}`]);
+    const expired = fakeClient({ rpc: { data: null, error: null, status: 200 } });
+    expect(await uploadShareFile('photo.jpg', id, async () => ({ bytes: JPG, type: 'image/jpeg' }), senv(mk(expired)))).toEqual({ ok: false, code: 'upload' });
+    const denied = fakeClient({ rpc: { data: null, error: { message: 'function not found' }, status: 404 } });
+    expect(await uploadShareFile('photo.jpg', id, async () => ({ bytes: JPG, type: 'image/jpeg' }), senv(mk(denied)))).toEqual({ ok: false, code: 'upload' });
+    expect(expired.files.size + denied.files.size).toBe(0);
   });
 });

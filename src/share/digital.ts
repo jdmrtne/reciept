@@ -8,6 +8,7 @@ export interface DigitalPhoto {
   coloredImage: string | null; // public URL of the stored colour JPEG, or null when it is not there
   gif: string | null;          // public URL of the stored GIF, or null when it is not there
   createdAt: string | null;    // booth-local `YYYY-MM-DDTHH:MM:SS`, when the id carries a time (Supabase ids); else null
+  expiresInMs: number | null;  // server-clock time left in the 10-minute window (Supabase); null when the source has no expiry record
   status: 'active';            // a session whose files are gone is not "inactive": it simply does not resolve (notfound)
 }
 export type DigitalLookup =
@@ -20,6 +21,11 @@ export interface DigitalSource {
   assetUrl(id: string, file: ShareFile): string;
   /** Same file with a `Content-Disposition: attachment` hint so phones SAVE it instead of opening it (works cross-origin, unlike <a download>). */
   downloadUrl(id: string, file: ShareFile, name: string): string;
+  /**
+   * Time left in the session's window on the SERVER clock (the phone's clock is never trusted): ms left, 'expired' (over, or never registered),
+   * or 'unknown' (cannot tell: treated as an error, never as access). Optional: a source without an expiry record skips the check.
+   */
+  remainingMs?(id: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<number | 'expired' | 'unknown'>;
 }
 
 export const isPhotoId = (id: string) => SHARE_ID_RE.test(id) || SESSION_ID_RE.test(id);
@@ -32,7 +38,16 @@ export const createdAtFromId = (id: string): string | null => {
 /** Supabase Storage: the same public links the booth uploaded to (`?download=<name>` is Supabase's attachment switch). */
 export const supabaseSource = (cfg: SupabaseConfig): DigitalSource => ({
   assetUrl: (id, file) => objectPublicUrl(cfg, id, file),
-  downloadUrl: (id, file, name) => `${objectPublicUrl(cfg, id, file)}?download=${encodeURIComponent(name)}`
+  downloadUrl: (id, file, name) => `${objectPublicUrl(cfg, id, file)}?download=${encodeURIComponent(name)}`,
+  // Plain fetch (no Supabase SDK on the phone page) to the `share_session_remaining_ms` function from supabase/setup.sql. Read-only: asking never extends the window.
+  async remainingMs(id, fetchImpl, signal) {
+    try {
+      const r = await fetchImpl(`${cfg.url}/rest/v1/rpc/share_session_remaining_ms`, { method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: id }), cache: 'no-store', signal });
+      if (!r.ok) return 'unknown';
+      const t = (await r.text()).trim(), v: unknown = t === '' ? null : JSON.parse(t);
+      return v === null ? 'expired' : typeof v === 'number' ? (v > 0 ? v : 'expired') : 'unknown';
+    } catch { return 'unknown'; }
+  }
 });
 
 type Probe = 'yes' | 'no' | 'unknown';
@@ -51,11 +66,19 @@ async function probe(url: string, fetchImpl: typeof fetch, signal?: AbortSignal)
  */
 export async function lookupDigitalPhoto(id: string, source: DigitalSource | null, fetchImpl: typeof fetch = (i, o) => fetch(i, o), signal?: AbortSignal): Promise<DigitalLookup> {
   if (!isPhotoId(id) || !source) return { state: 'notfound' };
+  // Expiry gate FIRST: once the window is over nothing is shown (and no file is even probed), even if the cleanup has not deleted the files yet.
+  let expiresInMs: number | null = null;
+  if (source.remainingMs) {
+    const left = await source.remainingMs(id, fetchImpl, signal);
+    if (left === 'expired') return { state: 'notfound' };
+    if (left === 'unknown') return { state: 'error' };
+    expiresInMs = left;
+  }
   const [color, gif] = await Promise.all((['photo.jpg', 'photo.gif'] as const).map((f) => probe(source.assetUrl(id, f), fetchImpl, signal)));
   if (color === 'no' && gif === 'no') return { state: 'notfound' };
   if (color !== 'yes' && gif !== 'yes' && (color === 'unknown' || gif === 'unknown')) return { state: 'error' };
   return {
     state: 'ok',
-    photo: { id, coloredImage: color === 'no' ? null : source.assetUrl(id, 'photo.jpg'), gif: gif === 'no' ? null : source.assetUrl(id, 'photo.gif'), createdAt: createdAtFromId(id), status: 'active' }
+    photo: { id, coloredImage: color === 'no' ? null : source.assetUrl(id, 'photo.jpg'), gif: gif === 'no' ? null : source.assetUrl(id, 'photo.gif'), createdAt: createdAtFromId(id), expiresInMs, status: 'active' }
   };
 }

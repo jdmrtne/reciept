@@ -4,6 +4,8 @@ import type { ShareFile } from './url';
 // page can use it without downloading the Supabase SDK.
 
 export const BUCKET = 'photobooth-media';
+/** How long a QR / photo session lives, counted from its server-side registration (supabase/setup.sql enforces it; this only mirrors it for the UI). */
+export const SHARE_TTL_MS = 10 * 60 * 1000;
 /** Storage layout: photos/<sessionId>/color.jpg and photos/<sessionId>/animation.gif (one folder per session, never overwritten). */
 export const FILE_NAME: Record<ShareFile, string> = { 'photo.jpg': 'color.jpg', 'photo.gif': 'animation.gif' };
 export const objectPath = (sessionId: string, file: ShareFile) => `photos/${sessionId}/${FILE_NAME[file]}`;

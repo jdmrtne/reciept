@@ -7,7 +7,7 @@
 //   GET|HEAD /p/<id>                                 (customer's phone, public)    -> the result page the ONE QR code opens: colour photo + GIF
 //
 // <id> is a 128-bit random token made by the booth (32 hex chars): unguessable, one per photo session, so a QR from an
-// old session can only ever open that old session's files. Files expire `ttlMs` after upload (default 24 h).
+// old session can only ever open that old session's files. Files expire `ttlMs` after upload (default 10 min; reads never extend it).
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
@@ -16,7 +16,7 @@ import { errorHtml, notFoundHtml, photoPageHtml } from './page.mjs';
 export const ID_RE = /^[a-f0-9]{32}$/;
 export const FILE_TYPES = { 'photo.jpg': 'image/jpeg', 'photo.gif': 'image/gif' };
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
-export const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+export const DEFAULT_TTL_MS = 10 * 60 * 1000;
 
 /** Real file signature, so the share folder can't be used to host arbitrary content. */
 export function looksLike(name, buf) {
