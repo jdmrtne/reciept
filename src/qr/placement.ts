@@ -175,6 +175,14 @@ export function placeQr(i: PlaceInput): QrPlacement {
     let blocked: Occupied[] = [];
     for (let side = Math.min(wanted, room); side >= minSide; side -= 4) { // shrink only while it stays scannable
       const lo = { x: a.x + o.margin, y: a.y + o.margin }, hi = { x: a.x + a.w - o.margin - side, y: a.y + a.h - o.margin - side };
+      // 'center' areas (NCL stub): the QR sits dead centre of the safe area, i.e. on the same axis as the text above/below it (MEMORYS).
+      if (i.area.align === 'center') {
+        const cx = Math.round(a.x + (a.w - side) / 2), cy = Math.round(a.y + (a.h - side) / 2);
+        const rect = { x: Math.min(Math.max(cx, Math.ceil(lo.x)), Math.floor(hi.x)), y: Math.min(Math.max(cy, Math.ceil(lo.y)), Math.floor(hi.y)), w: side, h: side };
+        const hits = collisions(rect, occupied, o.margin);
+        if (!hits.length) return { ok: true, mode: 'safe-area', rect, margin: o.margin, canvasHeight: H };
+        if (!blocked.length) blocked = hits;
+      }
       // Prefer the bottom-right corner (where a receipt QR is expected), then sweep towards the top-left.
       for (let y = hi.y; y >= lo.y - EPS; y -= 4) for (let x = hi.x; x >= lo.x - EPS; x -= 4) {
         const rect = { x: Math.round(x), y: Math.round(y), w: side, h: side };

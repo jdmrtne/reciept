@@ -116,6 +116,16 @@ describe('declared safe area', () => {
     expect(p.rect.x).toBeGreaterThanOrEqual(a.x); expect(p.rect.x + p.rect.w).toBeLessThanOrEqual(a.x + a.w);
     expect(p.rect.y).toBeGreaterThanOrEqual(a.y); expect(p.rect.y + p.rect.h).toBeLessThanOrEqual(a.y + a.h);
   });
+  it("align: 'center' puts the QR on the centre of the safe area (NCL stub: same axis as MEMORYS)", () => {
+    const art: OccupancyInput = { ...base, artwork: true, prims: [], height: 946, slots: [] };
+    const safeArea = { x: 0.234, y: 0.7921, w: 0.2722, h: 0.1823 };
+    const p = placeQr({ modules: MODULES, occ: art, area: { safeArea, align: 'center' } });
+    expect(p.ok).toBe(true);
+    if (!p.ok) return;
+    const cx = (safeArea.x + safeArea.w / 2) * 384, cy = (safeArea.y + safeArea.h / 2) * 946;
+    expect(Math.abs(p.rect.x + p.rect.w / 2 - cx)).toBeLessThanOrEqual(1);
+    expect(Math.abs(p.rect.y + p.rect.h / 2 - cy)).toBeLessThanOrEqual(1);
+  });
   it('a sticker dropped into the safe area blocks it: the QR does not move onto the sticker', () => {
     const art: OccupancyInput = { ...base, artwork: true, prims: [], height: 600, slots: [{ x: 24, y: 24, w: 336, h: 420 }], stickers: [{ x: 200, y: 460, w: 140, h: 120, rotation: 0 }] };
     const p = placeQr({ modules: MODULES, occ: art, area: { safeArea: { x: 0.55, y: 0.76, w: 0.4, h: 0.22 } } });

@@ -29,7 +29,7 @@ export interface ImageFrameDef {
  * height); `size` is the preferred QR side as a fraction of the canvas width. The QR can only exist inside it, and the placement
  * is rejected (never forced) if anything is drawn there. Designers: keep it empty in the artwork, with room for the margin.
  */
-export interface QrArea { safeArea: { x: number; y: number; w: number; h: number }; size?: number }
+export interface QrArea { safeArea: { x: number; y: number; w: number; h: number }; size?: number; /** 'center': put the QR in the middle of the safe area (default: bottom-right first). Used when the artwork centres its other content on that area (the NCL stub: QR sits on the MEMORYS axis). */ align?: 'center' }
 /** Per-frame QR reservation: `default` for every layout, `byLayout` overrides for one layout (artwork usually differs per layout). */
 export interface FrameQr { default?: QrArea; byLayout?: Partial<Record<string, QrArea>> }
 /**
