@@ -2,6 +2,7 @@ import { pathD, type Prim } from './types';
 import { getFrame, resolveFramed, vectorFrameOf } from './registry';
 import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
+import { isSideways, readingMatrix } from '../render/orient';
 
 import { FONT_STACK, FONT_DISPLAY_STACK } from '../render/font';
 const FONT = FONT_STACK;
@@ -34,16 +35,19 @@ export function FramePreview({ frameId, layoutId }: { frameId: string; layoutId:
   const L = resolveFramed(layoutId, frameId);
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
   const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH'));
+  const turn = isSideways(layoutId); // sideways (roll-printed) ticket: the thumbnail shows it the way it is READ (landscape), see render/orient.ts
   return (
-    <svg viewBox={`0 0 ${L.width} ${L.height}`} className="lay-svg" aria-hidden="true">
-      <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />
-      {L.slots.map((s, i) => (
-        <g key={i}>
-          <rect x={s.x} y={s.y} width={s.w} height={s.h} fill="#f5f5f5" stroke={asset ? 'none' : '#111'} strokeWidth={2.5} rx={3} />
-          <circle cx={s.x + s.w / 2} cy={s.y + s.h / 2} r={Math.min(s.w, s.h) * 0.16} fill="none" stroke="#111" strokeWidth={2} />
-        </g>
-      ))}
-      {asset ? <ImageFrameLayer asset={asset} w={L.width} h={L.height} /> : <FrameLayer prims={prims} />}
+    <svg viewBox={turn ? `0 0 ${L.height} ${L.width}` : `0 0 ${L.width} ${L.height}`} className="lay-svg" aria-hidden="true">
+      <g transform={turn ? readingMatrix(L.width) : undefined}>
+        <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={3} rx={8} />
+        {L.slots.map((s, i) => (
+          <g key={i}>
+            <rect x={s.x} y={s.y} width={s.w} height={s.h} fill="#f5f5f5" stroke={asset ? 'none' : '#111'} strokeWidth={2.5} rx={3} />
+            <circle cx={s.x + s.w / 2} cy={s.y + s.h / 2} r={Math.min(s.w, s.h) * 0.16} fill="none" stroke="#111" strokeWidth={2} />
+          </g>
+        ))}
+        {asset ? <ImageFrameLayer asset={asset} w={L.width} h={L.height} /> : <FrameLayer prims={prims} />}
+      </g>
     </svg>
   );
 }

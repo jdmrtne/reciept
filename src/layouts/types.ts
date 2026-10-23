@@ -13,6 +13,12 @@ export interface LayoutDef {
   headerHeight: number; // reserved band for frame header (Phase 5 fills it)
   footerHeight: number;
   background: '#fff' | '#000';
+  /**
+   * Layout is authored in PAPER space but designed for a sideways ticket (e.g. the NCL boarding pass prints along the roll).
+   * Captured photos are rotated this many degrees clockwise when they are placed (editor/rotate.ts), so they read upright on the
+   * ticket. Everything downstream (slots, crop math, plan, render, print) is unchanged. Absent = no rotation.
+   */
+  photoRotation?: 90;
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }

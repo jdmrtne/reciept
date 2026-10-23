@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
 import { ensureSessionStamp } from '../state/stamp';
-import { canvasToBlob, renderPreview } from '../render/render';
+import { browserEnv, canvasToBlob, renderPreview } from '../render/render';
+import { forReading } from '../render/orient';
 import { Icon } from '../components/Icon';
 import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
 
@@ -17,7 +18,7 @@ export function PreviewScreen() {
     let dead = false, made: string | null = null;
     const { paperWidthMm } = loadSettings();
     renderPreview(editor.present, stamp ?? ensureSessionStamp(), paperWidthMm, undefined, frameQrForSession() ?? undefined)
-      .then((c) => canvasToBlob(c))
+      .then((c) => canvasToBlob(forReading(c, editor.present.layoutId, browserEnv))) // sideways (roll-printed) tickets are SHOWN landscape; the print itself is unchanged
       .then((b) => { if (dead) return; made = URL.createObjectURL(b); setUrl(made); })
       .catch((e) => { if (!dead) setError(qrErrorText(e) ?? 'Could not prepare your receipt. Go back and try again.'); });
     return () => { dead = true; if (made) URL.revokeObjectURL(made); };

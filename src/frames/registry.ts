@@ -79,9 +79,42 @@ export const IMAGE_FRAMES: FrameDef[] = [
 ];
 FRAMES.push(...IMAGE_FRAMES);
 
+/**
+ * NCL 20th Anniversary boarding pass (4 layouts: pass-1..pass-4), art in src/assets/frames/ncl-boarding-pass/pass-N.png. Frame-locked (onlyLayouts):
+ * the layouts own their photo slots (manual arrangement), the art is a transparent-window overlay baked from the reference tickets. All event text is
+ * in the artwork, so no info block is added (noInfo). The stub QR area is EMPTY in the art; the real session QR is placed there (qr.byLayout, fractions
+ * of the canvas, from scripts/build-ncl-pass.py). Not part of IMAGE_FRAMES, so the generic frame x layout test matrix is unchanged.
+ */
+export const PASS_FRAME_ID = 'ncl-boarding-pass';
+const passFrame: FrameDef = {
+  ...imageFrame(PASS_FRAME_ID, 'NCL Boarding Pass', 'ncl-boarding-pass', { headerHeight: 0, footerHeight: 0, padding: 0 }),
+  onlyLayouts: ['pass-1', 'pass-2', 'pass-3', 'pass-4'], noInfo: true,
+  qr: { byLayout: {
+    'pass-1': { safeArea: { x: 0.2635, y: 0.7853, w: 0.2131, h: 0.2085 } },
+    'pass-2': { safeArea: { x: 0.2746, y: 0.7853, w: 0.1983, h: 0.2085 } },
+    'pass-3': { safeArea: { x: 0.2771, y: 0.7853, w: 0.1933, h: 0.2085 } },
+    'pass-4': { safeArea: { x: 0.197, y: 0.785, w: 0.2155, h: 0.2088 } }
+  } }
+};
+export const COUPLED_FRAMES: FrameDef[] = [passFrame];
+FRAMES.push(...COUPLED_FRAMES);
+/** Every frame except the frame-locked ones: the universe the generic frame x layout suites cover. */
+export const STANDARD_FRAMES: FrameDef[] = FRAMES.filter((f) => !f.onlyLayouts);
+
 export const DEFAULT_FRAME = 'classic-receipt';
 export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id === id) ?? FRAMES[0];
 export const isImageFrame = (f: FrameDef) => f.type === 'image' && !!f.image;
+
+/** A layout that belongs to a frame-locked family is only valid with that frame; every other pair is unchanged. */
+const lockOf = (layoutId: string) => FRAMES.find((f) => f.onlyLayouts?.includes(layoutId));
+export const isFrameAllowed = (frameId: string | null, layoutId: string): boolean => {
+  const lock = lockOf(layoutId), f = getFrame(frameId);
+  return lock ? lock.id === f.id : !f.onlyLayouts;
+};
+export const framesForLayout = (layoutId: string): FrameDef[] => FRAMES.filter((f) => isFrameAllowed(f.id, layoutId));
+/** The frame to use when a layout is chosen: the current one if it is allowed there, else the layout's own frame, else the default. */
+export const frameForLayout = (layoutId: string, current: string | null): string =>
+  current && isFrameAllowed(current, layoutId) ? current : lockOf(layoutId)?.id ?? DEFAULT_FRAME;
 
 /** Header/footer band heights for this frame on this layout (image frames may override per layout). */
 export const getFrameBands = (f: FrameDef, layoutId: string): Bands => f.image?.bands?.[layoutId] ?? { headerHeight: f.headerHeight, footerHeight: f.footerHeight, ...(f.image?.padding !== undefined ? { padding: f.image.padding } : {}) };

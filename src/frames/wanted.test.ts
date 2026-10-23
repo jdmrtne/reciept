@@ -4,8 +4,8 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { buildPlan } from '../render/plan';
 import { renderPlan, type RenderEnv } from '../render/render';
 import { buildSnapshot, withFilter, withFrame } from '../editor/model';
-import { LAYOUTS } from '../layouts/registry';
-import { FRAMES, getFrame, resolveFramed } from './registry';
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_FRAMES as FRAMES, getFrame, resolveFramed } from './registry';
 import { framePrims, makeCtx } from './prims';
 
 const ID = 'straw-hat-wanted';

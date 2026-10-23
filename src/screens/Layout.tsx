@@ -1,5 +1,5 @@
 import { LAYOUTS } from '../layouts/registry';
-import { DEFAULT_FRAME } from '../frames/registry';
+import { DEFAULT_FRAME, frameForLayout } from '../frames/registry';
 import { FramePreview } from '../frames/FrameLayer';
 import { sessionStore } from '../state/session';
 import { Icon } from '../components/Icon';
@@ -10,8 +10,8 @@ export function Layout() {
       <h2>CHOOSE YOUR STRIP</h2>
       <div className="lay-grid">
         {LAYOUTS.map((l) => (
-          <button key={l.id} className="lay-card" onClick={() => sessionStore.update({ layoutId: l.id, screen: 'camera' })}>
-            <FramePreview frameId={DEFAULT_FRAME} layoutId={l.id} />
+          <button key={l.id} className="lay-card" onClick={() => sessionStore.update({ layoutId: l.id, frameId: frameForLayout(l.id, sessionStore.get().frameId), screen: 'camera' })}>
+            <FramePreview frameId={frameForLayout(l.id, DEFAULT_FRAME)} layoutId={l.id} />
             <span>{l.name.toUpperCase()}</span>
           </button>
         ))}

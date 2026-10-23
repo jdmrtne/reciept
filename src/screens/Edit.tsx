@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
-import { LAYOUTS } from '../layouts/registry';
-import { FRAMES, DEFAULT_FRAME, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
+import { LAYOUTS, getLayout } from '../layouts/registry';
+import { frameForLayout, framesForLayout, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { getFrameAsset } from '../frames/assets';
 import { FrameLayer, FramePreview, ImageFrameLayer } from '../frames/FrameLayer';
 import { framePrims } from '../frames/prims';
@@ -16,6 +16,7 @@ import {
 } from '../editor/model';
 import { isPhoto, isSticker, type EditorObject, type EditorState, type PhotoObject, type Snapshot, type StickerObject } from '../editor/types';
 import { Icon } from '../components/Icon';
+import { isSideways, readingMatrix, stickerTurn } from '../render/orient';
 
 type Pt = { x: number; y: number };
 type Gesture = { id: string; kind: 'photo' | 'sticker' | 'handle'; start: Pt; d0: number; a0: number; base: EditorObject; ptrs: Map<number, Pt> };
@@ -40,14 +41,16 @@ export function Edit() {
   const ctx = stamp ?? fallbackCtx;
   useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
   const svg = useRef<SVGSVGElement>(null);
+  const stage = useRef<SVGGElement>(null); // the drawing group: for a sideways layout it carries the quarter turn, so ITS screen matrix maps pointers straight back to paper space
   const g = useRef<Gesture | null>(null);
 
   useEffect(() => {
     if (editor || !photos.length) return;
-    loadPhotoSrcs(photos)
+    const lid = layoutId ?? LAYOUTS[0].id;
+    loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0)
       .then((p) => {
         const { carry } = sessionStore.get(); // stickers + filter kept across a retake
-        const s = buildSnapshot(layoutId ?? LAYOUTS[0].id, p, frameId ?? DEFAULT_FRAME);
+        const s = buildSnapshot(lid, p, frameForLayout(lid, frameId));
         sessionStore.update({ editor: newEditor(carry ? applyCarry(s, carry) : s), carry: null });
       })
       .catch(() => setError('Something went wrong loading your photos. Please retake them.'));
@@ -69,9 +72,10 @@ export function Edit() {
   const sel = snap.objects.filter(isSticker).find((o) => o.id === selId && o.visible) ?? null;
   const maxSize = L.width * 1.2;
   const photoCount = snap.objects.filter(isPhoto).length;
+  const turn = isSideways(snap.layoutId); // NCL boarding pass: edited the way it is READ (landscape); stored, rendered and printed in paper space (render/orient.ts)
 
   const toSvg = (e: React.PointerEvent): Pt => {
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse());
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform((stage.current ?? svg.current)!.getScreenCTM()!.inverse()); // identical to the svg's own matrix when there is no turn
     return { x: p.x, y: p.y };
   };
   const cur = (id: string) => (draft ?? editor.present).objects.find((o) => o.id === id)!;
@@ -157,8 +161,8 @@ export function Edit() {
   const pickLayout = (id: string) => {
     setTray(null);
     if (id === editor.present.layoutId) return;
-    loadPhotoSrcs(photos)
-      .then((p) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, editor.present.frameId)))))
+    loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0) // sideways layouts get rotated copies of the photos
+      .then((p) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayout(id, editor.present.frameId))))))
       .catch(() => setError('Could not change the layout.'));
   };
   const pickFrame = (id: string) => {
@@ -176,7 +180,7 @@ export function Edit() {
     sessionStore.update({ carry: { stickers, filterId: editor.present.filterId }, screen: 'camera' });
   };
   const pickSticker = (id: string) => {
-    const r = addSticker(editor.present, id, L.width, L.height);
+    const r = addSticker(editor.present, id, L.width, L.height, stickerTurn(editor.present.layoutId)); // upright on the ticket as it is read
     set(commit(editor, r.snap)); setSelId(r.id); setTray(null);
   };
   const trayBtn = (t: 'layout' | 'frame' | 'filter' | 'sticker') => () => { setSelId(null); setTray((x) => (x === t ? null : t)); };
@@ -184,9 +188,10 @@ export function Edit() {
   return (
     <main className="edit">
       <div className="edit-stage">
-        <svg ref={svg} viewBox={`0 0 ${L.width} ${L.height}`} className="edit-svg"
+        <svg ref={svg} viewBox={turn ? `0 0 ${L.height} ${L.width}` : `0 0 ${L.width} ${L.height}`} className="edit-svg"
           onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
           <FilterDefs prefix="ed" />
+          <g ref={stage} transform={turn ? readingMatrix(L.width) : undefined}>
           <rect width={L.width} height={L.height} fill="#fff" stroke="#111" strokeWidth={2} />
           {snap.objects.filter(isPhoto).filter((o) => o.visible).sort((a, b) => a.layer - b.layer).map((o) => {
             const r = photoRect(o);
@@ -226,12 +231,13 @@ export function Edit() {
               </g>
             );
           })()}
+          </g>
         </svg>
         {tray === 'sticker' && <StickerTray onPick={pickSticker} />}
         {tray === 'filter' && <FilterTray src={snap.objects.find(isPhoto)?.src ?? photos[0]} active={snap.filterId} onPick={pickFilter} />}
         {tray === 'frame' && (
           <div className="edit-tray">
-            {FRAMES.map((f) => (
+            {framesForLayout(snap.layoutId).map((f) => (
               <button key={f.id} className={`lay-card${f.id === snap.frameId ? ' on' : ''}`} onClick={() => pickFrame(f.id)}>
                 <FramePreview frameId={f.id} layoutId={snap.layoutId} /><span>{f.name.toUpperCase()}</span>
               </button>
@@ -242,7 +248,7 @@ export function Edit() {
           <div className="edit-tray">
             {LAYOUTS.map((l) => (
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
-                <FramePreview frameId={snap.frameId} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
+                <FramePreview frameId={frameForLayout(l.id, snap.frameId)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>
             ))}
           </div>

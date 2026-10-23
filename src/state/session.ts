@@ -3,6 +3,7 @@ import type { Carry, EditorState } from '../editor/types';
 import type { FrameCtx } from '../frames/types';
 import type { FootageClip } from '../share/footage';
 import type { ShareFile } from '../share/url';
+import { releaseRotated } from '../editor/rotate';
 
 /**
  * The ONE digital result for this customer: a stable id (so revisiting the share screen reuses the same QR and never re-uploads),
@@ -63,6 +64,7 @@ export const sessionStore = {
   /** Wipes every trace of the current customer and returns to standby. */
   reset() {
     state.photos.forEach((u) => u.startsWith('blob:') && URL.revokeObjectURL(u));
+    releaseRotated(); // rotated copies made for sideways layouts (editor/rotate.ts)
     state = fresh();
     emit();
   }

@@ -10,8 +10,8 @@ import { blackRatio, getDot } from '../print/bitmap';
 import { DEFAULT_THERMAL } from '../print/types';
 import { PAPER_DOTS } from '../layouts/engine';
 import { buildSnapshot, withFilter, withFrame, addSticker, commit, newEditor } from '../editor/model';
-import { FRAMES } from '../frames/registry';
-import { LAYOUTS } from '../layouts/registry';
+import { STANDARD_FRAMES as FRAMES } from '../frames/registry';
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
 import { makeCtx } from '../frames/prims';
 import { isPhoto, type PhotoObject } from '../editor/types';
 

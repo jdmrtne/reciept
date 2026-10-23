@@ -44,6 +44,13 @@ export interface FrameDef {
   id: string; name: string;
   /** What this frame's own artwork already prints (see FramePrints). Absent = nothing, so the info block prints everything. */
   prints?: FramePrints;
+  /**
+   * Frame-locked family: this frame is offered ONLY on these layouts, and these layouts are offered ONLY with this frame
+   * (frames/registry.ts: isFrameAllowed / framesForLayout / defaultFrameFor). Absent = works with every ordinary layout.
+   */
+  onlyLayouts?: string[];
+  /** The artwork already carries all the event text it needs: the frame-independent info block (render/info.ts) is not added under it. */
+  noInfo?: true;
   type?: 'vector' | 'image'; // default 'vector'
   image?: ImageFrameDef;      // present when type === 'image'
   headerHeight: number; footerHeight: number;

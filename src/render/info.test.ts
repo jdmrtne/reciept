@@ -5,9 +5,9 @@ import { buildPlan, verifyPlanQr, type Cmd, type RenderPlan } from './plan';
 import { INFO_GAP_TOP, INFO_INSET, INFO_MIN_SIZE, INFO_PAD_BOTTOM, fitLine, infoItems, layoutInfo } from './info';
 import { addSticker, buildSnapshot } from '../editor/model';
 import { isSticker } from '../editor/types';
-import { FRAMES, getFrame, isImageFrame, resolveFramed } from '../frames/registry';
+import { STANDARD_FRAMES as FRAMES, getFrame, isImageFrame, resolveFramed } from '../frames/registry';
 import { makeCtx, makeEventCtx } from '../frames/prims';
-import { LAYOUTS } from '../layouts/registry';
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
 import { PAPER_DOTS } from '../layouts/engine';
 import { DEFAULT_EVENT_PROFILE, EVENT_LIMITS, getActiveEvent, type EventProfile } from '../config/events';
 import { CUT_HALF, QrPlacementError, rotatedBounds } from '../qr/placement';

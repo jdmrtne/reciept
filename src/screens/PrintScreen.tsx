@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
 import { ensureSessionStamp } from '../state/stamp';
-import { canvasToBlob, renderPrint } from '../render/render';
+import { browserEnv, canvasToBlob, renderPrint } from '../render/render';
+import { forReading, isSideways } from '../render/orient';
 import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
 import { bitmapToCanvas, canvasToRGBA } from '../print/browser';
@@ -37,7 +38,7 @@ export function PrintScreen() {
       .then(async (c) => {
         const rgba = canvasToRGBA(c);
         const bits = toThermalBitmap(rgba, thermal, PAPER_DOTS[paperWidthMm]);
-        const blob = await canvasToBlob(bitmapToCanvas(bits, 2));
+        const blob = await canvasToBlob(forReading(bitmapToCanvas(bits, 2), editor.present.layoutId, browserEnv)); // shown the way the paper is READ; `rgba`/`bits` (what is burned) stay in paper space
         if (dead) return;
         image.current = rgba; made = URL.createObjectURL(blob);
         setUrl(made); setPhase('ready');
@@ -72,13 +73,14 @@ export function PrintScreen() {
 
   const msg = code ? PRINTER_MESSAGES[code] : null;
   const printing = phase === 'printing';
+  const sideways = !!editor && isSideways(editor.present.layoutId); // the picture is turned for reading, so the "paper feeding out" reveal runs left to right
   return (
     <main className="prev">
       <p className="edit-hint">{printing ? 'PRINTING' : phase === 'error' ? 'PRINT FAILED' : 'PREPARING TO PRINT'}</p>
       <div className="prev-stage">
         {prepFailed ? <p className="err">{prepMsg ?? 'Could not prepare your receipt. Go back and try again.'}</p>
           : url ? (
-            <div className={printing ? 'prt-paper feeding' : 'prt-paper'} style={printing ? ({ '--p': `${Math.round(progress * 100)}%` } as CSSProperties) : undefined}>
+            <div className={`prt-paper${sideways ? ' sideways' : ''}${printing ? ' feeding' : ''}`} style={printing ? ({ '--p': `${Math.round(progress * 100)}%` } as CSSProperties) : undefined}>
               <img src={url} alt="Black and white print preview" className="prev-img prt-img" />
             </div>
           ) : <p className="loading">PREPARING YOUR RECEIPT</p>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRAMES, getFrame, isImageFrame, resolveFramed, vectorFrameOf } from './registry';
+import { STANDARD_FRAMES as FRAMES, getFrame, isImageFrame, resolveFramed, vectorFrameOf } from './registry';
 import { framePrims, makeCtx, makeEventCtx } from './prims';
 import { DEFAULT_EVENT_PROFILE, type EventProfile } from '../config/events';
 import type { FrameCtx, Prim } from './types';

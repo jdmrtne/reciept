@@ -153,6 +153,7 @@ h1, h2 { color: var(--ink); }
 .prt-paper { position: relative; width: 100%; height: 100%; min-height: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; }
 .prt-img { image-rendering: auto; }
 .prt-paper.feeding .prt-img { clip-path: inset(0 0 calc(100% - var(--p, 0%)) 0); transition: clip-path 120ms linear; }
+.prt-paper.sideways.feeding .prt-img { clip-path: inset(0 calc(100% - var(--p, 0%)) 0 0); } /* sideways ticket shown turned: the paper's top edge is now the LEFT edge */
 .prt-title { margin: 0; letter-spacing: .2em; }
 .standby.done { cursor: default; }
 .bar { width: min(80%, 320px); height: 12px; border: var(--line-thin); border-radius: 8px; margin: 0 auto; overflow: hidden; }

@@ -12,8 +12,8 @@ vi.mock('./assets', async (orig) => {
 });
 
 import { buildAssetIndex, resolveFrameAsset } from './assets';
-import { FRAMES, IMAGE_FRAMES, getFrame, getFrameBands, isImageFrame, resolveFramed, vectorFrameOf } from './registry';
-import { LAYOUTS } from '../layouts/registry';
+import { COUPLED_FRAMES, STANDARD_FRAMES as FRAMES, IMAGE_FRAMES, getFrame, getFrameBands, isImageFrame, resolveFramed, vectorFrameOf } from './registry';
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
 import { resolveLayout } from '../layouts/engine';
 import { getLayout } from '../layouts/registry';
 import { buildSnapshot, withFrame, addSticker, keepStickers } from '../editor/model';
@@ -210,7 +210,7 @@ describe('supplied artwork on disk', () => {
   it.skipIf(!files.length)('layout-specific art matches the canvas aspect (±1.5%) and has transparent photo windows', async () => {
     for (const [dir, name, path] of files) {
       const img = await loadImage(readFileSync(path)), w = img.width, h = img.height;
-      const f = IMAGE_FRAMES.find((x) => x.image!.dir === dir);
+      const f = [...IMAGE_FRAMES, ...COUPLED_FRAMES].find((x) => x.image!.dir === dir); // frame-locked families ship art for their own layouts only
       expect(f, `no registry entry uses folder ${dir}`).toBeTruthy();
       const c = createCanvas(64, Math.max(1, Math.round((64 * h) / w))), g = c.getContext('2d');
       g.drawImage(img, 0, 0, c.width, c.height);

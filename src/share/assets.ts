@@ -4,6 +4,7 @@ import { isPhoto } from '../editor/types';
 import { PAPER_DOTS } from '../layouts/engine';
 import { buildPlan } from '../render/plan';
 import { browserEnv, canvasToBlob, photoTile, renderOverlay, renderPlan, type RenderEnv } from '../render/render';
+import { forReading, isSideways, rotateRGBAForReading, turnRect } from '../render/orient';
 import { DeltaGif } from './gif';
 import type { FootageClip, FootageFrame } from './footage';
 
@@ -17,9 +18,11 @@ export const browserJpeg: JpegEncoder = async (c) => new Uint8Array(await (await
 /**
  * The customer's finished composition in full colour: the SAME plan the preview and the printer use (photos → frame →
  * stickers, the chosen filter), drawn at 2× the paper's dot width like the on-screen preview. JPEG on white paper.
+ * Sideways layouts (the NCL boarding pass, printed along the roll) are delivered turned to READING orientation, i.e. landscape and upright
+ * on the customer's phone (render/orient.ts); every other layout is unchanged.
  */
 export async function renderColorPhoto(snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env: RenderEnv = browserEnv, jpeg: JpegEncoder = browserJpeg) {
-  const canvas = await renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2), env);
+  const canvas = forReading(await renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2), env), snap.layoutId, env);
   const asset: ShareAsset = { bytes: await jpeg(canvas), type: 'image/jpeg' };
   return { canvas, asset };
 }
@@ -118,7 +121,14 @@ export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: F
   });
   const sample = new Uint8ClampedArray(finalPx.length + extra.reduce((a, b) => a + b.length, 0));
   sample.set(finalPx); let off = finalPx.length; for (const e of extra) { sample.set(e, off); off += e.length; }
-  const gif = new DeltaGif(W, H, sample);
+  // Sideways layout (NCL pass, printed along the roll): everything above is computed in PAPER space exactly like the print; only what is HANDED to the
+  // encoder is turned to reading orientation (landscape, upright), pixel-exactly, rect by rect. Ordinary layouts: `turn` is false and nothing changes.
+  const turn = isSideways(snap.layoutId);
+  const gif = new DeltaGif(turn ? H : W, turn ? W : H, sample);
+  const emitFull = (rgba: Uint8ClampedArray, delay: number) => gif.addFull(turn ? rotateRGBAForReading(rgba, W, H).data : rgba, delay);
+  const emitRegion = (r: Rect, rgba: Uint8ClampedArray, delay: number) => (turn
+    ? gif.addRegion(turnRect(r, W), rotateRGBAForReading(rgba, r.w, r.h).data, delay) // (x, y) ↦ (y, W − 1 − x) applied to the rect and to its pixels
+    : gif.addRegion(r, rgba, delay));
 
   // Play the shared timeline: at every tick ALL slots move to the same moment of their own footage.
   const { stepMs, ticks } = syncTimeline(clips.map((c) => c?.frames ?? null), fps);
@@ -132,16 +142,16 @@ export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: F
       dirty.push(region(i));
     });
     prev = cur;
-    if (n === 0) { compose(FULL); gif.addFull(wg.getImageData(0, 0, W, H).data, stepMs); }
-    else if (dirty.length) { const r = union(dirty); compose(r); gif.addRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, stepMs); }
-    else gif.addRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, stepMs); // nothing moved: hold (keeps the timing)
+    if (n === 0) { compose(FULL); emitFull(wg.getImageData(0, 0, W, H).data, stepMs); }
+    else if (dirty.length) { const r = union(dirty); compose(r); emitRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, stepMs); }
+    else emitRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, stepMs); // nothing moved: hold (keeps the timing)
     if (n % 6 === 5) await yieldUi(); // keep the booth UI responsive while encoding
   }
 
   // End state: every slot shows its captured photo (held), then the GIF loops back to the start.
   const changed: Rect[] = [];
   slots.forEach((_, i) => { if (clips[i]) { paintPhoto(i); changed.push(region(i)); } });
-  if (changed.length) { const r = union(changed); compose(r); gif.addRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, FINAL_HOLD_MS); }
-  else gif.addRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, FINAL_HOLD_MS);
+  if (changed.length) { const r = union(changed); compose(r); emitRegion(r, wg.getImageData(r.x, r.y, r.w, r.h).data, FINAL_HOLD_MS); }
+  else emitRegion({ x: 0, y: 0, w: 1, h: 1 }, wg.getImageData(0, 0, 1, 1).data, FINAL_HOLD_MS);
   return { bytes: gif.finish(), type: 'image/gif' };
 }

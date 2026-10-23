@@ -3,6 +3,8 @@ import { isSticker } from './types';
 import { DEFAULT_FRAME, resolveFramed } from '../frames/registry';
 import { DEFAULT_FILTER, getFilter } from '../filters/registry';
 import { stickerAspect } from '../stickers/registry';
+import { rotatePhoto } from './rotate';
+import { stickerTurn } from '../render/orient';
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 export interface PhotoSrc { src: string; iw: number; ih: number }
@@ -67,16 +69,17 @@ export function clampStickers(objs: EditorObject[], cw: number, ch: number): Edi
 /** After a layout change: carry the old stickers over to the freshly built snapshot. */
 export function keepStickers(old: Snapshot, next: Snapshot): Snapshot {
   const L = resolveFramed(next.layoutId, next.frameId);
-  const kept = old.objects.filter(isSticker);
+  const turnBy = stickerTurn(next.layoutId) - stickerTurn(old.layoutId); // sideways ↔ ordinary: stickers keep reading upright (0 for every ordinary → ordinary change)
+  const kept = old.objects.filter(isSticker).map((o) => (turnBy ? { ...o, rotation: o.rotation + turnBy } : o));
   return { ...next, objects: clampStickers([...next.objects, ...kept], L.width, L.height) };
 }
 /** Width limits for a sticker of this aspect (h / w) so its SHORT side stays grabbable and its LONG side stays on the paper. */
 export const stickerWidthRange = (ar: number, maxSide: number) => ({ min: MIN_STICKER / Math.min(1, ar), max: maxSide / Math.max(1, ar) });
-export function addSticker(s: Snapshot, stickerId: string, cw: number, ch: number) {
+export function addSticker(s: Snapshot, stickerId: string, cw: number, ch: number, rotation = 0) {
   const ar = stickerAspect(stickerId), side = cw * 0.3, id = newId();
   // Same visual weight as a square sticker (area = side x side), aspect preserved, longest side capped at 45% of the paper width.
   const w = Math.min(side / Math.sqrt(ar), (cw * 0.45) / Math.max(1, ar)), h = w * ar;
-  const o: StickerObject = { id, type: 'sticker', stickerId, x: cw / 2 - w / 2, y: ch / 2 - h / 2, w, h, rotation: 0, layer: nextLayer(s), visible: true };
+  const o: StickerObject = { id, type: 'sticker', stickerId, x: cw / 2 - w / 2, y: ch / 2 - h / 2, w, h, rotation, layer: nextLayer(s), visible: true };
   return { snap: { ...s, objects: [...s.objects, o] }, id };
 }
 export const deleteObject = (s: Snapshot, id: string): Snapshot => ({ ...s, objects: s.objects.filter((o) => o.id !== id || o.type === 'photo') });
@@ -133,10 +136,11 @@ export const redo = (e: EditorState): EditorState =>
   e.future.length ? { ...e, past: [...e.past, e.present], present: e.future[0], future: e.future.slice(1) } : e;
 export const resetEditor = (e: EditorState): EditorState => commit(e, e.initial);
 
-export function loadPhotoSrcs(urls: string[]): Promise<PhotoSrc[]> {
+/** `rotate` = LayoutDef.photoRotation of the layout the photos are for: the returned sources are rotated copies (editor/rotate.ts). */
+export function loadPhotoSrcs(urls: string[], rotate: 0 | 90 = 0): Promise<PhotoSrc[]> {
   return Promise.all(urls.map((src) => new Promise<PhotoSrc>((res, rej) => {
     const i = new Image();
-    i.onload = () => res({ src, iw: i.naturalWidth, ih: i.naturalHeight });
+    i.onload = () => (rotate ? rotatePhoto(src, rotate, i.naturalWidth, i.naturalHeight, i).then(res, rej) : res({ src, iw: i.naturalWidth, ih: i.naturalHeight }));
     i.onerror = () => rej(new Error('image'));
     i.src = src;
   })));
