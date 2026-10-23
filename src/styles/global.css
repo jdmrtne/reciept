@@ -117,6 +117,25 @@ h1, h2 { color: var(--ink); }
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 .lay-card:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow-ink); }
 .lay-svg { height: 30vmin; max-width: 100%; }
+.lay-sub { font-size: .72em; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+/* group card ("JLC 20th Anniv. Special"): the first layout's thumbnail with two offset outlines behind it = a small stack */
+.lay-group.on { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 5px var(--edge); }
+.lay-stack { height: 30vmin; width: 100%; display: grid; place-items: center; }
+.lay-stack-in { position: relative; width: calc(100% - 14px); margin: 0 14px 14px 0; }
+.lay-stack-in > svg { position: relative; z-index: 2; display: block; width: 100%; height: auto; max-height: 28vmin; background: var(--surface); border-radius: 8px; }
+.lay-stack-in::before, .lay-stack-in::after { content: ''; position: absolute; border: var(--line-thin); border-radius: 8px; background: var(--surface); }
+.lay-stack-in::before { inset: 7px -7px -7px 7px; z-index: 1; }
+.lay-stack-in::after { inset: 14px -14px -14px 14px; z-index: 0; }
+
+/* ---------- MODAL (components/Modal.tsx) ---------- */
+.modal-back { position: fixed; inset: 0; z-index: 40; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; padding: 2.5vmin; background: rgba(0, 0, 0, .6); overscroll-behavior: contain; }
+.modal { width: min(100%, 980px); max-height: 100%; display: flex; flex-direction: column; background: var(--surface); color: var(--ink); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); outline: none; }
+.modal-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 2vmin; padding: 2vmin 2.5vmin; border-bottom: var(--line); }
+.modal-title { margin: 0; letter-spacing: .2em; font-size: 1.15em; overflow-wrap: anywhere; }
+.modal-close { flex: none; }
+.modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2.5vmin; }
+.modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2vmin; }
+.modal .lay-svg { height: auto; width: 100%; max-width: 100%; }
 
 /* ---------- EDITOR ---------- */
 .edit { height: 100%; display: flex; flex-direction: column; gap: 1.5vmin; padding: 2vmin; }

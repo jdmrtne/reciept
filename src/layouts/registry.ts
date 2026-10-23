@@ -1,4 +1,4 @@
-import type { LayoutDef } from './types';
+import type { LayoutDef, LayoutGroupInfo } from './types';
 
 const base = { padding: 24, gap: 16, border: 0, headerHeight: 0, footerHeight: 0, background: '#fff' as const };
 const strip = (n: number, id: string, name: string): LayoutDef =>
@@ -22,8 +22,10 @@ export const LAYOUTS: LayoutDef[] = [
  * canvas width); heightRatio = art height / art width (1152 px wide art, 3 px per unit). Photos are rotated 90° on placement (photoRotation).
  */
 const U = (n: number) => n / 384;
+/** Picker group: the four pass layouts share ONE card on CHOOSE YOUR STRIP (layouts/groups.ts). Display only; nothing else reads it. */
+export const NCL_GROUP: LayoutGroupInfo = { id: 'jlc-20th-special', name: 'JLC 20th Anniv. Special' };
 const pass = (id: string, name: string, art: number, slots: [number, number, number, number][]): LayoutDef => ({
-  ...base, id, name, photoRotation: 90,
+  ...base, id, name, photoRotation: 90, group: NCL_GROUP,
   arrangement: { kind: 'manual', heightRatio: art / 1152, slots: slots.map(([x, y, w, h]) => ({ x: U(x), y: U(y), w: U(w), h: U(h) })) }
 });
 export const PASS_LAYOUTS: LayoutDef[] = [

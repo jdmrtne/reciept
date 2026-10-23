@@ -3,9 +3,17 @@ export type Arrangement =
   | { kind: 'grid'; columns: number; rows: number; slotAspect: number } // slotAspect = width / height
   | { kind: 'manual'; heightRatio: number; slots: { x: number; y: number; w: number; h: number }[] }; // manual: 0..1 of canvas width
 
+/**
+ * Optional picker grouping. Layouts that carry the same `group.id` are shown as ONE card on CHOOSE YOUR STRIP; tapping it opens a modal
+ * listing them (see layouts/groups.ts). Purely a picker concept: ids, frame locking and rendering ignore it.
+ */
+export interface LayoutGroupInfo { id: string; name: string }
+
 export interface LayoutDef {
   id: string;
   name: string;
+  /** Picker grouping (absent = an ordinary card). Another group = set the same `{ id, name }` on its layouts, nothing else. */
+  group?: LayoutGroupInfo;
   arrangement: Arrangement;
   padding: number;
   gap: number;
