@@ -11,6 +11,9 @@ export const rotatedSize = (iw: number, ih: number, deg: 0 | 90): { iw: number; 
 
 const cache = new Map<string, Promise<Rotated>>();
 const made: string[] = [];
+/** rotated copy URL → the captured photo URL it was made from. The GIF needs it: footage is recorded under the CAPTURED photo's URL. */
+const originals = new Map<string, string>();
+export const originalSrcOf = (url: string): string => originals.get(url) ?? url;
 
 /** Draws `img` rotated 90° clockwise. (x, y) of the source lands at (ih - y, x). */
 export function drawRotated90(g: { translate(x: number, y: number): void; rotate(a: number): void; drawImage(i: never, x: number, y: number): void }, img: unknown, ih: number): void {
@@ -29,7 +32,7 @@ export function rotatePhoto(src: string, deg: 0 | 90, iw: number, ih: number, im
     drawRotated90(g, img, ih);
     c.toBlob((b) => {
       if (!b) return rej(new Error('rotate'));
-      const url = URL.createObjectURL(b); made.push(url);
+      const url = URL.createObjectURL(b); made.push(url); originals.set(url, src);
       res({ src: url, iw: o.iw, ih: o.ih });
     }, 'image/jpeg', 0.92);
   });
@@ -42,4 +45,5 @@ export function rotatePhoto(src: string, deg: 0 | 90, iw: number, ih: number, im
 export function releaseRotated(): void {
   made.splice(0).forEach((u) => URL.revokeObjectURL(u));
   cache.clear();
+  originals.clear();
 }

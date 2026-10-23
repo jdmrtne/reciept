@@ -160,6 +160,8 @@ export interface PlaceInput {
   paperDots?: number;
 }
 
+const a_center = (a?: QrArea | null) => a?.align === 'center';
+
 export function placeQr(i: PlaceInput): QrPlacement {
   const o = { ...DEFAULT_QR_OPTIONS, ...i.options }, { width: W, height: H } = i.occ;
   const minSide = qrMinSide(i.modules, o, i.paperDots ?? REF_DOTS, W);
@@ -173,7 +175,10 @@ export function placeQr(i: PlaceInput): QrPlacement {
     if (Math.min(a.w, a.h) < minSide + 2 * o.margin) return fail('too-small', 'The QR-safe area is too small for a scannable QR. Give this frame a larger empty QR-safe area.');
     const room = Math.floor(Math.min(a.w, a.h) - 2 * o.margin);
     let blocked: Occupied[] = [];
-    for (let side = Math.min(wanted, room); side >= minSide; side -= 4) { // shrink only while it stays scannable
+    // A centred QR keeps a little extra clear paper around it (4 units smaller than the room, never below the scannable minimum): the NCL stub
+    // has only ~1.5 units of free paper beyond the margin, which anti-aliasing on a small print could otherwise eat.
+    const start = a_center(i.area) ? Math.max(minSide, Math.min(wanted, room) - 4) : Math.min(wanted, room);
+    for (let side = start; side >= minSide; side -= 4) { // shrink only while it stays scannable
       const lo = { x: a.x + o.margin, y: a.y + o.margin }, hi = { x: a.x + a.w - o.margin - side, y: a.y + a.h - o.margin - side };
       // 'center' areas (NCL stub): the QR sits dead centre of the safe area, i.e. on the same axis as the text above/below it (MEMORYS).
       if (i.area.align === 'center') {

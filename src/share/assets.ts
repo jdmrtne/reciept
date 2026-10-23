@@ -5,6 +5,7 @@ import { PAPER_DOTS } from '../layouts/engine';
 import { buildPlan } from '../render/plan';
 import { browserEnv, canvasToBlob, photoTile, renderOverlay, renderPlan, type RenderEnv } from '../render/render';
 import { forReading, isSideways, rotateRGBAForReading, turnRect } from '../render/orient';
+import { drawRotated90, originalSrcOf } from '../editor/rotate';
 import { DeltaGif } from './gif';
 import type { FootageClip, FootageFrame } from './footage';
 
@@ -61,6 +62,22 @@ export function syncTimeline(clips: (FootageFrame[] | null)[], fps: number): { s
 type Rect = { x: number; y: number; w: number; h: number };
 
 /**
+ * Sideways layouts (NCL pass) place a ROTATED COPY of each photo (editor/rotate.ts), so the slot's `src` is the copy's URL, while the footage was
+ * recorded under the captured photo's URL. This returns a clip turned the same quarter turn as the photo copy (frames, width and height), so the
+ * footage plays upright in the rotated slot exactly like the photo does.
+ */
+export function turnClip(env: RenderEnv, clip: FootageClip): FootageClip {
+  return {
+    src: clip.src, width: clip.height, height: clip.width,
+    frames: clip.frames.map((f) => {
+      const c = env.canvas(f.canvas.height, f.canvas.width), g = c.getContext('2d')!;
+      drawRotated90(g, f.canvas, f.canvas.height);
+      return { t: f.t, canvas: c };
+    })
+  };
+}
+
+/**
  * Animated recreation of THE PRINTED LAYOUT. Same plan (slots, frame, header/footer, stickers, filter, crops) as the
  * print and the colour photo, drawn at GIF size. Only the photo slots change: ALL slots play their own clean camera
  * footage at the same time on one shared clock, end together, then the last frame shows the captured photos in every
@@ -85,7 +102,15 @@ export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: F
   for (const s of slots) if (!photoImg.has(s.src)) photoImg.set(s.src, await env.image(s.src));
   const overlay = await renderOverlay(plan, env);
   const finals = slots.map((s) => photoTile(env, photoImg.get(s.src)!, s.iw, s.ih, s, k));
-  const clips = slots.map((s) => footage.find((c) => c.src === s.src && c.frames.length > 1) ?? null);
+  // Footage is paired to a slot by its photo. On sideways layouts the slot holds a rotated copy, so look the clip up by the ORIGINAL photo and turn it to match.
+  const sideways = isSideways(snap.layoutId), turned = new Map<FootageClip, FootageClip>();
+  const clips = slots.map((s) => {
+    const raw = footage.find((c) => c.frames.length > 1 && (c.src === s.src || (sideways && c.src === originalSrcOf(s.src))));
+    if (!raw) return null;
+    if (!sideways || raw.src === s.src) return raw;
+    if (!turned.has(raw)) turned.set(raw, turnClip(env, raw));
+    return turned.get(raw)!;
+  });
 
   // Layers: `base` = white paper + what each slot shows now; `work` = base + overlay (the GIF picture).
   const base = env.canvas(W, H), bg = g2(base), work = env.canvas(W, H), wg = g2(work);
