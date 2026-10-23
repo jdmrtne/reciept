@@ -1,5 +1,10 @@
 // @vitest-environment node
 import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll as __infoOn, afterAll as __infoOff } from 'vitest';
+import { infoBlock as __infoBlock } from './info';
+// These suites exercise the receipt info block, which is switched OFF in the app (render/info.ts infoBlock): turn it on for this file only.
+__infoOn(() => { __infoBlock.on = true; });
+__infoOff(() => { __infoBlock.on = false; });
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { readFileSync } from 'fs';
 import jsQR from 'jsqr';

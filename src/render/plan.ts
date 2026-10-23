@@ -8,7 +8,7 @@ import { getFrameAsset, type AssetFit } from '../frames/assets';
 import { framePrims } from '../frames/prims';
 import { photoRect } from '../editor/model';
 import { occupiedRegions, placeQr, qrAreaFor, collisions, within, cutBand, overlaps, inflate, rotatedBounds, CUT_SW, QrPlacementError, type Occupied, type OccupancyInput, type QrOptions } from '../qr/placement';
-import { INFO_PAD_BOTTOM, infoItems, layoutInfo, type InfoLine } from './info';
+import { infoBlock, INFO_PAD_BOTTOM, infoItems, layoutInfo, type InfoLine } from './info';
 
 /** Editor/layout units: everything in a Snapshot lives on a 384-unit-wide canvas (58mm @203dpi). */
 export const UNITS_W = 384;
@@ -53,7 +53,7 @@ export function buildPlan(snap: Snapshot, ctx: FrameCtx, widthPx: number, qr?: P
   // EP-2 info block: below the frame canvas and below any sticker that hangs past it, still BEFORE the QR so the design height is final when the QR is placed.
   const stickerBottom = Math.max(0, ...cmds.flatMap((c) => (c.op === 'sticker' ? [rotatedBounds({ x: c.cx - c.w / 2, y: c.cy - c.h / 2, w: c.w, h: c.h, rotation: c.rotation })] : [])).map((r) => r.y + r.h));
   const prints = asset ? undefined : vectorFrameOf(frame).prints; // an image frame prints no text; a vector fallback only counts while it is what is drawn
-  const info = frame.noInfo && asset ? null : layoutInfo(infoItems(ctx, prints), L.width, Math.max(L.height, stickerBottom)); // locked-family art carries its own text
+  const info = !infoBlock.on || (frame.noInfo && asset) ? null : layoutInfo(infoItems(ctx, prints), L.width, Math.max(L.height, stickerBottom)); // locked-family art carries its own text
   if (info) cmds.push({ op: 'info', rect: info.rect, prims: info.prims, lines: info.lines });
   const designHeight = info ? info.rect.y + info.rect.h : L.height;
   let unitsH = designHeight + (info ? INFO_PAD_BOTTOM : 0); // no QR: a little paper under the last line

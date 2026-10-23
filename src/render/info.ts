@@ -58,6 +58,13 @@ const TIME_RE = /^\d{2}:\d{2}$/;
  * WHAT to print. `prints` = what the drawn frame already supplies (FramePrints); those items are left out here, which is the one place
  * duplicate prevention happens. A stamp field that is not a real date/time (a damaged legacy value) is skipped instead of printing garbage.
  */
+/**
+ * Master switch for the receipt info block (event name, date/time, thank-you, branding line) printed BELOW every frame.
+ * OFF: no frame gets text under it any more (what a frame draws inside its own design is unchanged, and the frame-locked NCL
+ * passes never had a block). Set `infoBlock.on = true` (or change the default above) to bring the block back; tests that exercise the block flip it; info.ts, the event profiles and their ADMIN fields are untouched.
+ */
+export const infoBlock = { on: false };
+
 export function infoItems(ctx: FrameCtx, prints: FramePrints = {}): InfoItem[] {
   const p = ctx.info;
   if (!p) return [];
