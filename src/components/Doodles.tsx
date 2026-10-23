@@ -6,10 +6,10 @@ const Heart = () => <S><path d="M30 52C8 36 6 20 17 14c7-3.5 12 .5 13 6 1-5.5 6-
 const Cam = () => <S><path d="M6 20h11l4-6h18l4 6h11v30H6z" /><circle cx="30" cy="34" r="9" /><circle cx="30" cy="34" r="3.5" /><path d="M46 25h4" /></S>;
 const Smile = () => <S><circle cx="30" cy="30" r="22" /><path d="M21 24v3M39 24v3M19 35q11 12 22 0" /></S>;
 
-/** `onHeart` makes the heart tappable (owner shortcut on the standby screen) and switches to the larger sizing. */
-export function Doodles({ onHeart }: { onHeart?: () => void } = {}) {
+/** `big` is the larger standby sizing. `onHeart` (no longer used by standby: ADMIN opens by a hidden triple tap) makes the heart tappable and implies `big`. */
+export function Doodles({ onHeart, big }: { onHeart?: () => void; big?: boolean } = {}) {
   return (
-    <div className={onHeart ? 'doodles big' : 'doodles'} aria-hidden="true">
+    <div className={onHeart || big ? 'doodles big' : 'doodles'} aria-hidden="true">
       <span className="doodle d1"><Star /></span>
       <span className={onHeart ? 'doodle d2 tappable' : 'doodle d2'} onClick={onHeart ? (e) => { e.stopPropagation(); onHeart(); } : undefined}><Heart /></span>
       <span className="doodle d3"><Cam /></span>

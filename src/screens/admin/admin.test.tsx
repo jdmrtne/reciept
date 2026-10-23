@@ -144,3 +144,26 @@ describe('frames section', () => {
     expect(none).not.toMatch(/disabled=""[^>]*aria-label="HIDE ALL DESIGNS"|aria-label="HIDE ALL DESIGNS"[^>]*disabled=""/);
   });
 });
+
+describe('standby photo card', () => {
+  const find = (q: string) => searchSettings(SECTIONS, q).map((h) => h.card.id);
+  it('is found by plain-language search', () => {
+    for (const q of ['wallpaper', 'standby', 'background', 'home screen', 'upload photo']) expect(find(q), q).toContain('appearance-standby');
+  });
+  const card = SECTIONS.flatMap((s) => s.cards).find((c) => c.id === 'appearance-standby')!;
+  const show = (s: BoothSettings) => decode(renderToStaticMarkup(<>{card.render(ctxFor(s))}</>));
+  it('with no photo: offers UPLOAD PHOTO only, and the fit/receipt controls are disabled', () => {
+    const h = show(DEFAULT_SETTINGS);
+    expect(h).toContain('UPLOAD PHOTO');
+    expect(h).not.toContain('REMOVE PHOTO');
+    expect(h).not.toContain('Current standby photo');
+    expect(h).toContain('SHOW RECEIPT OVER PHOTO');
+  });
+  it('with a photo: offers CHANGE PHOTO and REMOVE PHOTO', () => {
+    const h = show(mergeSettings({ standbyPhoto: { enabled: true, fit: 'contain', showReceipt: false, version: 2 } }));
+    expect(h).toContain('CHANGE PHOTO');
+    expect(h).toContain('REMOVE PHOTO');
+    expect(h).toContain('COVER');
+    expect(h).toContain('CONTAIN');
+  });
+});

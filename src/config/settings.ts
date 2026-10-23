@@ -19,6 +19,30 @@ import {
 export { getActiveEvent, EVENT_LIMITS, DEFAULT_BRANDING_TEXT, DEFAULT_EVENT_NAME } from './events';
 export type { EventProfile, EventProfileInput } from './events';
 
+/** Owner-chosen standby photo. METADATA ONLY: the image itself lives in IndexedDB (lib/standbyPhoto.ts), never in these settings. */
+export interface StandbyPhotoSettings {
+  /** A photo has been uploaded and is shown on standby. */
+  enabled: boolean;
+  /** COVER fills the screen (crops); CONTAIN shows the whole photo. */
+  fit: 'cover' | 'contain';
+  /** Keep the receipt card (event name + TAP TO START) on top of the photo. Off = photo plus a small TAP TO START pill. */
+  showReceipt: boolean;
+  /** Bumped on every upload so the standby screen reloads the image. */
+  version: number;
+}
+
+export const DEFAULT_STANDBY_PHOTO: StandbyPhotoSettings = { enabled: false, fit: 'cover', showReceipt: true, version: 0 };
+
+export function normalizeStandbyPhoto(raw: unknown): StandbyPhotoSettings {
+  const r = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Partial<Record<keyof StandbyPhotoSettings, unknown>>;
+  return {
+    enabled: r.enabled === true,
+    fit: r.fit === 'contain' ? 'contain' : 'cover',
+    showReceipt: r.showReceipt !== false,
+    version: typeof r.version === 'number' && Number.isInteger(r.version) && r.version >= 0 ? r.version : 0
+  };
+}
+
 export interface BoothSettings {
   /** Seconds of inactivity (outside standby) before the session is wiped. */
   inactivitySeconds: number;
@@ -60,6 +84,8 @@ export interface BoothSettings {
   layoutVisibility: LayoutVisibility;
   /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; the frame-locked NCL pass frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
   frameVisibility: FrameVisibility;
+  /** Custom standby screen photo (metadata only; see StandbyPhotoSettings). */
+  standbyPhoto: StandbyPhotoSettings;
 }
 
 export const DEFAULT_SETTINGS: BoothSettings = {
@@ -78,7 +104,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   successSeconds: 10,
   share: { enabled: false, publicBaseUrl: '' },
   layoutVisibility: { hidden: [] },
-  frameVisibility: { hidden: [] }
+  frameVisibility: { hidden: [] },
+  standbyPhoto: DEFAULT_STANDBY_PHOTO
 };
 
 const KEY = 'booth.settings.v1';
@@ -135,7 +162,8 @@ export function mergeSettings(raw: unknown): BoothSettings {
       publicBaseUrl: typeof r.share?.publicBaseUrl === 'string' ? r.share.publicBaseUrl.slice(0, 300) : DEFAULT_SETTINGS.share.publicBaseUrl // not trimmed here: runs on every keystroke
     },
     layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) },
-    frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) }
+    frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) },
+    standbyPhoto: normalizeStandbyPhoto(r.standbyPhoto)
   };
 }
 

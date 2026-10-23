@@ -105,7 +105,9 @@ Open the booth on a device with a camera. With the default **Test printer**, not
 
 ## 🔧 The owner panel
 
-Tap the little **heart** ❤️ on the standby screen (or visit `/admin`) and enter the owner PIN. The first visit asks you to create one.
+On the standby screen, **tap the top-right corner 3 times quickly** (an invisible spot, nothing is drawn there), or visit `/admin`, and enter the owner PIN. The first visit asks you to create one.
+
+**Standby photo:** ADMIN → APPEARANCE → *Standby screen* → **UPLOAD PHOTO** puts your own picture behind the TAP TO START screen (COVER fills the screen, CONTAIN shows the whole photo; the receipt on top can be switched off). Use a photo at least 1080 px wide that matches the kiosk's orientation. It is stored on this device only; **REMOVE PHOTO** brings the normal look back.
 
 Settings are grouped by topic:
 

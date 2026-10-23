@@ -68,6 +68,14 @@ h1, h2 { color: var(--ink); }
 .doodles.big .doodle.tappable { z-index: 2; pointer-events: auto; cursor: pointer; padding: 10px; margin: -10px; box-sizing: content-box; }
 @media (max-aspect-ratio: 3/4) { .doodle.d1 { left: 3%; top: 3%; } .doodle.d2 { right: 3%; top: 3%; } .doodle.d3 { left: 3%; bottom: 3%; } .doodle.d4 { right: 3%; bottom: 3%; } }
 
+/* standby with an owner photo: full-bleed picture behind the receipt (or behind the small TAP TO START pill) */
+.standby-photo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; pointer-events: none; user-select: none; }
+.tap-pill { position: absolute; z-index: 1; left: 50%; bottom: max(5vmin, 28px); transform: translateX(-50%); margin: 0; padding: .7em 1.8em; background: var(--surface); color: var(--ink);
+  border: var(--line); border-radius: 999px; box-shadow: var(--shadow); font-weight: 700; letter-spacing: .22em; white-space: nowrap; animation: pillbob 5s ease-in-out infinite; }
+@keyframes pillbob { 50% { transform: translate(-50%, -1.2vmin); } }
+/* invisible owner hit zone: three quick taps open ADMIN. No visuals, no focus ring; taps on it never start a session */
+.admin-zone { position: fixed; top: 0; right: 0; z-index: 5; width: max(14vmin, 72px); height: max(14vmin, 72px); background: transparent; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
+
 .placeholder { height: 100%; display: grid; place-content: center; gap: 1.5em; justify-items: center; text-align: center; padding: 4vmin; }
 .placeholder h2 { margin: 0; letter-spacing: .3em; }
 .placeholder p { margin: 0; color: var(--muted); }
@@ -230,6 +238,8 @@ h1, h2 { color: var(--ink); }
 .pdot.attention i { border: 0; border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .pdot.offline i { background: var(--bg); border-style: dashed; }
 .pdot.offline { color: var(--muted); }
+/* readable on any owner photo */
+.pdot.on-photo { padding: .45em .8em; background: var(--surface); border: var(--line-thin); border-radius: 999px; }
 
 /* ---------- success screen polish ---------- */
 .stamp { display: block; width: clamp(48px, 11vmin, 96px); margin: 0 auto .5em; color: var(--ink); }

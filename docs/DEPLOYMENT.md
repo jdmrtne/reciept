@@ -31,7 +31,7 @@ location = /manifest.webmanifest  { add_header Cache-Control "no-cache"; }
 location /assets/                 { add_header Cache-Control "public, max-age=31536000, immutable"; }
 location /                        { try_files $uri /index.html; }
 ```
-**GitHub Pages** cannot set headers or do SPA fallback: the app still works, but `/admin` 404s (use the heart on the standby screen instead) and `sw.js` caching is out of your hands. Not recommended for the real booth.
+**GitHub Pages** cannot set headers or do SPA fallback: the app still works, but `/admin` 404s (triple-tap the top-right corner of the standby screen instead) and `sw.js` caching is out of your hands. Not recommended for the real booth.
 
 ## 3. Printer connection decides the hosting setup
 | Printer connection | Works from an HTTPS host? | Notes |

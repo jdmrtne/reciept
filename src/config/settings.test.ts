@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { mergeSettings } from './settings';
+import { describe, expect, it, vi } from 'vitest';
+import { loadSettings, mergeSettings, saveSettings } from './settings';
 import { FRAMES } from '../frames/registry';
 
 describe('printer selection setting', () => {
@@ -60,5 +60,32 @@ describe('frame visibility setting', () => {
     expect(mergeSettings({ frameVisibility: { hidden: ids } }).frameVisibility.hidden).toEqual([]);
     const once = mergeSettings({ frameVisibility: { hidden: ['event'] }, layoutVisibility: { hidden: ['single'] } });
     expect(mergeSettings(once)).toMatchObject({ frameVisibility: { hidden: ['event'] }, layoutVisibility: { hidden: ['single'] } });
+  });
+});
+
+describe('standby photo setting (metadata only)', () => {
+  it('defaults to no photo, cover fit, receipt shown', () => {
+    expect(mergeSettings({}).standbyPhoto).toEqual({ enabled: false, fit: 'cover', showReceipt: true, version: 0 });
+  });
+  it('keeps valid values', () => {
+    expect(mergeSettings({ standbyPhoto: { enabled: true, fit: 'contain', showReceipt: false, version: 7 } }).standbyPhoto).toEqual({ enabled: true, fit: 'contain', showReceipt: false, version: 7 });
+  });
+  it('repairs invalid values back to the defaults', () => {
+    for (const bad of [null, 5, 'x', [], { enabled: 'yes', fit: 'stretch', showReceipt: 0, version: -3 }, { version: 1.5 }, { version: NaN }]) {
+      expect(mergeSettings({ standbyPhoto: bad }).standbyPhoto, JSON.stringify(bad)).toEqual({ enabled: false, fit: 'cover', showReceipt: true, version: 0 });
+    }
+  });
+  it('round-trips through save/load and never stores image data in the settings JSON', () => {
+    const store = new Map<string, string>();
+    const ls = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    vi.stubGlobal('localStorage', ls);
+    try {
+      const s = mergeSettings({ standbyPhoto: { enabled: true, fit: 'contain', showReceipt: false, version: 3, data: 'data:image/jpeg;base64,AAAA', blob: 'XXXX' } });
+      expect(saveSettings(s)).toBe(true);
+      const raw = store.get('booth.settings.v1')!;
+      expect(raw).not.toMatch(/data:image|base64|AAAA|XXXX/);
+      expect(Object.keys(JSON.parse(raw).standbyPhoto).sort()).toEqual(['enabled', 'fit', 'showReceipt', 'version']);
+      expect(loadSettings().standbyPhoto).toEqual({ enabled: true, fit: 'contain', showReceipt: false, version: 3 });
+    } finally { vi.unstubAllGlobals(); }
   });
 });

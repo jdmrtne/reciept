@@ -192,3 +192,6 @@ select.adm-in { text-transform: uppercase; }
 .lv-h small { color: var(--muted); margin-left: .4em; letter-spacing: .1em; }
 .lv-acts { display: flex; gap: 8px; }
 .lv-flat { padding-left: 0; border-left: 0; }
+
+/* standby photo preview */
+.standby-thumb { display: block; max-width: min(100%, 240px); max-height: 180px; object-fit: contain; border: var(--line-thin); border-radius: var(--radius-s); background: var(--surface-2); }
