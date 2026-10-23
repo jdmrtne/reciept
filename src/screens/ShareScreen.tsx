@@ -4,7 +4,10 @@ import { Icon } from '../components/Icon';
 import { loadSettings } from '../config/settings';
 import { ensureSessionStamp } from '../state/stamp';
 import { sessionStore, useSession } from '../state/session';
-import { renderColorPhoto, renderGifVersion } from '../share/assets';
+import { renderColorPhoto, renderGifVersion, browserJpeg } from '../share/assets';
+import { frameQrForSession } from '../qr/sessionQr';
+import { isSideways } from '../render/orient';
+import { browserEnv } from '../render/render';
 import { getShareStore, makeSessionId } from '../share/backend';
 import { createShareController, FILES, type ShareController, type ShareView } from '../share/controller';
 import { downloadQrPng } from '../share/qrDownload';
@@ -43,10 +46,13 @@ export function ShareScreen() {
   const alive = useRef(true);
   const color = useRef<ReturnType<typeof renderColorPhoto> | null>(null); // the colour photo render (also the on-screen preview)
 
+  // The NCL ticket's digital photo and GIF carry the same session QR as the printed ticket (stub, on the MEMORYS axis). Other layouts are unchanged.
+  const pageQr = () => (editor && isSideways(editor.present.layoutId) ? frameQrForSession() ?? undefined : undefined);
+
   const getColor = () => {
     if (!editor) return Promise.reject(new Error('no-editor'));
     if (!color.current) {
-      const p = renderColorPhoto(editor.present, stamp ?? ensureSessionStamp(), cfg.paper);
+      const p = renderColorPhoto(editor.present, stamp ?? ensureSessionStamp(), cfg.paper, browserEnv, browserJpeg, pageQr());
       color.current = p;
       p.then((r) => { if (alive.current) setPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(new Blob([r.asset.bytes as BlobPart], { type: r.asset.type })); }); },
         () => { if (color.current === p) color.current = null; }); // failed: let RETRY render again
@@ -63,7 +69,7 @@ export function ShareScreen() {
         if (!editor) return null; // no photo at all
         if (file === 'photo.jpg') return (await getColor()).asset;
         // The GIF is its own render of the same layout (independent of the JPEG, so one failing never blocks the other).
-        return renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage);
+        return renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage, browserEnv, pageQr());
       },
       env: { fetch: (i, o) => fetch(i, o), bridgeUrl: cfg.bridge, publicBase: cfg.publicBase, pageBase: cfg.pageBase, store: getShareStore() ?? undefined }
     });

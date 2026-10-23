@@ -2,7 +2,8 @@ import type { FrameCtx } from '../frames/types';
 import type { Snapshot } from '../editor/types';
 import { isPhoto } from '../editor/types';
 import { PAPER_DOTS } from '../layouts/engine';
-import { buildPlan } from '../render/plan';
+import { buildPlan, type PlanQr } from '../render/plan';
+import { QrPlacementError } from '../qr/placement';
 import { browserEnv, canvasToBlob, photoTile, renderOverlay, renderPlan, type RenderEnv } from '../render/render';
 import { forReading, isSideways, rotateRGBAForReading, turnRect } from '../render/orient';
 import { drawRotated90, originalSrcOf } from '../editor/rotate';
@@ -22,8 +23,11 @@ export const browserJpeg: JpegEncoder = async (c) => new Uint8Array(await (await
  * Sideways layouts (the NCL boarding pass, printed along the roll) are delivered turned to READING orientation, i.e. landscape and upright
  * on the customer's phone (render/orient.ts); every other layout is unchanged.
  */
-export async function renderColorPhoto(snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env: RenderEnv = browserEnv, jpeg: JpegEncoder = browserJpeg) {
-  const canvas = forReading(await renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2), env), snap.layoutId, env);
+export async function renderColorPhoto(snap: Snapshot, ctx: FrameCtx, paperMm: 58 | 80, env: RenderEnv = browserEnv, jpeg: JpegEncoder = browserJpeg, qr?: PlanQr) {
+  // `qr` = the session page QR, the same one printed on the ticket. If it cannot be placed without covering the design the photo is still made, without it.
+  const draw = (q?: PlanQr) => renderPlan(buildPlan(snap, ctx, PAPER_DOTS[paperMm] * 2, q && { paperDots: PAPER_DOTS[paperMm], ...q }), env);
+  const paper = await (qr ? draw(qr).catch((e) => { if (e instanceof QrPlacementError) return draw(); throw e; }) : draw());
+  const canvas = forReading(paper, snap.layoutId, env);
   const asset: ShareAsset = { bytes: await jpeg(canvas), type: 'image/jpeg' };
   return { canvas, asset };
 }
@@ -84,14 +88,24 @@ export function turnClip(env: RenderEnv, clip: FootageClip): FootageClip {
  * slot (held briefly) and it loops. Footage is paired to slots by photo (clip.src === the slot's photo src), so swaps
  * and retakes stay correct. A photo with no footage just shows its photo. Sources are only read.
  */
-export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[] = [], env: RenderEnv = browserEnv): Promise<ShareAsset> {
+export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[] = [], env: RenderEnv = browserEnv, qr?: PlanQr): Promise<ShareAsset> {
+  if (qr) { // same layout with the page QR in every frame; if it cannot be placed, the GIF is made without it
+    try { return await renderGifWith(snap, ctx, footage, env, qr); } catch (e) { if (!(e instanceof QrPlacementError)) throw e; }
+  }
+  return renderGifWith(snap, ctx, footage, env);
+}
+/** Smallest GIF width that keeps every QR module at 2+ whole pixels (a phone scans the QR off another screen). */
+const GIF_QR_MIN_WIDTH = 384;
+
+async function renderGifWith(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[], env: RenderEnv, qr?: PlanQr): Promise<ShareAsset> {
   await env.ready?.();
   if (!snap.objects.some((o) => isPhoto(o) && o.visible)) throw new Error('no-photos');
 
   // Size: the printed layout's own aspect ratio, capped so tall strips don't produce a huge GIF.
   const ref = buildPlan(snap, ctx, 384);
-  const W = Math.max(64, Math.min(GIF_WIDTH, Math.floor((GIF_MAX_HEIGHT * 384) / ref.height)) & ~1);
-  const plan = buildPlan(snap, ctx, W), { k } = plan, H = plan.height;
+  let W = Math.max(64, Math.min(GIF_WIDTH, Math.floor((GIF_MAX_HEIGHT * 384) / ref.height)) & ~1);
+  if (qr) W = Math.max(W, GIF_QR_MIN_WIDTH);
+  const plan = buildPlan(snap, ctx, W, qr && { paperDots: 384, ...qr }), { k } = plan, H = plan.height;
   const slots = plan.cmds.flatMap((c) => (c.op === 'photo' ? [c] : []))
     .sort((a, b) => a.slot.y - b.slot.y || a.slot.x - b.slot.x);
   const N = slots.length;
