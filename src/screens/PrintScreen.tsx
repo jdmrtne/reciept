@@ -7,6 +7,7 @@ import { forReading, isSideways } from '../render/orient';
 import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
 import { bitmapToCanvas, canvasToRGBA } from '../print/browser';
+import { autoSaveSession } from '../autosave/autosave';
 import { Icon } from '../components/Icon';
 import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
 
@@ -58,6 +59,7 @@ export function PrintScreen() {
         thermal, paperDots: PAPER_DOTS[paperWidthMm],
         onProgress: (p) => alive.current && setProgress(p)
       });
+      if (!loadSettings().share.enabled) autoSaveSession(); // no share screen will render the files: auto-save renders what is switched on, in the background
       if (alive.current) sessionStore.go(loadSettings().share.enabled ? 'share' : 'success'); // print succeeded: QR codes next (when the owner enabled them), else straight to the receipt screen
     } catch (e) {
       if (alive.current) { setCode(toPrinterError(e).code); setPhase('error'); }

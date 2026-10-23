@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon';
 import { loadSettings } from '../config/settings';
 import { ensureSessionStamp } from '../state/stamp';
 import { sessionStore, useSession } from '../state/session';
+import { autoSaveAsset } from '../autosave/autosave';
 import { renderColorPhoto, renderGifVersion, browserJpeg } from '../share/assets';
 import { frameQrForSession } from '../qr/sessionQr';
 import { isSideways } from '../render/orient';
@@ -67,9 +68,11 @@ export function ShareScreen() {
       session: { get: () => sessionStore.get().share, set: (share) => sessionStore.update({ share }) },
       make: async (file) => {
         if (!editor) return null; // no photo at all
-        if (file === 'photo.jpg') return (await getColor()).asset;
+        if (file === 'photo.jpg') { const a = (await getColor()).asset; void autoSaveAsset('image', stamp ?? ensureSessionStamp(), a); return a; } // auto-save reuses the SAME bytes that are uploaded
         // The GIF is its own render of the same layout (independent of the JPEG, so one failing never blocks the other).
-        return renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage, browserEnv, pageQr());
+        const gif = await renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage, browserEnv, pageQr());
+        void autoSaveAsset('gif', stamp ?? ensureSessionStamp(), gif);
+        return gif;
       },
       env: { fetch: (i, o) => fetch(i, o), bridgeUrl: cfg.bridge, publicBase: cfg.publicBase, pageBase: cfg.pageBase, store: getShareStore() ?? undefined }
     });
