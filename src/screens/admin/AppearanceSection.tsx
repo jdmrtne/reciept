@@ -26,9 +26,9 @@ function Theme({ notify }: AdminCtx) {
 }
 
 const PHOTO_FAIL: Record<PhotoFailure, string> = {
-  unsupported: 'THAT FILE IS NOT A PICTURE \u2014 CHOOSE A JPG, PNG OR WEBP PHOTO',
+  unsupported: 'THAT FILE IS NOT A PICTURE \u2014 CHOOSE A JPG, PNG, WEBP OR GIF',
   unreadable: 'COULD NOT READ THAT PHOTO \u2014 TRY ANOTHER ONE',
-  'too-large': 'PHOTO IS TOO LARGE EVEN AFTER SHRINKING \u2014 TRY A SMALLER ONE',
+  'too-large': 'THAT FILE IS TOO LARGE \u2014 TRY A SMALLER PHOTO (GIFS: 12 MB MAX)',
   storage: 'THIS DEVICE WOULD NOT STORE THE PHOTO (STORAGE FULL OR BLOCKED)'
 };
 
@@ -62,9 +62,9 @@ function StandbyScreen({ s, set, notify }: AdminCtx) {
 
   return (
     <>
-      <Row label="STANDBY PHOTO" hint="Shown behind the TAP TO START screen. Saved on this device only." stack>
+      <Row label="STANDBY PHOTO" hint="Shown behind the TAP TO START screen. JPG, PNG, WEBP or an animated GIF (it plays on loop). Saved on this device only." stack>
         {p.enabled && thumb && <img className="standby-thumb" src={thumb} alt="Current standby photo" />}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void pick(f); }} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,.gif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void pick(f); }} />
         <div className="test-actions">
           <button type="button" className="btn" disabled={working} onClick={() => fileRef.current?.click()}><Icon name="photo" />{working ? 'WORKING\u2026' : p.enabled ? 'CHANGE PHOTO' : 'UPLOAD PHOTO'}</button>
           {p.enabled && <button type="button" className="btn ghost" disabled={working} onClick={() => setConfirming(true)}><Icon name="trash" />REMOVE PHOTO</button>}
@@ -74,7 +74,7 @@ function StandbyScreen({ s, set, notify }: AdminCtx) {
         options={[{ value: 'cover', label: 'COVER' }, { value: 'contain', label: 'CONTAIN' }]} onChange={(fit) => { set({ standbyPhoto: { ...p, fit } }); }} />
       <SwitchRow label="SHOW RECEIPT OVER PHOTO" hint="OFF = photo only, with a small TAP TO START label at the bottom." checked={p.showReceipt} disabled={!p.enabled}
         onChange={(showReceipt) => { set({ standbyPhoto: { ...p, showReceipt } }); }} />
-      <Hint>Use a photo at least 1080 px wide, in the same orientation as the kiosk screen. Owner access: tap the top-right corner of the standby screen 3 times quickly (or open /admin), then enter the PIN.</Hint>
+      <Hint>Use a photo at least 1080 px wide (for a GIF, keep it under 12 MB; large GIFs may stutter on older tablets), in the same orientation as the kiosk screen. Owner access: tap the top-right corner of the standby screen 3 times quickly (or open /admin), then enter the PIN.</Hint>
       {confirming && <ConfirmDialog title="REMOVE STANDBY PHOTO?" body="Guests will see the normal receipt standby screen again. You can upload a photo again at any time." confirmLabel="REMOVE" danger onConfirm={() => { void remove(); }} onCancel={() => setConfirming(false)} />}
     </>
   );

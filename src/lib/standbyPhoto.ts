@@ -11,6 +11,8 @@ export const PHOTO_MAX_EDGE = 1920;
 export const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 /** localStorage fallback ceiling (a data URL is ~1.37x the bytes, and the settings blob shares the same ~5 MB). */
 export const PHOTO_FALLBACK_MAX_BYTES = 1.5 * 1024 * 1024;
+/** An animated GIF is stored byte-for-byte (re-encoding would flatten it to one still frame), so it gets its own ceiling. */
+export const GIF_MAX_BYTES = 12 * 1024 * 1024;
 /** Tried in order until the result fits PHOTO_MAX_BYTES. */
 export const PHOTO_STEPS: { edge: number; quality: number }[] = [{ edge: PHOTO_MAX_EDGE, quality: 0.85 }, { edge: 1600, quality: 0.7 }, { edge: 1280, quality: 0.6 }];
 
@@ -111,9 +113,25 @@ function dataUrlToBlob(url: string): Blob | null {
   }
 }
 
-/** Resize and persist. Replaces any earlier photo. */
+/** True for a GIF, by MIME type or by the "GIF87a"/"GIF89a" signature (some devices hand over GIFs with no type). */
+export async function isGif(file: Blob): Promise<boolean> {
+  if (file.type === 'image/gif') return true;
+  if (file.type && !file.type.startsWith('image/')) return false;
+  try {
+    const head = new Uint8Array(await file.slice(0, 6).arrayBuffer());
+    return String.fromCharCode(...head).startsWith('GIF8');
+  } catch {
+    return false;
+  }
+}
+
+/** Resize and persist. Replaces any earlier photo. A GIF is kept as-is so it keeps animating. */
 export async function storeStandbyPhoto(file: Blob): Promise<StoreResult> {
-  const r = await resizePhoto(file);
+  const gif = await isGif(file);
+  if (gif && file.size > GIF_MAX_BYTES) return { ok: false, reason: 'too-large' };
+  const r: { ok: true; blob: Blob } | { ok: false; reason: PhotoFailure } = gif
+    ? { ok: true, blob: file.type === 'image/gif' ? file : new Blob([file], { type: 'image/gif' }) }
+    : await resizePhoto(file);
   if (!r.ok) return r;
   const saved = await idb('readwrite', (s) => s.put(r.blob, IDB_KEY));
   if (saved) { try { localStorage.removeItem(LS_KEY); } catch { /* best effort */ } return { ok: true }; }
