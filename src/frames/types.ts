@@ -3,8 +3,8 @@ import type { EventProfile } from '../config/events';
 export type Rule = 'dashed' | 'solid' | 'double';
 /** Text may use tokens: {EVENT} {DATE} {TIME} {YEAR} {SERIAL} {THANKS}. Users never edit frame text. Units: reference dots @58mm. */
 export interface TextLine { text: string; size: number; y: number; weight?: 400 | 700; ls?: number; align?: 'left' | 'center' | 'right' } // y = vertical centre, fraction of band
-export interface Block { lines: TextLine[]; rule?: Rule; barcode?: { y: number; h: number } }
-export type Decor = 'corners' | 'stars' | 'notches' | 'slot-border' | 'slot-border-double' | 'torn' | 'nails' | 'sketch-border' | 'wanted-poster';
+export interface Block { lines: TextLine[]; rule?: Rule; /** Extra full-width dividers INSIDE the band (fraction of band height). */ midRules?: { y: number; style: Rule }[]; barcode?: { y: number; h: number; /** width as a fraction of the band (default .84) */ w?: number } }
+export type Decor = 'corners' | 'stars' | 'notches' | 'slot-border' | 'slot-border-double' | 'torn' | 'nails' | 'sketch-border' | 'wanted-poster' | 'crisp-border';
 /** Hand-drawn ornaments (see frames/art.ts). Drawn as line art inside the header/footer band, left and right of the text. */
 export type Orn = 'star' | 'heart' | 'balloon' | 'party-hat' | 'cap' | 'smile' | 'bones' | 'sparkle' | 'anchor';
 export interface Ornaments { at: 'header' | 'footer'; y: number; size: number; left?: Orn; right?: Orn } // y = fraction of band

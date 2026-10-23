@@ -116,7 +116,8 @@ function block(b: Block, r: Rect0, ctx: FrameCtx, k: number, out: Prim[], frameI
       anchor: align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle'
     });
   }
-  if (b.barcode) out.push(...barcodeRects(ctx.date + ctx.time + ctx.event, r.x + r.w * 0.08, r.y + b.barcode.y * r.h, r.w * 0.84, b.barcode.h * r.h));
+  for (const m of b.midRules ?? []) out.push(...rule(r.y + m.y * r.h, r.x, r.w, m.style, k));
+  if (b.barcode) { const bw = b.barcode.w ?? 0.84; out.push(...barcodeRects(ctx.date + ctx.time + ctx.event, r.x + r.w * (1 - bw) / 2, r.y + b.barcode.y * r.h, r.w * bw, b.barcode.h * r.h)); }
 }
 
 export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[] {
@@ -124,7 +125,7 @@ export function framePrims(f: FrameDef, L: ResolvedLayout, ctx: FrameCtx): Prim[
   const k = L.width / REF, out: Prim[] = [];
   const W = L.width, H = L.height, off = 8 * k;
   const { style, width, inset } = f.border;
-  const sketchy = f.decor?.includes('sketch-border') || style === 'solid' || style === 'double';
+  const sketchy = !f.decor?.includes('crisp-border') && (f.decor?.includes('sketch-border') || style === 'solid' || style === 'double');
   if (f.decor?.includes('torn')) out.push({ k: 'path', cmds: tornRect(3.5 * k, 3.5 * k, W - 7 * k, H - 7 * k, 9 * k, 2.2 * k, 7), stroke: '#000', sw: 2 * k });
   if (style !== 'none') {
     const rc = (i: number, sw: number, n: number): Prim => sketchy && style !== 'dashed'

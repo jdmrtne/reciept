@@ -98,6 +98,18 @@ const passFrame: FrameDef = {
 };
 export const COUPLED_FRAMES: FrameDef[] = [passFrame];
 FRAMES.push(...COUPLED_FRAMES);
+
+/**
+ * J146 NCL 20th Anniversary receipt (MEMORYS). Vector, so it adapts to every layout/width through the same pipeline (bands scale with k = width/384).
+ * All text is fixed in the artwork (noInfo: no extra info block); not owner-editable, so the MEMORYS spelling cannot drift. Heights in reference dots.
+ */
+export const NCL_RECEIPT_ID = 'ncl-anniversary-receipt';
+const nclReceipt: FrameDef = {
+  id: NCL_RECEIPT_ID, name: 'J146 NCL Anniversary', noInfo: true, headerHeight: 116, footerHeight: 146, border: { style: 'solid', width: 2, inset: 5 }, decor: ['crisp-border'],
+  header: { lines: [B('J146 NCL', 30, .2, { ls: 6 }), T('20th Anniversary', 13, .46, { ls: 3 }), T('Date: Oct 24, 2026', 11, .74, { ...L, ls: 1 }), T('Venue: Durian St. Caloocan City', 11, .91, { ...L, ls: 1 })], midRules: [{ y: .6, style: 'dashed' }] },
+  footer: { lines: [T('EPHESIANS 4:11-13', 13, .11, { ls: 4 }), T('BUILD UP', 13, .24, { ls: 4 }), T('MEMORYS', 10, .66, { ls: 3 }), T('YOUR MOMENTS,', 10, .78, { ls: 3 }), T('OFFICIALLY RECEIPTED', 10, .9, { ls: 3 })], rule: 'dashed', barcode: { y: .35, h: .22, w: .58 } }
+};
+FRAMES.push(nclReceipt);
 /** Every frame except the frame-locked ones: the universe the generic frame x layout suites cover. */
 export const STANDARD_FRAMES: FrameDef[] = FRAMES.filter((f) => !f.onlyLayouts);
 
