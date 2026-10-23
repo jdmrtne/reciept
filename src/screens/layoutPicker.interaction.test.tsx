@@ -39,7 +39,8 @@ describe.skipIf(!available)('layout picker: ordinary cards + the JLC 20th Anniv.
     ({ default: AppRoot } = await import('../App'));
   });
   afterAll(() => { vi.unstubAllGlobals(); dom?.window.close(); });
-  afterEach(() => { RTL.cleanup(); sessionStore.reset(); });
+  afterEach(() => { RTL.cleanup(); sessionStore.reset(); dom.window.localStorage.removeItem('booth.settings.v1'); });
+  const hide = (...ids: string[]) => dom.window.localStorage.setItem('booth.settings.v1', JSON.stringify({ layoutVisibility: { hidden: ids } }));
 
   const label = (b: HTMLElement) => b.querySelector(':scope > span')?.textContent?.trim(); // not textContent: vector thumbnails contain SVG text
   const dialog = (): HTMLElement | null => RTL.screen.queryByRole('dialog');
@@ -87,6 +88,36 @@ describe.skipIf(!available)('layout picker: ordinary cards + the JLC 20th Anniv.
         expect(s.frameId, l.id).not.toBe(PASS_FRAME_ID);
         RTL.cleanup();
       }
+    });
+  });
+
+  describe('owner-hidden layouts (ADMIN > Layouts)', () => {
+    it('hidden ordinary layouts are not rendered; the rest keep their order', () => {
+      hide('strip-3', 'classic');
+      RTL.render(<LayoutScreen />);
+      expect(gridCards().map(label)).toEqual([GROUP_NAME, 'SINGLE', 'TWO STRIP', 'FOUR STRIP', '2 × 2']);
+    });
+    it('hidden passes are missing from the modal; the group card stays', () => {
+      hide('pass-1', 'pass-4');
+      RTL.render(<LayoutScreen />);
+      openModal();
+      expect(modalCards().map(label)).toEqual(['NCL PASS 2', 'NCL PASS 3']);
+    });
+    it('the group card is gone when all four passes are hidden', () => {
+      hide('pass-1', 'pass-2', 'pass-3', 'pass-4');
+      RTL.render(<LayoutScreen />);
+      expect(gridCards().map(label)).toEqual(STANDARD_LAYOUTS.map((l) => l.name.toUpperCase()));
+    });
+    it('a corrupt or all-hidden setting never empties the picker', () => {
+      hide(...LAYOUTS.map((l) => l.id));
+      RTL.render(<LayoutScreen />);
+      expect(gridCards()).toHaveLength(7);
+    });
+    it('a session whose layout is hidden does not crash the picker', () => {
+      sessionStore.update({ layoutId: 'single' });
+      hide('single');
+      RTL.render(<LayoutScreen />);
+      expect(gridCards().map(label)).not.toContain('SINGLE');
     });
   });
 

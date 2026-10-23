@@ -1,3 +1,4 @@
+import { normalizeHidden, type LayoutVisibility } from '../layouts/visibility';
 import type { PrinterErrorCode } from '../print/errors';
 import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
@@ -54,6 +55,8 @@ export interface BoothSettings {
    * points at `publicBaseUrl`, the address customers' PHONES can reach (tunnel / LAN address of the bridge's share port).
    */
   share: { enabled: boolean; publicBaseUrl: string };
+  /** Which layouts the guest picker (CHOOSE YOUR STRIP) hides. Default: none. Repaired by mergeSettings; at least one layout always stays visible (layouts/visibility.ts). */
+  layoutVisibility: LayoutVisibility;
 }
 
 export const DEFAULT_SETTINGS: BoothSettings = {
@@ -70,7 +73,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   windowsPrinter: 'POS80 10.0.0.11',
   mockFailures: [],
   successSeconds: 10,
-  share: { enabled: false, publicBaseUrl: '' }
+  share: { enabled: false, publicBaseUrl: '' },
+  layoutVisibility: { hidden: [] }
 };
 
 const KEY = 'booth.settings.v1';
@@ -125,7 +129,8 @@ export function mergeSettings(raw: unknown): BoothSettings {
     share: {
       enabled: r.share?.enabled === true,
       publicBaseUrl: typeof r.share?.publicBaseUrl === 'string' ? r.share.publicBaseUrl.slice(0, 300) : DEFAULT_SETTINGS.share.publicBaseUrl // not trimmed here: runs on every keystroke
-    }
+    },
+    layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) }
   };
 }
 

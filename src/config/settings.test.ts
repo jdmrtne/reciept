@@ -23,3 +23,22 @@ describe('thermal upgrade (Photobooth Face)', () => {
     expect(mergeSettings({ thermal: { ...OLD, sharpen: 0, autoLevel: 0 } }).thermal).toMatchObject({ dither: 'atkinson', sharpen: 0, autoLevel: 0 });
   });
 });
+
+describe('layout visibility setting', () => {
+  it('defaults to nothing hidden, including for old stored settings that never had it', () => {
+    expect(mergeSettings({}).layoutVisibility).toEqual({ hidden: [] });
+    expect(mergeSettings({ printer: 'mock' }).layoutVisibility).toEqual({ hidden: [] });
+  });
+  it('keeps valid hidden ids and repairs bad values', () => {
+    expect(mergeSettings({ layoutVisibility: { hidden: ['single', 'pass-2'] } }).layoutVisibility.hidden).toEqual(['single', 'pass-2']);
+    expect(mergeSettings({ layoutVisibility: { hidden: 'single' } }).layoutVisibility.hidden).toEqual([]);
+    expect(mergeSettings({ layoutVisibility: null }).layoutVisibility.hidden).toEqual([]);
+    expect(mergeSettings({ layoutVisibility: { hidden: ['single', 3, 'ghost', 'single'] } }).layoutVisibility.hidden).toEqual(['single']);
+  });
+  it('resets to nothing hidden when every layout would be hidden, and is idempotent', () => {
+    const all = ['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'classic', 'pass-1', 'pass-2', 'pass-3', 'pass-4'];
+    expect(mergeSettings({ layoutVisibility: { hidden: all } }).layoutVisibility.hidden).toEqual([]);
+    const once = mergeSettings({ layoutVisibility: { hidden: ['classic'] } });
+    expect(mergeSettings(once).layoutVisibility).toEqual(once.layoutVisibility);
+  });
+});

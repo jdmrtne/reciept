@@ -51,6 +51,7 @@ ADMIN is now grouped by topic. On a tablet/laptop the sections are listed on the
 | Section | What is in it |
 |---|---|
 | **Events** | The events you can run, which one is active, the text printed on every receipt, and a preview. See "Events" below |
+| **Layouts** | Which strip layouts guests can pick on CHOOSE YOUR STRIP. See "Choosing which layouts guests see" below |
 | **Printer** | Printer type, connection details (Windows printer name, printer IP, BRIDGE URL, Bluetooth chunk/delay), PAIR / CHECK PRINTER, TEST PRINT |
 | **Print quality** | PRESET, DITHER, BRIGHTNESS, CONTRAST, DENSITY, SHARPEN, AUTO LEVEL, THRESHOLD, PAPER, SIDE MARGIN, FEED LINES, CUT, plus a pinned TEST PRINT preview |
 | **Photo sharing** | SHARE QR, PUBLIC / SITE URL, upload address, CHECK SHARE |
@@ -75,3 +76,11 @@ An *event* is the text printed on every receipt: name, header, up to three detai
 - **Preview:** shows your unsaved text on a sample receipt (pick the frame). It uses a sample photo, date and time; nothing is printed, saved or sent, and the QR code is not drawn in it. Check the real receipt with a test strip.
 - **If the booth times out while you type,** your unsaved text is still there when you come back through the PIN, until the page is reloaded.
 - **Known limits:** the PIN is stored on the tablet and only keeps casual guests out; see the audit notes. Tiny text on 58 mm paper must be checked on the real printer.
+
+## Choosing which layouts guests see (ADMIN → Layouts)
+Open **ADMIN → Layouts** to switch layouts on or off for the **CHOOSE YOUR STRIP** screen.
+- Every layout has a switch and a small preview (with a sample QR). The **JLC 20th Anniv. Special** group has a **whole group** switch plus one switch per NCL Pass.
+- Turn a layout off and guests no longer see it. If every pass in the special group is off, its card disappears.
+- At least one layout always stays on: the last one cannot be switched off. **SHOW ALL** turns everything back on.
+- Changes save immediately and show the next time a guest reaches the picker (no reload needed). They only affect the guest picker, not the layout tray inside the editor.
+- The setting is stored on this device (like the other booth settings). New layouts added in a future update appear automatically.

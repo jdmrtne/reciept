@@ -75,3 +75,31 @@ describe('panel shell', () => {
     expect(renderToStaticMarkup(<AdminPanel onChangePin={noop} initialSection="security" />)).toContain('OWNER PIN');
   });
 });
+
+describe('layouts section', () => {
+  const card = SECTIONS.find((s) => s.id === 'layouts')!.cards[0];
+  const render = (hidden: string[]) => decode(renderToStaticMarkup(<>{card.render({ ...ctxFor(mergeSettings({ layoutVisibility: { hidden } })) })}</>));
+  it('is in the map, searchable, and listed after Events', () => {
+    expect(SECTIONS.map((s) => s.id).slice(0, 2)).toEqual(['events', 'layouts']);
+    expect(searchSettings(SECTIONS, 'choose your strip').map((h) => h.card.id)).toContain('layouts-visibility');
+    expect(searchSettings(SECTIONS, 'hide layout').map((h) => h.card.id)).toContain('layouts-visibility');
+  });
+  it('has one switch per layout plus a whole-group switch, with photo counts and a preview each', () => {
+    const h = render([]);
+    expect((h.match(/role="switch"/g) ?? []).length).toBe(11);
+    expect(h).toContain('SHOW WHOLE GROUP JLC 20TH ANNIV. SPECIAL');
+    for (const n of ['SINGLE', 'TWO STRIP', 'THREE STRIP', 'FOUR STRIP', '2 × 2', 'CLASSIC', 'NCL PASS 1', 'NCL PASS 4']) expect(h).toContain(`aria-label="SHOW ${n}"`);
+    expect(h).toContain('4 PHOTOS');
+    expect((h.match(/data-sample-qr/g) ?? []).length).toBe(11); // six ordinary + the group's own preview + four passes
+  });
+  it('reflects hidden layouts, and offers SHOW ALL only when something is hidden', () => {
+    expect(render(['single'])).toMatch(/aria-checked="false"[^>]*aria-label="SHOW SINGLE"/);
+    expect(render([])).toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL/);
+    expect(render(['single'])).not.toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL/);
+  });
+  it('locks the last visible layout and explains why', () => {
+    const h = render(['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'pass-1', 'pass-2', 'pass-3', 'pass-4']); // only classic shown
+    expect(h).toMatch(/aria-label="SHOW CLASSIC"[^>]*disabled=""|disabled=""[^>]*aria-label="SHOW CLASSIC"/);
+    expect(h).toContain('At least one layout must stay shown');
+  });
+});

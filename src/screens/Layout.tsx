@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import { loadSettings } from '../config/settings';
+import { visibleLayouts } from '../layouts/visibility';
 import { LAYOUTS } from '../layouts/registry';
 import { pickerEntries, photoCount, photoCountLabel, type LayoutGroup } from '../layouts/groups';
 import { DEFAULT_FRAME, frameForLayout } from '../frames/registry';
@@ -7,14 +9,16 @@ import { sessionStore, useSession } from '../state/session';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
 
-/** Computed once: the registry is static data. Layouts sharing a `group` become ONE featured card + modal, listed FIRST; ordinary layouts follow as cards. */
-const ENTRIES = pickerEntries(LAYOUTS);
+/** Layouts sharing a `group` become ONE featured card + modal, listed FIRST; ordinary layouts follow as cards. Layouts the owner hid in ADMIN are filtered out BEFORE grouping, so a group with nothing left disappears. */
+const entriesFor = (hidden: readonly string[]) => pickerEntries(visibleLayouts(LAYOUTS, hidden));
 
 const choose = (layoutId: string) =>
   sessionStore.update({ layoutId, frameId: frameForLayout(layoutId, sessionStore.get().frameId), screen: 'camera' });
 
 export function Layout() {
   const { layoutId } = useSession();
+  // Read once per mount: the picker is mounted each time a guest reaches it, so ADMIN changes apply without a reload.
+  const [ENTRIES] = useState(() => entriesFor(loadSettings().layoutVisibility.hidden));
   // Local state on purpose: a session wipe remounts this screen (App key={session id}), which closes the modal with it.
   const [openGroup, setOpenGroup] = useState<LayoutGroup | null>(null);
   const opener = useRef<HTMLElement | null>(null);
