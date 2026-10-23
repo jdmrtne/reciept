@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mergeSettings } from './settings';
+import { FRAMES } from '../frames/registry';
 
 describe('printer selection setting', () => {
   it('keeps every selectable printer kind', () => {
@@ -40,5 +41,24 @@ describe('layout visibility setting', () => {
     expect(mergeSettings({ layoutVisibility: { hidden: all } }).layoutVisibility.hidden).toEqual([]);
     const once = mergeSettings({ layoutVisibility: { hidden: ['classic'] } });
     expect(mergeSettings(once).layoutVisibility).toEqual(once.layoutVisibility);
+  });
+});
+
+describe('frame visibility setting', () => {
+  it('defaults to nothing hidden, including for old stored settings', () => {
+    expect(mergeSettings({}).frameVisibility).toEqual({ hidden: [] });
+    expect(mergeSettings({ printer: 'mock' }).frameVisibility).toEqual({ hidden: [] });
+  });
+  it('keeps valid ids; repairs bad values; unknown ids and the NCL frame are ignored', () => {
+    expect(mergeSettings({ frameVisibility: { hidden: ['event', 'birthday'] } }).frameVisibility.hidden).toEqual(['event', 'birthday']);
+    expect(mergeSettings({ frameVisibility: { hidden: 'event' } }).frameVisibility.hidden).toEqual([]);
+    expect(mergeSettings({ frameVisibility: null }).frameVisibility.hidden).toEqual([]);
+    expect(mergeSettings({ frameVisibility: { hidden: ['event', 4, 'ghost', 'ncl-boarding-pass', 'event'] } }).frameVisibility.hidden).toEqual(['event']);
+  });
+  it('resets when every standard frame would be hidden, and is idempotent; layouts setting is independent', () => {
+    const ids = FRAMES.filter((f) => !f.onlyLayouts).map((f) => f.id);
+    expect(mergeSettings({ frameVisibility: { hidden: ids } }).frameVisibility.hidden).toEqual([]);
+    const once = mergeSettings({ frameVisibility: { hidden: ['event'] }, layoutVisibility: { hidden: ['single'] } });
+    expect(mergeSettings(once)).toMatchObject({ frameVisibility: { hidden: ['event'] }, layoutVisibility: { hidden: ['single'] } });
   });
 });

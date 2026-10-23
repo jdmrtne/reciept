@@ -1,4 +1,5 @@
 import { normalizeHidden, type LayoutVisibility } from '../layouts/visibility';
+import { normalizeHidden as normalizeHiddenFrames, type FrameVisibility } from '../frames/visibility';
 import type { PrinterErrorCode } from '../print/errors';
 import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
@@ -57,6 +58,8 @@ export interface BoothSettings {
   share: { enabled: boolean; publicBaseUrl: string };
   /** Which layouts the guest picker (CHOOSE YOUR STRIP) hides. Default: none. Repaired by mergeSettings; at least one layout always stays visible (layouts/visibility.ts). */
   layoutVisibility: LayoutVisibility;
+  /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; the frame-locked NCL pass frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
+  frameVisibility: FrameVisibility;
 }
 
 export const DEFAULT_SETTINGS: BoothSettings = {
@@ -74,7 +77,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   mockFailures: [],
   successSeconds: 10,
   share: { enabled: false, publicBaseUrl: '' },
-  layoutVisibility: { hidden: [] }
+  layoutVisibility: { hidden: [] },
+  frameVisibility: { hidden: [] }
 };
 
 const KEY = 'booth.settings.v1';
@@ -130,7 +134,8 @@ export function mergeSettings(raw: unknown): BoothSettings {
       enabled: r.share?.enabled === true,
       publicBaseUrl: typeof r.share?.publicBaseUrl === 'string' ? r.share.publicBaseUrl.slice(0, 300) : DEFAULT_SETTINGS.share.publicBaseUrl // not trimmed here: runs on every keystroke
     },
-    layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) }
+    layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) },
+    frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) }
   };
 }
 

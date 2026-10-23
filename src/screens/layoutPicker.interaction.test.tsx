@@ -40,6 +40,7 @@ describe.skipIf(!available)('layout picker: ordinary cards + the JLC 20th Anniv.
   });
   afterAll(() => { vi.unstubAllGlobals(); dom?.window.close(); });
   afterEach(() => { RTL.cleanup(); sessionStore.reset(); dom.window.localStorage.removeItem('booth.settings.v1'); });
+  const hideFrames = (...ids: string[]) => dom.window.localStorage.setItem('booth.settings.v1', JSON.stringify({ frameVisibility: { hidden: ids } }));
   const hide = (...ids: string[]) => dom.window.localStorage.setItem('booth.settings.v1', JSON.stringify({ layoutVisibility: { hidden: ids } }));
 
   const label = (b: HTMLElement) => b.querySelector(':scope > span')?.textContent?.trim(); // not textContent: vector thumbnails contain SVG text
@@ -118,6 +119,27 @@ describe.skipIf(!available)('layout picker: ordinary cards + the JLC 20th Anniv.
       hide('single');
       RTL.render(<LayoutScreen />);
       expect(gridCards().map(label)).not.toContain('SINGLE');
+    });
+  });
+
+  describe('owner-hidden frames (ADMIN > Frames)', () => {
+    it('with the default frame hidden, choosing a layout gives the first visible frame; nothing hidden keeps the old result', () => {
+      RTL.render(<LayoutScreen />);
+      RTL.fireEvent.click(gridCard('Single'));
+      expect(sessionStore.get().frameId).toBe('classic-receipt');
+      RTL.cleanup(); sessionStore.reset();
+      hideFrames('classic-receipt');
+      RTL.render(<LayoutScreen />);
+      RTL.fireEvent.click(gridCard('Single'));
+      expect(sessionStore.get().frameId).toBe('minimal-receipt');
+      expect(sessionStore.get().screen).toBe('camera');
+    });
+    it('pass layouts still get the NCL frame even if every other frame setting is odd', () => {
+      hideFrames('classic-receipt', 'minimal-receipt');
+      RTL.render(<LayoutScreen />);
+      openModal();
+      RTL.fireEvent.click(modalCard('NCL Pass 2'));
+      expect(sessionStore.get().frameId).toBe(PASS_FRAME_ID);
     });
   });
 

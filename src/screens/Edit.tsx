@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sessionStore, useSession } from '../state/session';
 import { LAYOUTS, getLayout } from '../layouts/registry';
-import { frameForLayout, framesForLayout, getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
+import { getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
+import { frameForLayoutVisible, guestFramesForLayout } from '../frames/visibility';
 import { getFrameAsset } from '../frames/assets';
 import { FrameLayer, FramePreview, ImageFrameLayer } from '../frames/FrameLayer';
 import { framePrims } from '../frames/prims';
@@ -33,6 +34,7 @@ export function Edit() {
   const { photos, editor, layoutId, frameId, stamp } = useSession();
   const [draft, setDraft] = useState<Snapshot | null>(null);
   const [tray, setTray] = useState<'layout' | 'frame' | 'filter' | 'sticker' | null>(null);
+  const [hiddenFrames] = useState(() => loadSettings().frameVisibility.hidden); // read once per editor mount (ADMIN > Frames)
   const [swapping, setSwapping] = useState(false);
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function Edit() {
     loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0)
       .then((p) => {
         const { carry } = sessionStore.get(); // stickers + filter kept across a retake
-        const s = buildSnapshot(lid, p, frameForLayout(lid, frameId));
+        const s = buildSnapshot(lid, p, frameForLayoutVisible(lid, frameId, hiddenFrames));
         sessionStore.update({ editor: newEditor(carry ? applyCarry(s, carry) : s), carry: null });
       })
       .catch(() => setError('Something went wrong loading your photos. Please retake them.'));
@@ -162,7 +164,7 @@ export function Edit() {
     setTray(null);
     if (id === editor.present.layoutId) return;
     loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0) // sideways layouts get rotated copies of the photos
-      .then((p) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayout(id, editor.present.frameId))))))
+      .then((p) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayoutVisible(id, editor.present.frameId, hiddenFrames))))))
       .catch(() => setError('Could not change the layout.'));
   };
   const pickFrame = (id: string) => {
@@ -237,7 +239,7 @@ export function Edit() {
         {tray === 'filter' && <FilterTray src={snap.objects.find(isPhoto)?.src ?? photos[0]} active={snap.filterId} onPick={pickFilter} />}
         {tray === 'frame' && (
           <div className="edit-tray">
-            {framesForLayout(snap.layoutId).map((f) => (
+            {guestFramesForLayout(snap.layoutId, hiddenFrames, snap.frameId).map((f) => (
               <button key={f.id} className={`lay-card${f.id === snap.frameId ? ' on' : ''}`} onClick={() => pickFrame(f.id)}>
                 <FramePreview frameId={f.id} layoutId={snap.layoutId} /><span>{f.name.toUpperCase()}</span>
               </button>
@@ -248,7 +250,7 @@ export function Edit() {
           <div className="edit-tray">
             {LAYOUTS.map((l) => (
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
-                <FramePreview frameId={frameForLayout(l.id, snap.frameId)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
+                <FramePreview frameId={frameForLayoutVisible(l.id, snap.frameId, hiddenFrames)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>
             ))}
           </div>

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, mergeSettings, type BoothSettings } from '../../config/settings';
 import { AdminPanel } from './AdminPanel';
 import { SECTIONS } from './sections';
+import { FRAMES } from '../../frames/registry';
 import { searchSettings } from './search';
 import type { AdminCtx } from './types';
 
@@ -101,5 +102,45 @@ describe('layouts section', () => {
     const h = render(['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'pass-1', 'pass-2', 'pass-3', 'pass-4']); // only classic shown
     expect(h).toMatch(/aria-label="SHOW CLASSIC"[^>]*disabled=""|disabled=""[^>]*aria-label="SHOW CLASSIC"/);
     expect(h).toContain('At least one layout must stay shown');
+  });
+});
+
+describe('frames section', () => {
+  const sec = SECTIONS.find((s) => s.id === 'frames')!, card = sec.cards[0];
+  const render = (hidden: string[]) => decode(renderToStaticMarkup(<>{card.render(ctxFor(mergeSettings({ frameVisibility: { hidden } })))}</>));
+  const STD = FRAMES.filter((f) => !f.onlyLayouts);
+  it('is in the map right after Layouts and is searchable', () => {
+    expect(SECTIONS.map((s) => s.id).slice(0, 3)).toEqual(['events', 'layouts', 'frames']);
+    expect(searchSettings(SECTIONS, 'frame design').map((h) => h.card.id)).toContain('frames-visibility');
+    expect(searchSettings(SECTIONS, 'hide border').map((h) => h.card.id)).toContain('frames-visibility');
+    expect(searchSettings(SECTIONS, 'kawaii cats').map((h) => h.card.id)).toContain('frames-visibility');
+  });
+  it('one switch per standard frame (two groups), a preview each, and the NCL frame is not listed but explained', () => {
+    const h = render([]);
+    expect((h.match(/role="switch"/g) ?? []).length).toBe(STD.length);
+    for (const f of STD) expect(h).toContain(`aria-label="SHOW FRAME ${f.name.toUpperCase()}"`);
+    expect(h).not.toContain('NCL BOARDING PASS');
+    expect(h).toContain('JLC NCL Boarding Pass frame is not listed');
+    expect(h).toContain('RECEIPT STYLES');
+    expect(h).toContain('DESIGNS');
+  });
+  it('reflects hidden frames and enables SHOW ALL FRAMES only when something is hidden', () => {
+    expect(render(['event'])).toMatch(/aria-checked="false"[^>]*aria-label="SHOW FRAME EVENT"/);
+    expect(render([])).toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL FRAMES/);
+    expect(render(['event'])).not.toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL FRAMES/);
+  });
+  it('locks the last visible frame and explains why', () => {
+    const h = render(STD.slice(1).map((f) => f.id));
+    expect(h).toMatch(new RegExp(`aria-label="SHOW FRAME ${STD[0].name.toUpperCase()}"[^>]*disabled=""|disabled=""[^>]*aria-label="SHOW FRAME ${STD[0].name.toUpperCase()}"`));
+    expect(h).toContain('At least one frame must stay shown');
+  });
+  it('group HIDE ALL is disabled when it would hide the last visible frames; group SHOW ALL needs something hidden in it', () => {
+    const designs = STD.filter((f) => f.type === 'image').map((f) => f.id);
+    const onlyReceiptShown = render(designs); // every image frame hidden
+    expect(onlyReceiptShown).toMatch(/disabled=""[^>]*aria-label="HIDE ALL RECEIPT STYLES"|aria-label="HIDE ALL RECEIPT STYLES"[^>]*disabled=""/);
+    expect(onlyReceiptShown).not.toMatch(/disabled=""[^>]*aria-label="SHOW ALL DESIGNS"|aria-label="SHOW ALL DESIGNS"[^>]*disabled=""/);
+    const none = render([]);
+    expect(none).toMatch(/disabled=""[^>]*aria-label="SHOW ALL DESIGNS"|aria-label="SHOW ALL DESIGNS"[^>]*disabled=""/);
+    expect(none).not.toMatch(/disabled=""[^>]*aria-label="HIDE ALL DESIGNS"|aria-label="HIDE ALL DESIGNS"[^>]*disabled=""/);
   });
 });

@@ -52,6 +52,7 @@ ADMIN is now grouped by topic. On a tablet/laptop the sections are listed on the
 |---|---|
 | **Events** | The events you can run, which one is active, the text printed on every receipt, and a preview. See "Events" below |
 | **Layouts** | Which strip layouts guests can pick on CHOOSE YOUR STRIP. See "Choosing which layouts guests see" below |
+| **Frames** | Which frame designs guests can pick in the editor. See "Choosing which frame designs guests see" below |
 | **Printer** | Printer type, connection details (Windows printer name, printer IP, BRIDGE URL, Bluetooth chunk/delay), PAIR / CHECK PRINTER, TEST PRINT |
 | **Print quality** | PRESET, DITHER, BRIGHTNESS, CONTRAST, DENSITY, SHARPEN, AUTO LEVEL, THRESHOLD, PAPER, SIDE MARGIN, FEED LINES, CUT, plus a pinned TEST PRINT preview |
 | **Photo sharing** | SHARE QR, PUBLIC / SITE URL, upload address, CHECK SHARE |
@@ -84,3 +85,11 @@ Open **ADMIN → Layouts** to switch layouts on or off for the **CHOOSE YOUR STR
 - At least one layout always stays on: the last one cannot be switched off. **SHOW ALL** turns everything back on.
 - Changes save immediately and show the next time a guest reaches the picker (no reload needed). They only affect the guest picker, not the layout tray inside the editor.
 - The setting is stored on this device (like the other booth settings). New layouts added in a future update appear automatically.
+
+## Choosing which frame designs guests see (ADMIN → Frames)
+Open **ADMIN → Frames** to switch frame designs on or off for the frame list guests see while editing their strip.
+- Frames are split into **RECEIPT STYLES** and **DESIGNS**. Every frame has a switch and a small preview. Each group has **SHOW ALL** / **HIDE ALL**, and **SHOW ALL FRAMES** at the bottom turns everything back on.
+- At least one frame always stays on: the last one cannot be switched off, and **HIDE ALL** is unavailable when it would hide the last frames.
+- The **JLC NCL Boarding Pass** frame is not listed. It always goes with the JLC layouts, which you control under **ADMIN → Layouts**.
+- A guest who already picked a frame keeps it, even if you hide it afterwards; it just won't be offered to the next guest. If you hide the default frame (Classic Receipt), new guests start with the first frame that is still shown.
+- Changes save immediately and apply the next time a guest opens the editor (no reload). The setting is stored on this device, and new frames added in a future update appear automatically. It does not affect the frame choice in **ADMIN → Events** (that preview is for you).
