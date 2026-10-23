@@ -27,9 +27,9 @@ const pass = (id: string, name: string, art: number, slots: [number, number, num
   arrangement: { kind: 'manual', heightRatio: art / 1152, slots: slots.map(([x, y, w, h]) => ({ x: U(x), y: U(y), w: U(w), h: U(h) })) }
 });
 export const PASS_LAYOUTS: LayoutDef[] = [
-  pass('pass-1', 'NCL Pass 1', 2749, [[76, 380, 258, 148]]),
-  pass('pass-2', 'NCL Pass 2', 2749, [[80, 320, 244, 119], [80, 452, 244, 118]]),
-  pass('pass-3', 'NCL Pass 3', 2749, [[84, 295, 238, 92], [84, 396, 238, 92], [84, 496, 238, 93]]),
+  pass('pass-1', 'NCL Pass 1', 2839, [[85, 380, 237, 178]]),
+  pass('pass-2', 'NCL Pass 2', 3108, [[85, 320, 237, 178], [85, 511, 237, 178]]),
+  pass('pass-3', 'NCL Pass 3', 3521, [[85, 295, 237, 178], [85, 482, 237, 178], [85, 668, 237, 178]]),
   pass('pass-4', 'NCL Pass 4', 2745, [[160, 20, 126, 165], [160, 192, 126, 163], [160, 363, 126, 161], [160, 532, 126, 152]])
 ];
 LAYOUTS.push(...PASS_LAYOUTS);

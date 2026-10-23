@@ -43,6 +43,9 @@ beforeAll(() => {
 
 const URL_ = 'https://booth.example/p/0123456789abcdef0123456789abcdef';
 const matrix = qrMatrix(URL_);
+// the two REAL share URL forms (page QR = <base>/p/<id>): Supabase session id and 32-hex id
+const REAL_URLS = ['https://reciept-beta.vercel.app/p/20261024-103045-a8f32c0d19e4b7a65f10', 'https://reciept-beta.vercel.app/p/a8f32c0d19e4b7a65f10c3d29b7e4a61'];
+const ASPECT: Record<string, number> = { 'pass-1': 2.4644, 'pass-2': 2.6979, 'pass-3': 3.0564, 'pass-4': 2.3828 };
 const SOURCES = { landscape: [1920, 1080], portrait: [1080, 1920], fourThree: [1600, 1200] } as const;
 type Kind = keyof typeof SOURCES;
 const COLORS = ['#d62828', '#2a9d3f', '#1d4fd8', '#f08a00'];
@@ -83,10 +86,25 @@ describe('real session QR: the printed stub still scans', () => {
       expect(scan(rgba), '1-bit thermal bitmap').toBe(URL_);
     }, 60000);
   }
-  it('58 mm with a QR is refused (never a covered design); 58 mm without a QR renders at the exact roll width', async () => {
+  for (const id of IDS) for (const url of REAL_URLS) {
+    it(`${id} at 58 mm (the default roll): the real session QR (${url.length} chars) is placed, verified, and decodes from the colour canvas, the reading view and the 1-bit bitmap`, async () => {
+      const m = qrMatrix(url), dots = PAPER_DOTS[58];
+      const snap = buildSnapshot(id, appPhotos('landscape', slotCount(getLayout(id))), PASS_FRAME_ID);
+      const plan = buildPlan(snap, ctx, dots, { matrix: m, paperDots: dots });
+      expect(verifyPlanQr(plan)).toEqual({ ok: true });
+      const canvas = await renderPrint(snap, ctx, 58, env, { matrix: m });
+      expect(canvas.width, 'exact roll width').toBe(384);
+      expect(scan(px(canvas)), 'paper-space colour canvas').toBe(url);
+      expect(scan(px(forReading(canvas as never, id, env))), 'reading view').toBe(url);
+      const bm = toThermalBitmap(canvasToRGBA(canvas), DEFAULT_THERMAL, dots);
+      expect(scan(bitmapToRGBA(bm)), '1-bit thermal bitmap').toBe(url);
+    }, 60000);
+  }
+  it('a QR that truly cannot fit is still refused (never drawn over the design); 58 mm without a QR renders at the exact roll width', async () => {
+    const huge = Array.from({ length: 121 }, (_, r) => Array.from({ length: 121 }, (_, c) => (r * 7 + c * 3) % 5 === 0)); // version 24: needs 258 units at 58 mm
     for (const id of IDS) {
       const snap = buildSnapshot(id, appPhotos('landscape', slotCount(getLayout(id))), PASS_FRAME_ID);
-      expect(() => buildPlan(snap, ctx, 384, { matrix, paperDots: 384 }), id).toThrow();
+      expect(() => buildPlan(snap, ctx, 384, { matrix: huge, paperDots: 384 }), id).toThrow();
       expect((await renderPlan(buildPlan(snap, ctx, 384), env)).width, id).toBe(384);
     }
   }, 60000);
@@ -194,8 +212,7 @@ describe('preview, saved image and print agree', () => {
       expect([a.width, a.height], 'same size').toEqual([b.width, b.height]);
       let diff = 0; for (let i = 0; i < a.data.length; i++) diff += Math.abs(a.data[i] - b.data[i]);
       expect(diff, 'identical pixels').toBe(0);
-      expect(a.width / a.height, 'landscape ticket 2.38:1').toBeGreaterThan(2.2);
-      expect(a.width / a.height).toBeLessThan(2.5);
+      expect(Math.abs(a.width / a.height / ASPECT[id] - 1), 'landscape ticket at its own aspect').toBeLessThan(0.005);
       const dec = await loadImage(Buffer.from(asset.bytes));
       expect([dec.width, dec.height], 'the stored JPEG decodes to the same landscape size').toEqual([b.width, b.height]);
       const print = await renderPrint(snap, ctx, 80, env);

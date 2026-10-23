@@ -139,7 +139,39 @@ describe('plan, info block and QR', () => {
       expect(verifyPlanQr(p).ok).toBe(true);
     }
   });
-  it('58 mm: the stub is too small for a scannable QR, so export with sharing ON is refused (never a covered design)', () => {
-    for (const id of IDS) expect(() => buildPlan(snapOf(id), ctx, 384, { matrix: matrixOf(37), paperDots: 384 }), id).toThrow();
+  it('58 mm (the default roll): the real session QR (37 modules, and 41 for a longer URL) goes into the safe area, verified', () => {
+    for (const id of IDS) for (const n of [37, 41]) {
+      const p = buildPlan(snapOf(id), ctx, 384, { matrix: matrixOf(n), paperDots: 384 });
+      const q = p.cmds[p.cmds.length - 1];
+      expect(q.op, `${id}/${n}`).toBe('qr');
+      if (q.op !== 'qr') return;
+      expect(q.mode).toBe('safe-area');
+      expect(q.rect.w).toBeGreaterThanOrEqual(qrMinSide(n, undefined, 384));
+      expect(verifyPlanQr(p).ok).toBe(true);
+    }
+  });
+  it('a QR that cannot fit even in the enlarged stub is still refused (export blocked, never drawn over ink)', () => {
+    for (const id of IDS) expect(() => buildPlan(snapOf(id), ctx, 384, { matrix: matrixOf(121), paperDots: 384 }), id).toThrow();
+  });
+  it('the QR safe area is at least 104 units square (41 modules at 2 dots/module on 58 mm) in every pass', () => {
+    for (const id of IDS) {
+      const L = resolveFramed(id, PASS_FRAME_ID), q = qrAreaFor(getFrame(PASS_FRAME_ID), id)!.safeArea;
+      expect(Math.min(q.w * L.width, q.h * L.height), id).toBeGreaterThanOrEqual(qrMinSide(41, undefined, 384) + 6);
+    }
+  });
+});
+
+describe('3:4 photo boxes', () => {
+  const slots = (id: string) => resolveFramed(id, PASS_FRAME_ID).slots;
+  it('every box on pass-1..3 is 3:4 portrait on the ticket (paper slot 4:3 landscape, within 1 unit), and all of them have the same size', () => {
+    const sizes = new Set<string>();
+    for (const id of ['pass-1', 'pass-2', 'pass-3']) for (const r of slots(id)) {
+      expect(Math.abs(r.w - (4 / 3) * r.h), `${id} slot ${r.w}x${r.h}`).toBeLessThanOrEqual(1);
+      sizes.add(`${r.w}x${r.h}`);
+    }
+    expect(sizes.size).toBe(1);
+  });
+  it('pass-4 boxes are unchanged (four landscape boxes, portrait on paper)', () => {
+    expect(slots('pass-4').map((r) => [r.x, r.y, r.w, r.h])).toEqual([[160, 20, 126, 165], [160, 192, 126, 163], [160, 363, 126, 161], [160, 532, 126, 152]]);
   });
 });

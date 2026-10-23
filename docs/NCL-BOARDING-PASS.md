@@ -5,22 +5,22 @@ Regenerate art + layout numbers: `python3 scripts/build-ncl-pass.py` (Pillow, nu
 
 | Layout id | Photos | Box on the ticket | Slot on the paper | Art |
 |---|---|---|---|---|
-| `pass-1` | 1 | portrait 317×548 (0.58) | landscape, 258×148 units | 1152×2749 |
-| `pass-2` | 2 | portrait 255×520 / 252×520 (0.49) | landscape, 244×119 / 244×118 | 1152×2749 |
-| `pass-3` | 3 | portrait 198×506 (0.39) | landscape, 238×92 (×3) | 1152×2749 |
-| `pass-4` | 4 | landscape 351/347/344/324 × 270 | portrait, 126×165/163/161/152 | 1152×2745 |
+| `pass-1` | 1 | portrait **3:4**, window 372×496 (outline 380×504) | landscape, 237×178 units | 1152×2839 |
+| `pass-2` | 2 | same 3:4 box ×2 (24 px gap) | landscape, 237×178 (×2) | 1152×3108 |
+| `pass-3` | 3 | same 3:4 box ×3 (15/14 px gaps) | landscape, 237×178 (×3) | 1152×3521 |
+| `pass-4` | 4 | landscape 351/347/344/324 × 270 (unchanged) | portrait, 126×165/163/161/152 | 1152×2745 |
 
 Frame id: `ncl-boarding-pass` (`frames/registry.ts`, `PASS_FRAME_ID`). Art: `src/assets/frames/ncl-boarding-pass/<layoutId>.png` (found by the usual convention).
 
 ## How it works
 - **Sideways print.** The ticket is 2.39:1; upright it would be ~161 dots tall on 58 mm. It is rotated 90° clockwise and prints along the roll (384×917 units). Turn the paper counter-clockwise to read it. Layouts are `arrangement.kind: 'manual'` in paper space; slots are measured from the reference boxes (units @384, written `/384`).
-- **Photos rotate on placement.** `LayoutDef.photoRotation: 90` → `loadPhotoSrcs(urls, 90)` (`editor/model.ts`) → rotated copies (`editor/rotate.ts`), so crop, editor, preview, print and GIF stills need no changes. Copies are revoked in `sessionStore.reset()`. Boxes are the drawn shapes, not "3:4"; photos are cover-cropped, never stretched.
+- **Photos rotate on placement.** `LayoutDef.photoRotation: 90` → `loadPhotoSrcs(urls, 90)` (`editor/model.ts`) → rotated copies (`editor/rotate.ts`), so crop, editor, preview, print and GIF stills need no changes. Copies are revoked in `sessionStore.reset()`. Passes 1 to 3 have true 3:4 boxes (see "3:4 boxes and the QR stub"); photos are cover-cropped, never stretched.
 - **Frame-locked.** `FrameDef.onlyLayouts` ties the frame to `pass-1..4` and those layouts to the frame (`isFrameAllowed`, `framesForLayout`, `frameForLayout`). Layout picker/editor use them; all other frame×layout pairs are unchanged. Generic test suites run on `STANDARD_FRAMES × STANDARD_LAYOUTS` (the pre-existing universe); `src/frames/nclBoardingPass.test.ts` covers this family.
 - **Text and codes.** All text, airplanes, rules and the barcode are the reference pixels (cleaned, upscaled). The reference QR picture is erased; the real session QR is drawn by the existing code into `qr.byLayout[layoutId].safeArea` (empty in the art, pixel-checked). `FrameDef.noInfo` suppresses the owner's info block under this frame.
 - **Barcode** is the reference picture (decorative, no data), not a generated code.
 
 ## Known limits
-- **58 mm + Share ON:** the stub QR area is ~74–83 units square, but a scannable QR needs ≥ ~96 units at 384 dots, so export is refused by the existing QR gate. 80 mm works (needs 66–72). Enlarging the stub would change the reference composition.
+- **QR scan from paper is not verified.** At 58 mm the QR is 2 dots per module (0.25 mm); it decodes from the colour canvas, the reading view and the 1-bit bitmap in tests, but a phone scan from real thermal paper is on the physical test list.
 - **GIF:** footage clips are keyed by the original photo URL, so on these layouts the GIF shows the rotated stills (no motion).
 - The art is cleaned from 812 px-wide references (≈1.4× oversampled for 576 dots); small text legibility at 58 mm needs a real print test.
 
@@ -43,3 +43,11 @@ Frame id: `ncl-boarding-pass` (`frames/registry.ts`, `PASS_FRAME_ID`). Art: `src
 **Missing photos.** Same rule as every layout: fewer photos than boxes repeat from the start (`photos[i % n]`); none gives an empty snapshot; neither throws.
 **Switching.** Every ordered pair of the 10 layouts builds a plan with a legal frame (pass layouts always get the NCL frame, ordinary layouts never do) and stickers are carried over; real clicks on the picker select each pass layout.
 **Still not verified:** a physical print (legibility of the small text at 58 mm, the QR scan from paper, the barcode and the fine dashed rules on the real head), a real browser or tablet (camera, pointer drag in the turned editor).
+
+## 3:4 boxes and the QR stub (fix, Phases 5 to 8)
+**Why.** The references drew the boxes of passes 1 to 3 at 0.58, 0.49 and 0.39 wide-to-tall although labelled "3:4", and the stub's empty QR area (74 to 83 units) was too small for the real QR at 58 mm (needs 96 units for 37 modules; the real URL `<base>/p/<id>` is 37 modules at error correction M for both id forms), so the preview refused with "Could not place the QR code".
+**What changed (`scripts/build-ncl-pass.py`, deterministic).**
+- Passes 1 to 3 are recomposed: the left block and everything right of the last box are the reference pixels (shifted), and the boxes are drawn fresh: one size for all three, outline 380×504 ref px (3.4 px stroke, the measured reference mean), window 372×496 = exactly 3:4 (slot 237×178 units). Ticket widths 2001 / 2191 / 2482 px (was 1938); printed length at 58 mm 118 / 130 / 147 mm (was 115), at 80 mm 178 / 195 / 220 mm. Pass-4 boxes are unchanged (window alpha identical to the previous art).
+- All four stubs are re-spaced (top and bottom margins; pass-4 also 11 px from its larger gaps) so the empty QR area is 104.5 to 105 units square (target 104 = 41 modules at 2 dots/module, URLs up to about 106 chars). Every stub element is kept, pixel for pixel; only the vertical position changed.
+**Redrawn (not reference pixels):** the photo-box outlines of passes 1 to 3 and the pass-4 full stop (as before).
+**Measurement scripts:** `scripts/qa/ncl-measure.py` (`ref`, `art`, `verify`, `montage`), `ncl-spec.py`, `ncl-qr-failure.mjs`; log in `docs/NCL-FIX-HANDOFF.md`.

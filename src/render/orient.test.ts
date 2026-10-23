@@ -96,27 +96,31 @@ describe('the quarter turn is exact and consistent everywhere it is used', () =>
 });
 
 describe('the finished ticket, turned for reading, matches the landscape DESIGN (design-src reference)', () => {
-  const gray = (c: Canvas, w: number, h: number) => { const t = createCanvas(w, h), g = t.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, w, h); const d = g.getImageData(0, 0, w, h).data; return Float32Array.from({ length: w * h }, (_, i) => 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]); };
-  it.each(IDS)('%s: landscape 2.38:1, same layout as the reference ticket (a wrong turn is rejected)', async (id) => {
+  /** `sw` = how many source px from the left to compare (default: all). */
+  const gray = (c: Canvas, w: number, h: number, sw?: number) => { const t = createCanvas(w, h), g = t.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, sw ?? c.width, c.height, 0, 0, w, h); const d = g.getImageData(0, 0, w, h).data; return Float32Array.from({ length: w * h }, (_, i) => 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]); };
+  it.each(IDS)('%s: landscape at its own aspect, same design as the reference ticket (passes 1-3: its unchanged left block; a wrong turn is rejected)', async (id) => {
     const n = IDS.indexOf(id) + 1, plan = buildPlan(buildSnapshot(id, paperPhotos(n), PASS_FRAME_ID), ctx, 576), paper = (await renderPlan(plan, env)) as unknown as Canvas;
     const read = turnForReading(paper as unknown as HTMLCanvasElement, env) as unknown as Canvas;
     expect(read.width).toBe(paper.height); expect(read.height).toBe(paper.width);
-    expect(read.width / read.height).toBeGreaterThan(2.3); expect(read.width / read.height).toBeLessThan(2.45);
+    // passes 1-3 are wider than their reference since the photo boxes are true 3:4 (aspect = art height / 1152); pass-4 is unchanged
+    const ASPECT = [2.4644, 2.6979, 3.0564, 2.3828][n - 1]; expect(Math.abs(read.width / read.height / ASPECT - 1)).toBeLessThan(0.005);
     const ref = await loadImage(readFileSync(join(process.cwd(), 'design-src/ncl-boarding-pass', `ref-${n}-photo.png`)));
     const rc = createCanvas(ref.width, ref.height); rc.getContext('2d').drawImage(ref, 0, 0);
-    expect(Math.abs(ref.width / ref.height / (read.width / read.height) - 1)).toBeLessThan(0.01);
-    const W = 460, H = Math.round((W * read.height) / read.width), A = gray(read, W, H), B = gray(rc, W, H);
+    if (n === 4) expect(Math.abs(ref.width / ref.height / (read.width / read.height) - 1)).toBeLessThan(0.01);
+    // the left block of passes 1-3 (everything left of the first photo box in the reference: x < 802 / 676 / 623) is the reference's own pixels
+    const X0 = [802, 676, 623, ref.width][n - 1], f = read.height / ref.height, cw0 = X0 * f;
+    const W = 460, H = Math.round((W * read.height) / cw0), A = gray(read, W, H, cw0), B = gray(rc, W, H, X0);
     // ignore the photo boxes and the QR panel (the reference has placeholder boxes and a sample QR there); everything else is the shared design
     const skip = new Uint8Array(W * H), mark = (x0: number, y0: number, x1: number, y1: number) => { for (let y = Math.max(0, Math.floor(y0)); y < Math.min(H, Math.ceil(y1)); y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, Math.ceil(x1)); x++) skip[y * W + x] = 1; };
     const L = plan.cmds.filter((c) => c.op === 'photo') as { slot: { x: number; y: number; w: number; h: number } }[], s = plan.k;
-    for (const p of L) { const q = turnRect({ x: p.slot.x * s, y: p.slot.y * s, w: p.slot.w * s, h: p.slot.h * s }, paper.width); mark((q.x / read.width) * W - 6, (q.y / read.height) * H - 6, ((q.x + q.w) / read.width) * W + 6, ((q.y + q.h) / read.height) * H + 6); }
+    for (const p of L) { const q = turnRect({ x: p.slot.x * s, y: p.slot.y * s, w: p.slot.w * s, h: p.slot.h * s }, paper.width); mark((q.x / cw0) * W - 6, (q.y / read.height) * H - 6, ((q.x + q.w) / cw0) * W + 6, ((q.y + q.h) / read.height) * H + 6); }
     const qa = qrAreaFor(getFrame(PASS_FRAME_ID), id)!.safeArea, qq = turnRect({ x: qa.x * paper.width, y: qa.y * paper.height, w: qa.w * paper.width, h: qa.h * paper.height }, paper.width);
-    mark((qq.x / read.width) * W - 25, (qq.y / read.height) * H - 25, ((qq.x + qq.w) / read.width) * W + 25, ((qq.y + qq.h) / read.height) * H + 25);
+    mark((qq.x / cw0) * W - 25, (qq.y / read.height) * H - 25, ((qq.x + qq.w) / cw0) * W + 25, ((qq.y + qq.h) / read.height) * H + 25);
     const diff = (a: Float32Array) => { let sum = 0, cnt = 0; for (let i = 0; i < W * H; i++) if (!skip[i]) { sum += Math.abs(a[i] - B[i]); cnt++; } return sum / cnt; };
     const good = diff(A);
     const cw = createCanvas(paper.height, paper.width), cg = cw.getContext('2d'); cg.translate(paper.height, 0); cg.rotate(Math.PI / 2); cg.drawImage(paper, 0, 0); // clockwise = the WRONG way
     expect(good, `${id} mean |Δ| vs reference`).toBeLessThan(22);
-    expect(diff(gray(cw, W, H)), `${id} wrong-way turn must be far worse`).toBeGreaterThan(good * 2.5);
+    expect(diff(gray(cw, W, H, cw0)), `${id} wrong-way turn must be far worse`).toBeGreaterThan(good * 2.5);
   }, 120000);
 });
 

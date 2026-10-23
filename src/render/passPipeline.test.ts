@@ -138,28 +138,30 @@ beforeAll(() => { if (DUMP) mkdirSync(DUMP, { recursive: true }); });
 
 // 384 = 58 mm paper, 576 = 80 mm paper, 768 = 80 mm screen preview (2×), 1152 = 58 mm screen preview ×3 (art 1:1).
 const WIDTHS = [384, 576, 768, 1152];
+/** Ticket aspect (width / height) of each pass after the 3:4-box fix: art height / 1152. Passes 1-3 are wider than before (true 3:4 boxes); pass-4 is unchanged. */
+const ASPECT: Record<string, number> = { 'pass-1': 2.4644, 'pass-2': 2.6979, 'pass-3': 3.0564, 'pass-4': 2.3828 };
 
 describe('output geometry: the ticket is LANDSCAPE once the roll is turned, and the roll width is exact', () => {
-  it.each(IDS)('%s: canvas = paper width × art aspect, no stretch, ticket reads 2.38:1 landscape', async (id) => {
+  it.each(IDS)('%s: canvas = paper width × art aspect, no stretch, ticket reads landscape at its own aspect', async (id) => {
     const A = await art(id);
     for (const w of WIDTHS) {
       const plan = buildPlan(buildSnapshot(id, appPhotos('landscape', slotCount(getLayout(id))).photos, PASS_FRAME_ID), ctx, w);
       expect(plan.width).toBe(w);
       expect(Math.abs(plan.height / plan.width / (A.h / A.w) - 1), `${id}@${w} art aspect`).toBeLessThan(0.002);
       expect(plan.height, `${id}@${w} is taller than wide on the ROLL`).toBeGreaterThan(plan.width);
-      expect(plan.height / plan.width, `${id}@${w} ticket ratio after turning the paper`).toBeGreaterThan(2.3);
-      expect(plan.height / plan.width).toBeLessThan(2.45);
+      expect(Math.abs(plan.height / plan.width / ASPECT[id] - 1), `${id}@${w} ticket ratio after turning the paper`).toBeLessThan(0.005);
       expect(plan.cmds.some((c) => c.op === 'info')).toBe(false); // all event text is in the art
     }
   });
-  it('physical size at 203 dpi: 58 mm = 384 dots ≈ 48 mm printable, 80 mm = 576 dots ≈ 72 mm printable; ticket 114.6 × 48 mm and 172 × 72 mm', () => {
+  it('physical size at 203 dpi: 58 mm = 384 dots ≈ 48 mm printable, 80 mm = 576 dots ≈ 72 mm printable; ticket length per pass (pass-1 118.4, pass-2 129.6, pass-3 146.9, pass-4 114.5 mm at 58 mm; ×1.5 at 80 mm)', () => {
     const mm = (dots: number) => (dots / 203) * 25.4;
     for (const id of IDS) {
       const p58 = buildPlan(buildSnapshot(id, appPhotos('landscape', 4).photos, PASS_FRAME_ID), ctx, PAPER_DOTS[58]);
       const p80 = buildPlan(buildSnapshot(id, appPhotos('landscape', 4).photos, PASS_FRAME_ID), ctx, PAPER_DOTS[80]);
       expect(mm(p58.width)).toBeCloseTo(48.05, 1); expect(mm(p80.width)).toBeCloseTo(72.07, 1);
-      expect(mm(p58.height)).toBeGreaterThan(114); expect(mm(p58.height)).toBeLessThan(115);
-      expect(mm(p80.height)).toBeGreaterThan(171); expect(mm(p80.height)).toBeLessThan(173);
+      const want58 = 48.05 * ASPECT[id];
+      expect(Math.abs(mm(p58.height) - want58), id).toBeLessThan(0.6);
+      expect(Math.abs(mm(p80.height) - 72.07 * ASPECT[id]), id).toBeLessThan(0.9);
     }
   });
 });

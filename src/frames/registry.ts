@@ -90,10 +90,10 @@ const passFrame: FrameDef = {
   ...imageFrame(PASS_FRAME_ID, 'NCL Boarding Pass', 'ncl-boarding-pass', { headerHeight: 0, footerHeight: 0, padding: 0 }),
   onlyLayouts: ['pass-1', 'pass-2', 'pass-3', 'pass-4'], noInfo: true,
   qr: { byLayout: {
-    'pass-1': { safeArea: { x: 0.2635, y: 0.7853, w: 0.2131, h: 0.2085 } },
-    'pass-2': { safeArea: { x: 0.2746, y: 0.7853, w: 0.1983, h: 0.2085 } },
-    'pass-3': { safeArea: { x: 0.2771, y: 0.7853, w: 0.1933, h: 0.2085 } },
-    'pass-4': { safeArea: { x: 0.197, y: 0.785, w: 0.2155, h: 0.2088 } }
+    'pass-1': { safeArea: { x: 0.234, y: 0.7921, w: 0.2722, h: 0.2019 } },
+    'pass-2': { safeArea: { x: 0.2377, y: 0.8115, w: 0.2722, h: 0.183 } },
+    'pass-3': { safeArea: { x: 0.2365, y: 0.84, w: 0.2734, h: 0.1551 } },
+    'pass-4': { safeArea: { x: 0.1527, y: 0.7767, w: 0.2734, h: 0.2171 } }
   } }
 };
 export const COUPLED_FRAMES: FrameDef[] = [passFrame];
