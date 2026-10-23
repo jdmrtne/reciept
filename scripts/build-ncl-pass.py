@@ -4,6 +4,7 @@ Builds src/assets/frames/ncl-boarding-pass/pass-{1,2,3,4}.png from the four refe
   1. cleans the scan noise (levels), keeping every glyph / airplane / barcode / rule pixel of the reference;
   2. makes the photo-box interiors (and their "3:4 PHOTO BOX n" labels) transparent;
   3. blanks the reference QR picture (the app draws the real session QR into the declared safe area);
+  3b. ticket 4 only: adds the one missing full stop of its bottom-right tagline (see the comment in the loop);
   4. rotates the ticket 90 degrees clockwise (it prints sideways along the roll) and scales it to 1152 px wide (3x the 384-unit canvas).
 Prints the layout data (slot units, height ratio, QR safe area) that is pasted into src/layouts/registry.ts / src/frames/registry.ts.
 Usage: python3 scripts/build-ncl-pass.py   (needs Pillow, numpy, scipy)
@@ -52,6 +53,13 @@ for n in (1, 2, 3, 4):
     stub_x0 = int(W * 0.77)
     qx0, qy0, qx1, qy1 = find_qr(dark, stub_x0)
     g = clean(ref)
+    if n == 4:
+        # Reference 4 is the only ticket whose bottom-right tagline ends "OFFICIALLY RECEIPTED" WITHOUT the final period (the header line,
+        # the stub line and tickets 1-3 all have it). The brief's tagline is "YOUR MOMENTS, OFFICIALLY RECEIPTED.", so the missing full stop is added:
+        # a 4 x 4 px dot (stem width 3 px, comma dot 5 px in the same line), centred in the character cell after the final D (right edge x=1414),
+        # sitting on the baseline (y=741). This is the ONE glyph in the family that is not a reference pixel.
+        assert (g[736:742, 1418:1432] > 245).all(), 'tagline period position is no longer blank: re-measure'
+        g[738:742, 1423:1427] = 0
     # erase the reference QR picture (with a 6 px halo) -> flat paper
     g[qy0 - 6:qy1 + 7, qx0 - 6:qx1 + 7] = 255
     alpha = np.full(g.shape, 255, np.uint8)
