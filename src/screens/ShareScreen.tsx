@@ -70,7 +70,7 @@ export function ShareScreen() {
         if (!editor) return null; // no photo at all
         if (file === 'photo.jpg') { const a = (await getColor()).asset; void autoSaveAsset('image', stamp ?? ensureSessionStamp(), a); return a; } // auto-save reuses the SAME bytes that are uploaded
         // The GIF is its own render of the same layout (independent of the JPEG, so one failing never blocks the other).
-        const gif = await renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage, browserEnv, pageQr());
+        const gif = await renderGifVersion(editor.present, stamp ?? ensureSessionStamp(), footage, browserEnv, pageQr(), cfg.paper);
         void autoSaveAsset('gif', stamp ?? ensureSessionStamp(), gif);
         return gif;
       },

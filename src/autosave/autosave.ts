@@ -50,7 +50,7 @@ export function autoSaveSession(): void {
       const stamp = ensureSessionStamp(), { paperWidthMm } = loadSettings();
       const qr = isSideways(editor.present.layoutId) ? frameQrForSession() ?? undefined : undefined;
       if (enabled('image')) await renderColorPhoto(editor.present, stamp, paperWidthMm, undefined, undefined, qr).then((r) => autoSaveAsset('image', stamp, r.asset)).catch(() => false);
-      if (enabled('gif')) await renderGifVersion(editor.present, stamp, st.footage, undefined, qr).then((a) => autoSaveAsset('gif', stamp, a)).catch(() => false);
+      if (enabled('gif')) await renderGifVersion(editor.present, stamp, st.footage, undefined, qr, paperWidthMm).then((a) => autoSaveAsset('gif', stamp, a)).catch(() => false);
     } catch { /* never interrupts the booth */ }
   })();
 }

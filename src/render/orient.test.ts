@@ -15,7 +15,7 @@ import { addSticker, buildSnapshot, keepStickers } from '../editor/model';
 import { isSticker } from '../editor/types';
 import { buildPlan } from './plan';
 import { renderPlan, type RenderEnv } from './render';
-import { renderColorPhoto, renderGifVersion, GIF_WIDTH, type JpegEncoder } from '../share/assets';
+import { renderColorPhoto, renderGifVersion, gifWidth, type JpegEncoder } from '../share/assets';
 import { makeEventCtx } from '../frames/prims';
 import { DEFAULT_EVENT_PROFILE } from '../config/events';
 import { qrAreaFor } from '../qr/placement';
@@ -155,7 +155,7 @@ describe('saved colour photo (JPEG) and GIF are delivered in reading orientation
     let sum = 0; for (let i = 0; i < got.length; i += 4) sum += Math.abs(got[i] - want.data[i]) + Math.abs(got[i + 1] - want.data[i + 1]) + Math.abs(got[i + 2] - want.data[i + 2]);
     expect(sum / ((got.length / 4) * 3), `${id} GIF first frame vs turned render (palette quantisation only)`).toBeLessThan(10);
     const plain = Buffer.from((await renderGifVersion(buildSnapshot('strip-3', paperPhotos(3)), ctx, [], env)).bytes);
-    expect(plain.readUInt16LE(8)).toBeGreaterThan(plain.readUInt16LE(6)); expect(plain.readUInt16LE(6)).toBeLessThanOrEqual(GIF_WIDTH);
+    expect(plain.readUInt16LE(8)).toBeGreaterThan(plain.readUInt16LE(6)); expect(plain.readUInt16LE(6)).toBe(gifWidth(58));
   }, 120000);
 });
 
