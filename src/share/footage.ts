@@ -3,7 +3,7 @@ export interface FootageFrame { t: number; canvas: HTMLCanvasElement }
 /** The recorded countdown that led up to ONE captured photo. `src` is that photo's URL, which is how the GIF pairs them. */
 export interface FootageClip { src: string; width: number; height: number; frames: FootageFrame[] }
 
-export const FOOTAGE_MAX_SIDE = 448;   // longest side of a stored frame (px): plenty for a phone-sized GIF slot, small in memory
+export const FOOTAGE_MAX_SIDE = 1280;  // longest side of a stored frame (px): enough to fill a photo-resolution GIF slot without upscaling (lower it if memory is tight)
 export const FOOTAGE_INTERVAL_MS = 125; // 8 samples/second while the countdown runs
 
 /**

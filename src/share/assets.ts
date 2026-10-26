@@ -32,8 +32,8 @@ export async function renderColorPhoto(snap: Snapshot, ctx: FrameCtx, paperMm: 5
   return { canvas, asset };
 }
 
-/** GIF size: same layout as the print, drawn narrower so it stays light on a phone. */
-export const GIF_WIDTH = 320, GIF_MAX_HEIGHT = 720;
+/** GIF size: exactly the colour photo's size (2× the paper's dot width), so the two files have the same resolution. */
+export const gifWidth = (paperMm: 58 | 80): number => PAPER_DOTS[paperMm] * 2;
 const FINAL_HOLD_MS = 1800;    // the finished layout (all captured photos) before the loop restarts
 const MAX_CLIP_MS = 4000;      // footage longer than this is not stretched into the GIF
 const yieldUi = () => new Promise<void>((r) => setTimeout(r, 0));
@@ -88,24 +88,20 @@ export function turnClip(env: RenderEnv, clip: FootageClip): FootageClip {
  * slot (held briefly) and it loops. Footage is paired to slots by photo (clip.src === the slot's photo src), so swaps
  * and retakes stay correct. A photo with no footage just shows its photo. Sources are only read.
  */
-export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[] = [], env: RenderEnv = browserEnv, qr?: PlanQr): Promise<ShareAsset> {
+export async function renderGifVersion(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[] = [], env: RenderEnv = browserEnv, qr?: PlanQr, paperMm: 58 | 80 = 58): Promise<ShareAsset> {
   if (qr) { // same layout with the page QR in every frame; if it cannot be placed, the GIF is made without it
-    try { return await renderGifWith(snap, ctx, footage, env, qr); } catch (e) { if (!(e instanceof QrPlacementError)) throw e; }
+    try { return await renderGifWith(snap, ctx, footage, env, paperMm, qr); } catch (e) { if (!(e instanceof QrPlacementError)) throw e; }
   }
-  return renderGifWith(snap, ctx, footage, env);
+  return renderGifWith(snap, ctx, footage, env, paperMm);
 }
-/** Smallest GIF width that keeps every QR module at 2+ whole pixels (a phone scans the QR off another screen). */
-const GIF_QR_MIN_WIDTH = 384;
 
-async function renderGifWith(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[], env: RenderEnv, qr?: PlanQr): Promise<ShareAsset> {
+async function renderGifWith(snap: Snapshot, ctx: FrameCtx, footage: FootageClip[], env: RenderEnv, paperMm: 58 | 80, qr?: PlanQr): Promise<ShareAsset> {
   await env.ready?.();
   if (!snap.objects.some((o) => isPhoto(o) && o.visible)) throw new Error('no-photos');
 
-  // Size: the printed layout's own aspect ratio, capped so tall strips don't produce a huge GIF.
-  const ref = buildPlan(snap, ctx, 384);
-  let W = Math.max(64, Math.min(GIF_WIDTH, Math.floor((GIF_MAX_HEIGHT * 384) / ref.height)) & ~1);
-  if (qr) W = Math.max(W, GIF_QR_MIN_WIDTH);
-  const plan = buildPlan(snap, ctx, W, qr && { paperDots: 384, ...qr }), { k } = plan, H = plan.height;
+  // Size: the SAME plan at the SAME width as the colour photo (renderColorPhoto), so the GIF has the photo's resolution.
+  const W = gifWidth(paperMm);
+  const plan = buildPlan(snap, ctx, W, qr && { paperDots: PAPER_DOTS[paperMm], ...qr }), { k } = plan, H = plan.height;
   const slots = plan.cmds.flatMap((c) => (c.op === 'photo' ? [c] : []))
     .sort((a, b) => a.slot.y - b.slot.y || a.slot.x - b.slot.x);
   const N = slots.length;

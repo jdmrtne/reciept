@@ -148,8 +148,8 @@ describe('GIF layering with the info block', () => {
     const cv = createCanvas(a.width, a.height), g = cv.getContext('2d'); g.drawImage(a as any, 0, 0);
     const px = pixels(cv as any), plan = buildPlan(snap, ctx, a.width), info = infoOf(plan);
     expect(inkIn(px, 0, Math.round(info.rect.y * plan.k), px.width, px.height)).toBeGreaterThan(30);
-    expect(a.width).toBeLessThanOrEqual(320);
-    expect(b.width).toBeLessThanOrEqual(320);
+    expect(a.width).toBe(768); // photo resolution (384 × 2)
+    expect(b.width).toBe(768);
   }, 60000);
 
   it('every frame still renders a GIF-sized plan whose width/height agree (nothing disappears in one output path)', () => {
