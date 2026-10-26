@@ -89,3 +89,19 @@ describe('standby photo setting (metadata only)', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 });
+
+describe('autoSave.videos setting', () => {
+  it('is OFF by default, like the other auto-save switches', () => {
+    expect(mergeSettings({}).autoSave).toEqual({ images: false, gifs: false, videos: false });
+  });
+  it('turns on only for a real true and leaves the other switches alone', () => {
+    expect(mergeSettings({ autoSave: { videos: true } }).autoSave).toEqual({ images: false, gifs: false, videos: true });
+    expect(mergeSettings({ autoSave: { images: true, gifs: true, videos: false } }).autoSave).toEqual({ images: true, gifs: true, videos: false });
+  });
+  it('repairs anything that is not exactly true to false', () => {
+    for (const v of ['true', 1, 'yes', {}, [], null, undefined]) expect(mergeSettings({ autoSave: { videos: v } }).autoSave.videos).toBe(false);
+  });
+  it('settings saved before videos existed load with videos off', () => {
+    expect(mergeSettings({ autoSave: { images: true, gifs: true } }).autoSave).toEqual({ images: true, gifs: true, videos: false });
+  });
+});

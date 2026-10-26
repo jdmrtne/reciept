@@ -85,8 +85,8 @@ export interface BoothSettings {
   layoutVisibility: LayoutVisibility;
   /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; the frame-locked NCL pass frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
   frameVisibility: FrameVisibility;
-  /** Admin auto-save of finished outputs into the chosen folder (autosave/). Independent switches, both OFF by default; the folder handle lives in IndexedDB, not here. */
-  autoSave: { images: boolean; gifs: boolean };
+  /** Admin auto-save of finished outputs into the chosen folder (autosave/). Independent switches (photo, GIF, MP4 video), all OFF by default; the folder handle lives in IndexedDB, not here. */
+  autoSave: { images: boolean; gifs: boolean; videos: boolean };
   /** Custom standby screen photo (metadata only; see StandbyPhotoSettings). */
   standbyPhoto: StandbyPhotoSettings;
   /** Owner text inside the built-in frames (ADMIN > Frame text): frameId -> `header.<i>`/`footer.<i>` -> text. Differences only; absent = built-in text, '' = hidden line. Repaired by mergeSettings (frames/frameText.ts). */
@@ -110,7 +110,7 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   share: { enabled: false, publicBaseUrl: '' },
   layoutVisibility: { hidden: [] },
   frameVisibility: { hidden: [] },
-  autoSave: { images: false, gifs: false },
+  autoSave: { images: false, gifs: false, videos: false },
   standbyPhoto: DEFAULT_STANDBY_PHOTO,
   frameText: {}
 };
@@ -170,7 +170,7 @@ export function mergeSettings(raw: unknown): BoothSettings {
     },
     layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) },
     frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) },
-    autoSave: { images: (r.autoSave as { images?: unknown } | undefined)?.images === true, gifs: (r.autoSave as { gifs?: unknown } | undefined)?.gifs === true },
+    autoSave: { images: (r.autoSave as { images?: unknown } | undefined)?.images === true, gifs: (r.autoSave as { gifs?: unknown } | undefined)?.gifs === true, videos: (r.autoSave as { videos?: unknown } | undefined)?.videos === true },
     standbyPhoto: normalizeStandbyPhoto(r.standbyPhoto),
     frameText: normalizeFrameText(r.frameText)
   };

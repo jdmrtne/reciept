@@ -15,7 +15,7 @@ import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-lock
 import { slotCount } from '../layouts/engine';
 import { makeCtx } from '../frames/prims';
 import type { RenderEnv } from '../render/render';
-import { renderColorPhoto, renderGifVersion, syncTimeline, frameIndexAt, GIF_WIDTH, GIF_MAX_HEIGHT, type JpegEncoder } from './assets';
+import { renderColorPhoto, renderGifVersion, syncTimeline, frameIndexAt, gifWidth, type JpegEncoder } from './assets';
 import type { FootageClip } from './footage';
 import { newShareId } from './id';
 import { qrMatrix, QUIET } from './qr';
@@ -209,12 +209,11 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     expect(gifRes.headers.get('content-type')).toBe('image/gif');
     expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
     const plan = buildPlan(snap, ctx, gb.readUInt16LE(6));
-    expect(gb.readUInt16LE(6)).toBeLessThanOrEqual(GIF_WIDTH);
+    expect(gb.readUInt16LE(6)).toBe(gifWidth(58));              // same resolution as the colour photo (384 × 2)
     expect(gb.readUInt16LE(8)).toBe(plan.height);              // same aspect ratio as the printed layout
-    expect(gb.readUInt16LE(8)).toBeLessThanOrEqual(GIF_MAX_HEIGHT);
     expect(gb.includes(Buffer.from('NETSCAPE2.0'))).toBe(true); // loops forever
     expect(gifFrames(gb)).toBe(syncTimeline(Array(3).fill(clipFor(RED, 0).frames), 10).ticks.length + 1); // ONE shared timeline (24 clip frames → 25 ticks) + the final captured-photos frame, not 3 clips back to back
-    expect(gb.length).toBeLessThan(2_000_000);                 // delta frames keep it small
+    expect(gb.length).toBeLessThan(8_000_000);                 // delta frames keep it reasonable even at photo resolution
     await loadImage(gb); // decodes as an image
 
     // The page's DOWNLOAD buttons really download (attachment), they do not just open the file
@@ -247,7 +246,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
       expect(gb.subarray(0, 6).toString('latin1')).toBe('GIF89a');
       expect(gifFrames(gb)).toBe(syncTimeline(Array(n).fill(clipFor(RED, 0).frames), n > 4 ? 8 : 10).ticks.length + 1); // frame count does not grow with the number of slots: they play together
     }
-  });
+  }, 60000);
 
   const fr = (ts: number[]) => ts.map((t) => ({ t, canvas: null as never }));
   it('syncTimeline: every slot moves on the SAME clock, from tick 0 to the end', () => {
@@ -286,7 +285,7 @@ describe('capture → photo + GIF → upload → QR → scan → verify', () => 
     expect(oldPage).toContain(`/s/${a}/photo.jpg`); expect(oldPage).not.toContain(b);
     expect(new Uint8Array(await (await fetch(base + `/s/${a}/photo.jpg`)).arrayBuffer())).toEqual(A); // still session A's bytes after B was made
     expect(new Uint8Array(await (await fetch(base + `/s/${b}/photo.jpg`)).arrayBuffer())).toEqual(B);
-  });
+  }, 60000);
 
   it('multiple consecutive sessions each get their own working, distinct QR and page', async () => {
     const seen = new Set<string>();

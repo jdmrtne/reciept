@@ -104,3 +104,8 @@ Open **ADMIN → Frame text** to change the wording printed inside nine built-in
 - Press **SAVE** to keep your changes (the same SAVE / CANCEL bar as Events; leaving with unsaved changes asks first). **RESET THIS FRAME** (asks first) puts that frame back to the built-in wording and saves right away.
 - **Edits apply to the next customer only.** A customer who already started keeps the text they started with.
 - You can edit a frame here even if you hid it under ADMIN → Frames; that only controls which frames guests can pick.
+
+## Saving videos (ADMIN → Auto-save)
+- **AUTO-SAVE VIDEOS (MP4)** (off by default) saves each finished GIF as an MP4 video for social media into **MEMORYS/Videos**, next to the photo (MEMORYS/Images) and the GIF (MEMORYS/GIFs). One customer's three files share the same name, e.g. `MEMORYS-20261026-153012-abc.jpg / .gif / .mp4`. The video has the GIF's exact shape and repeats the animation for at least 6 seconds.
+- It works only in **Chrome or Edge** (needs the browser's built-in video encoder). If the browser cannot do it, **LAST SAVE** says VIDEO ENCODING NOT SUPPORTED IN THIS BROWSER and the photo and GIF still save. Use the switch independently of AUTO-SAVE GIFS; a folder chosen earlier gets its Videos folder automatically.
+- Videos are saved on this device only; they are not uploaded and are not part of the QR page.
