@@ -109,3 +109,11 @@ Open **ADMIN → Frame text** to change the wording printed inside nine built-in
 - **AUTO-SAVE VIDEOS (MP4)** (off by default) saves each finished GIF as an MP4 video for social media into **MEMORYS/Videos**, next to the photo (MEMORYS/Images) and the GIF (MEMORYS/GIFs). One customer's three files share the same name, e.g. `MEMORYS-20261026-153012-abc.jpg / .gif / .mp4`. The video has the GIF's exact shape and repeats the animation for at least 6 seconds.
 - It works only in **Chrome or Edge** (needs the browser's built-in video encoder). If the browser cannot do it, **LAST SAVE** says VIDEO ENCODING NOT SUPPORTED IN THIS BROWSER and the photo and GIF still save. Use the switch independently of AUTO-SAVE GIFS; a folder chosen earlier gets its Videos folder automatically.
 - Videos are saved on this device only; they are not uploaded and are not part of the QR page.
+
+## Your own frames
+ADMIN > Frames > Your own frames lets you add frame designs of your own.
+1. Make one picture per layout you want to offer (PNG or WebP, 1152 pixels wide is best). Leave the places for photos fully see-through (transparent) and rectangular, with a little picture all around each one. A layout needs one hole per photo: 1 for Single, 2 for Two Strip, 3 for Three Strip, 4 for Four Strip, 2 x 2 and Classic.
+2. Press NEW FRAME, type a name, then UPLOAD a picture for each layout. The app finds the holes by itself and tells you in plain words if something is wrong.
+3. Press PREVIEW to check the numbered outlines. The numbers are the order the photos are placed.
+4. Guests can pick the frame only on layouts that have a picture. Use REMOVE on a layout, or DELETE FRAME, to take it away. Custom frames have no hide switch.
+Keep the original pictures somewhere safe: they live in this browser, and a browser can clear its storage if the tablet runs very low on space.

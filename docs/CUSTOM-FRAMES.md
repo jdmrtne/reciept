@@ -2,7 +2,7 @@
 
 Goal: in ADMIN the owner uploads one transparent PNG per layout (single, strip-2, strip-3, strip-4, grid-2x2, classic). The app finds the transparent photo windows, uses them as that layout's photo slots, and the frame then behaves like a built-in image frame everywhere. Built-in frames are untouched; custom frames are merged in at runtime.
 
-Status: **Phases 1 to 3 done** (core logic; storage and runtime registry; rendering integration). No UI yet. Next: Phase 4 (admin UI).
+Status: **Phases 1 to 4 done** (core logic; storage and runtime registry; rendering integration; admin UI). Next: Phase 5 (QR safe area per layout).
 
 ## Decisions (Phase 1)
 
@@ -86,5 +86,28 @@ A custom frame is an ordinary image frame to every consumer. Only three source f
 
 **Not verified (needs a browser and the printer).** Visual decode timing on the tablet (the SVG `<image>` in the editor), the look of the thumbnail at kiosk size, a real thermal print, and a phone scan of the printed QR.
 
-## Next (Phase 4)
-Admin UI panel: list, NEW FRAME, six upload slots (drag or pick), instant validation message, preview of the PNG with numbered window outlines over sample photos, REPLACE and REMOVE per layout, RENAME and DELETE with confirmation, missing layouts shown, touch and kiosk sizes, component tests in the style of the existing ones. It will use `validateUpload` then decode to RGBA then `validateArtwork`, and the `runtime.ts` change functions.
+## Phase 4: admin UI (done)
+
+Where: ADMIN > Frames > second card "Your own frames" (`frames-custom`, searchable: upload, png, custom, window). The built-in "Frame designs in the editor" card is unchanged and still the first card.
+
+**Flow.** NEW FRAME (name, at most 40 characters, Enter creates) selects the new frame. The frame shows its thumbnail (first layout with art), RENAME, DELETE FRAME (confirm, safe button focused) and one row per layout in picker order: status (PICTURE ADDED with window count and width, or MISSING with the window count it needs), UPLOAD or REPLACE, PREVIEW, REMOVE (confirm). A file can also be dropped on a row. One upload runs at a time (every control is disabled while one is checking or saving).
+
+**Upload pipeline** (`frames/custom/upload.ts`, `prepareUpload`, never throws): `validateUpload` on the first 64 bytes, decode, size check against the header, `validateArtwork`, then `setCustomLayoutArt`. Only the decoder (`browserDecode`: `createImageBitmap` plus one canvas read) touches the DOM and it is injectable, so tests run it in Node. Errors are the plain sentences from Phase 1 and show under the row (`role="alert"`) in addition to a toast; warnings (for example a width other than 1152) show under the row and do not block. The stored blob always carries the type of the real bytes. A failed upload leaves the previous picture untouched (store first, memory second).
+
+**Preview.** `ArtPreview` draws the art with placeholder photos under it in the stored slots (window plus bleed, as the renderer does) and numbered dashed outlines of the exact windows on top, so the owner checks both the order and what a photo will cover. Numbers follow the reading order that fills the photo slots.
+
+**Behaviour decided**
+- Custom frames stay out of the hide switches (Phase 3 decision). The panel says so and points at REMOVE and DELETE FRAME.
+- Removing the last picture leaves a frame guests cannot pick yet; the panel says so. Deleting a frame mid-session falls back to the default frame (Phase 2 and 3 behaviour).
+- If IndexedDB is unavailable the card shows the store message and no controls. If the browser has not granted persistent storage the card warns that the files may be cleared under storage pressure.
+- The panel re-renders from `subscribeCustom` / `customVersion`, so another change (for example a rename) shows at once. State updates after an unmount are skipped.
+- No change to `qr/placement.ts`, `drawPlanQr` or `drawCutLine`. QR areas are still Phase 5.
+
+**Files (Phase 4).** New: `src/frames/custom/upload.ts`, `upload.test.ts`, `src/screens/admin/CustomFramesSection.tsx`, `customFrames.test.tsx`. Changed: `src/screens/admin/FramesSection.tsx` (registers the card, section description), `src/styles/admin.css` (`.cf-*` rules at the end), this document, `HANDOFF.md`, `OWNER-GUIDE.md`.
+
+**Verified here.** The upload pipeline ran for real (tsx, PNGs made with sharp, real `validateUpload` and `validateArtwork`): good strip-3 accepted with 3 windows, wrong count, unknown layout, decoder failure, size mismatch, 768 px wide (accepted with one warning), 400 px wide, a non-image, and a picker that declares no type (blob stored as image/png). **Not run:** `npm run typecheck`, `npm test` and the build (no `node_modules`, no registry access). A typecheck without the React types only reported implicit any in the new TSX, which that missing package causes. `upload.test.ts` and `customFrames.test.tsx` were written but never executed. No real click or drag test exists (the project's interaction tests need jsdom and Testing Library, which are not installed).
+
+**Not verified (needs the tablet).** Picking a file through the Android or Windows file chooser, drag and drop, `createImageBitmap` on a 2304 px PNG on the tablet, how the preview and rows look at kiosk size, and storage persistence on that browser.
+
+## Next (Phase 5)
+Per layout QR safe area: let the owner draw or enter a rectangle on the preview, store it as `CustomLayoutArt.qr` (fractions of the canvas, same meaning as `QrArea.safeArea`); `toFrameDef` already turns it into `qr.byLayout`.

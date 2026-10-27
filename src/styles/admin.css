@@ -204,3 +204,29 @@ select.adm-in { text-transform: uppercase; }
 .ft-line { display: grid; gap: 6px; min-width: 0; }
 .ft-hide { justify-self: start; }
 @media (max-width: 560px) { .ft-card { grid-template-columns: 1fr; } .ft-prev { position: static; max-width: 160px; justify-self: center; } }
+
+/* Custom frames (Phase 4): ADMIN > Frames > Your own frames */
+.cf-frames { align-items: stretch; }
+.cf-new, .cf-frame { display: flex; flex-direction: column; gap: 12px; padding: 10px; border: var(--line-thin); border-radius: var(--radius-s); background: var(--surface-2); }
+.cf-head { display: grid; grid-template-columns: clamp(64px, 16vw, 130px) minmax(0, 1fr); align-items: start; gap: 12px; }
+.cf-name { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cf-name .lv-h { overflow-wrap: anywhere; }
+.cf-thumb .cf-none { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 4; border: 2px dashed var(--edge); color: var(--muted); font-size: .7em; font-weight: 700; letter-spacing: .1em; text-align: center; padding: 4px; }
+.cf-offer { color: var(--muted); letter-spacing: .04em; line-height: 1.4; }
+.cf-list { gap: 8px; }
+.cf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 10px; border: 2px dashed var(--hairline); border-radius: var(--radius-s); background: var(--surface); }
+.cf-row[data-state='ready'] { border-style: solid; }
+.cf-row.over { border-color: var(--ink); background: var(--surface-2); }
+.cf-row .row-l small { overflow-wrap: anywhere; }
+.cf-acts { flex-wrap: wrap; justify-content: flex-end; }
+.cf-acts .btn { min-height: 48px; }
+.cf-up { position: relative; cursor: pointer; }
+.cf-up:focus-within { outline: 3px solid var(--ink); outline-offset: 2px; }
+.cf-file { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; opacity: 0; }
+.cf-err, .cf-warn { grid-column: 1 / -1; margin: 0; padding-left: 1.2em; font-size: .88em; line-height: 1.5; letter-spacing: .03em; }
+.cf-err { color: var(--ink); font-weight: 700; border-left: 4px double var(--edge); padding-left: 10px; list-style: none; }
+.cf-warn { color: var(--muted); }
+.cf-prev { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.cf-prev figcaption { color: var(--muted); font-size: .88em; letter-spacing: .03em; line-height: 1.4; }
+.cf-svg { display: block; width: 100%; max-width: 360px; max-height: 70vh; height: auto; margin: 0 auto; border: var(--line-thin); background: #fff; }
+@media (max-width: 560px) { .cf-row { grid-template-columns: minmax(0, 1fr); } .cf-acts { justify-content: flex-start; } .cf-head { grid-template-columns: 56px minmax(0, 1fr); } }
