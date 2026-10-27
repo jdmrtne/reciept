@@ -1,5 +1,5 @@
 import type { FrameDef } from '../types';
-import { CUSTOM_FRAME_PREFIX, type CustomArtMeta, type CustomFrameDef, type CustomLayoutArt, type CustomLayoutId } from './types';
+import { CUSTOM_FRAME_PREFIX, type CustomArtMeta, type CustomFrameDef, type CustomLayoutArt, type CustomLayoutId, type CustomQrArea } from './types';
 import * as store from './store';
 import type { StoreResult } from './store';
 
@@ -98,6 +98,9 @@ async function apply(r: StoreResult<CustomFrameDef>): Promise<StoreResult<Custom
 export const createCustomFrame = async (name: string) => apply(await store.createFrame(name));
 export const renameCustomFrame = async (id: string, name: string) => apply(await store.renameFrame(id, name));
 export const setCustomLayoutArt = async (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt) => apply(await store.setLayoutArt(id, layoutId, art));
+/** Phase 5: set or clear (null) the QR spot of one layout. Memory changes only after the store accepted it; a layout with no art is refused (`missing`). */
+export const setCustomLayoutQr = async (id: string, layoutId: CustomLayoutId, qr: CustomQrArea | null): Promise<StoreResult<CustomFrameDef>> =>
+  entries.get(id)?.def.layouts[layoutId] ? apply(await store.setLayoutQr(id, layoutId, qr)) : { ok: false, reason: 'missing', message: store.MESSAGES.missing };
 export const removeCustomLayoutArt = async (id: string, layoutId: CustomLayoutId) => apply(await store.removeLayoutArt(id, layoutId));
 export async function deleteCustomFrame(id: string): Promise<StoreResult<true>> {
   const r = await store.deleteFrame(id);

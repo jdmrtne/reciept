@@ -1,4 +1,4 @@
-import { CUSTOM_FRAME_PREFIX, type CustomFrameDef, type CustomLayoutArt, type CustomLayoutId } from './types';
+import { CUSTOM_FRAME_PREFIX, type CustomFrameDef, type CustomLayoutArt, type CustomLayoutId, type CustomQrArea } from './types';
 
 /**
  * IndexedDB store for custom frames (own tiny wrapper, no library). One object store, keyPath `id`, one record per frame:
@@ -140,6 +140,14 @@ export const renameFrame = (id: string, name: string): Promise<StoreResult<Custo
 };
 export const setLayoutArt = (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt): Promise<StoreResult<CustomFrameDef>> =>
   updateFrame(id, (f) => ({ ...f, layouts: { ...f.layouts, [layoutId]: { ...art, rev: newRev() } } }));
+/** Phase 5: set or clear (null) the QR spot of ONE layout. The picture, its `rev` and its blob stay exactly as stored, so nothing is re-decoded. A layout without art is `missing`. */
+export const setLayoutQr = (id: string, layoutId: CustomLayoutId, qr: CustomQrArea | null): Promise<StoreResult<CustomFrameDef>> =>
+  updateFrame(id, (f) => {
+    const art = f.layouts[layoutId];
+    if (!art) return f;
+    const { qr: _old, ...rest } = art;
+    return { ...f, layouts: { ...f.layouts, [layoutId]: qr ? { ...rest, qr: { x: qr.x, y: qr.y, w: qr.w, h: qr.h } } : rest } };
+  });
 export const removeLayoutArt = (id: string, layoutId: CustomLayoutId): Promise<StoreResult<CustomFrameDef>> =>
   updateFrame(id, (f) => { const { [layoutId]: _gone, ...rest } = f.layouts; return { ...f, layouts: rest }; });
 

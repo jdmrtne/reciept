@@ -230,3 +230,14 @@ select.adm-in { text-transform: uppercase; }
 .cf-prev figcaption { color: var(--muted); font-size: .88em; letter-spacing: .03em; line-height: 1.4; }
 .cf-svg { display: block; width: 100%; max-width: 360px; max-height: 70vh; height: auto; margin: 0 auto; border: var(--line-thin); background: #fff; }
 @media (max-width: 560px) { .cf-row { grid-template-columns: minmax(0, 1fr); } .cf-acts { justify-content: flex-start; } .cf-head { grid-template-columns: 56px minmax(0, 1fr); } }
+
+/* Custom frames, Phase 5: QR spot */
+.cf-qrbar { display: flex; flex-direction: column; gap: 8px; }
+.cf-qrstate { margin: 0; font-weight: 700; letter-spacing: .08em; font-size: .9em; }
+.cf-qracts { flex-wrap: wrap; }
+.cf-qracts .btn { min-height: 48px; }
+.cf-qracts .btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.cf-prev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 200px); align-items: start; gap: 12px; }
+.cf-how { display: flex; flex-direction: column; gap: 6px; color: var(--muted); letter-spacing: .06em; }
+.cf-how .lv-thumb .lay-svg { max-height: 260px; }
+@media (max-width: 560px) { .cf-prev-grid { grid-template-columns: minmax(0, 1fr); } }

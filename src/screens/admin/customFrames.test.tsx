@@ -6,7 +6,7 @@ import * as store from '../../frames/custom/store';
 import * as rt from '../../frames/custom/runtime';
 import type { CustomLayoutArt } from '../../frames/custom/types';
 import { DEFAULT_SETTINGS } from '../../config/settings';
-import { ArtPreview, customFramesCard, layoutLabel } from './CustomFramesSection';
+import { ArtPreview, FALLBACK_MODULES, customFramesCard, layoutLabel, qrModulesFor } from './CustomFramesSection';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
 import type { AdminCtx } from './types';
@@ -112,5 +112,57 @@ describe('ArtPreview', () => {
   });
   it('uses singular wording for one window', () => {
     expect(renderToStaticMarkup(<ArtPreview src="blob:x" meta={{ ...meta, windows: meta.windows.slice(0, 1), slots: meta.slots.slice(0, 1) }} />)).toContain('1 numbered photo window"');
+  });
+});
+
+describe('QR spot in the panel (Phase 5)', () => {
+  const SPOT = { x: 0.1, y: 0.7, w: 0.8, h: 0.25 };
+  const meta = { width: 1152, height: 2000, windows: art(1).windows, slots: art(1).slots };
+
+  it('a row says when a QR spot is set, and nothing about it when not', async () => {
+    await rt.initCustomFrames();
+    const c = await rt.createCustomFrame('Spot');
+    if (!c.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
+    expect(html()).not.toContain('QR SPOT SET');
+    await rt.setCustomLayoutQr(c.value.id, 'single', SPOT);
+    expect(html()).toContain('1152 PX WIDE, QR SPOT SET');
+  });
+
+  it('warns on the row, with the consequence, when a saved spot is now too small for the site address', async () => {
+    await rt.initCustomFrames();
+    const c = await rt.createCustomFrame('Tiny');
+    if (!c.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
+    await rt.setCustomLayoutQr(c.value.id, 'single', { x: 0.1, y: 0.7, w: 0.1, h: 0.05 });
+    const h = html();
+    expect(h).toContain('data-qr-warning="true"');
+    expect(h).toContain('printing is blocked on this layout');
+    await rt.setCustomLayoutQr(c.value.id, 'single', SPOT);
+    expect(html()).not.toContain('data-qr-warning');
+  });
+
+  it('ArtPreview draws the saved spot and the spot being drawn, and offers a drawing surface only when asked', () => {
+    const plain = renderToStaticMarkup(<ArtPreview src="blob:x" meta={meta} />);
+    expect(plain).not.toContain('data-spot=');
+    expect(plain).not.toContain('data-draw-surface');
+    const withSpots = renderToStaticMarkup(<ArtPreview src="blob:x" meta={meta} qr={SPOT} draft={{ x: 0.2, y: 0.8, w: 0.5, h: 0.15 }} />);
+    expect(withSpots).toContain('data-spot="saved"');
+    expect(withSpots).toContain('data-spot="draft"');
+    expect(withSpots).toContain('QR SPOT');
+    expect(withSpots).toContain('NEW SPOT');
+    expect(withSpots).not.toContain('data-draw-surface');
+    const drawing = renderToStaticMarkup(<ArtPreview src="blob:x" meta={meta} drawing onSpot={() => {}} />);
+    expect(drawing).toContain('data-draw-surface="true"');
+    expect(drawing).toContain('touch-action:none');
+    expect(drawing.indexOf('data-draw-surface')).toBeGreaterThan(drawing.indexOf('data-window="1"')); // surface on top, so it receives the pointer
+  });
+
+  it('sizes the spot for the QR the booth really prints, with slack, and never throws', () => {
+    const n = qrModulesFor({ share: { enabled: true, publicBaseUrl: 'https://booth.example.com' } }, 'https://booth.example.com');
+    expect(n).toBeGreaterThanOrEqual(21 + 4);
+    expect(n).toBeLessThan(80);
+    expect(qrModulesFor({ share: { enabled: false, publicBaseUrl: '' } }, '')).toBeGreaterThan(0);
+    expect(qrModulesFor({ share: undefined as any }, '')).toBe(FALLBACK_MODULES);
   });
 });

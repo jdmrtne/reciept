@@ -2,7 +2,7 @@
 
 Goal: in ADMIN the owner uploads one transparent PNG per layout (single, strip-2, strip-3, strip-4, grid-2x2, classic). The app finds the transparent photo windows, uses them as that layout's photo slots, and the frame then behaves like a built-in image frame everywhere. Built-in frames are untouched; custom frames are merged in at runtime.
 
-Status: **Phases 1 to 4 done** (core logic; storage and runtime registry; rendering integration; admin UI). Next: Phase 5 (QR safe area per layout).
+Status: **Phases 1 to 5 done** (core logic; storage and runtime registry; rendering integration; admin UI; QR spot per layout). Nothing planned after this except the browser and printer checks listed under "Not verified".
 
 ## Decisions (Phase 1)
 
@@ -109,5 +109,27 @@ Where: ADMIN > Frames > second card "Your own frames" (`frames-custom`, searchab
 
 **Not verified (needs the tablet).** Picking a file through the Android or Windows file chooser, drag and drop, `createImageBitmap` on a 2304 px PNG on the tablet, how the preview and rows look at kiosk size, and storage persistence on that browser.
 
-## Next (Phase 5)
-Per layout QR safe area: let the owner draw or enter a rectangle on the preview, store it as `CustomLayoutArt.qr` (fractions of the canvas, same meaning as `QrArea.safeArea`); `toFrameDef` already turns it into `qr.byLayout`.
+## Phase 5: QR spot per layout (done)
+
+The owner can put the session QR INSIDE a layout's picture instead of on the strip below. It is optional and per layout: no spot means the strip with the cut line, exactly as before. The spot is stored as `CustomLayoutArt.qr` (fractions of the canvas, same meaning as `QrArea.safeArea`: x and w of the width, y and h of the height) and `toFrameDef` (Phase 3) already turned it into `qr.byLayout`, so `qr/placement.ts`, `drawPlanQr` and `drawCutLine` are untouched.
+
+**Why the screen is strict.** `placeQr` refuses a declared area that is too small, covers a photo slot or is not empty, and the renderer's pixel gate (`regionIsClear`, tolerance 28) refuses artwork under the QR. A refused QR blocks the guest's print. So a spot can only be SAVED when it already satisfies, in `frames/custom/qrArea.ts` (pure):
+1. inside the picture;
+2. each side at least `qrMinSide(modules)` (58 mm paper, 2 dots per module, the strictest) plus the 3 unit margin on both sides, for the QR the booth really prints: the panel computes the module count from the configured site address and adds `QR_MODULE_SLACK` (4) so a slightly longer address later still fits; the fallback is 41 when sharing is not set up;
+3. touching no photo window (so the QR box plus its margin, which stays inside the spot, cannot touch a photo);
+4. one flat colour in the stored artwork (same tolerance as the renderer gate), transparent pixels counted as white paper.
+Rules 1 to 3 are cheap and run while the owner drags; rule 4 reads pixels and runs on release and before saving. Fractions are rounded to 4 decimals and the rounded value is what is checked and stored.
+
+**Screen** (ADMIN > Frames > Your own frames > PREVIEW of a layout). A status line says whether a spot is set. DRAW SPOT turns dragging on the preview into a rectangle (pointer events, so mouse, pen and touch; the SVG's own matrix maps the pointer, so the letterboxed preview cannot skew it; touch scrolling is off over the picture only while drawing). FIND EMPTY SPACE (`suggestQrSpot`) returns the largest plain rectangle that is clear of the windows, with one cell of clearance, already validated; it says so when there is none. SAVE QR SPOT is enabled only for a fully checked spot. CLEAR SPOT goes back to the strip. "HOW IT PRINTS" shows the real `FramePreview` with the sample QR, so the owner sees the placement the printer will use. Problems show as sentences under the controls.
+
+**Behaviour decided**
+- Replacing a picture drops its spot (the new geometry may not fit it); the row tells the owner. Removing the picture or deleting the frame removes the spot with it.
+- A saved spot that stops fitting (the site address got longer) shows a row warning that printing is blocked on that layout until the spot is replaced or cleared. There is no silent fallback: placement code is unchanged and a blocked QR stays blocked (the Phase 3 rule).
+- The spot is checked against the stored artwork only. Stickers are not known in advance; `placeQr` already moves the QR inside the spot to avoid them.
+- Saving a spot writes only the metadata (same `rev`), so object URLs and decoded images are kept.
+
+**Files (Phase 5).** New: `src/frames/custom/qrArea.ts`, `qrArea.test.ts`, `qrSpot.runtime.test.ts`, `qrSpot.render.test.ts`. Changed: `src/frames/custom/store.ts` (`setLayoutQr`), `runtime.ts` (`setCustomLayoutQr`), `src/screens/admin/CustomFramesSection.tsx` (spot controls, `ArtPreview` drawing, `qrModulesFor`), `src/styles/admin.css` (`.cf-qr*`, `.cf-prev-grid`, `.cf-how`), `customFrames.test.tsx` (4 more tests), this document, `HANDOFF.md`, `OWNER-GUIDE.md`.
+
+**Verified here (run for real with tsx, sharp-made artwork, the real `placeQr` and the fake IndexedDB).** All 15 spot checks: plain band accepted; overlap with window 2, too small, outside, decoration inside and a stray transparent hole all refused; FIND EMPTY SPACE found a spot under the windows that re-validates and that `placeQr` accepts at 58 and 80 mm; a hand drawn spot accepted; a spot just under the size refused by both our rule and `placeQr`; null when there is no room. The 11 storage checks: set, other layouts untouched, object URLs kept, survives reload, clear, picture kept, unknown frame and missing layout refused, replacing a picture drops the spot, a quota failure leaves memory unchanged. **Not run:** `npm run typecheck`, `npm test`, the build (no `node_modules`, no registry access), so `qrArea.test.ts`, `qrSpot.runtime.test.ts`, `qrSpot.render.test.ts` and the new `customFrames.test.tsx` cases are written but unexecuted, and `qrModulesFor` was not run (it needs `qrcode-generator`). The part of `qrSpot.render.test.ts` that expects the renderer gate to reject artwork under the QR assumes `renderPlan` runs that gate; check it first if it fails. No click or drag test exists (jsdom and Testing Library are not installed), so the drawing gesture itself was never exercised.
+
+**Not verified (needs the tablet and the printer).** The drag gesture with a finger and with a mouse, the preview at kiosk size, a real thermal print with the QR inside the picture, and a phone scanning that printed QR (a coloured flat area prints dithered around a white QR box, and the owner thermal margins resample slightly).

@@ -117,3 +117,6 @@ ADMIN > Frames > Your own frames lets you add frame designs of your own.
 3. Press PREVIEW to check the numbered outlines. The numbers are the order the photos are placed.
 4. Guests can pick the frame only on layouts that have a picture. Use REMOVE on a layout, or DELETE FRAME, to take it away. Custom frames have no hide switch.
 Keep the original pictures somewhere safe: they live in this browser, and a browser can clear its storage if the tablet runs very low on space.
+
+Where the QR code prints on your own frames (optional)
+By default the QR code prints on a plain strip under the frame, with a dashed cut line. To print it inside a picture instead, open PREVIEW on a layout, then either press FIND EMPTY SPACE or press DRAW SPOT and drag a rectangle over plain empty space. The spot must be one flat colour, away from the photo windows, and at least a quarter of the paper width on each side (the screen tells you the exact number). Press SAVE QR SPOT, and check HOW IT PRINTS. CLEAR SPOT goes back to the strip. If you replace a picture, its QR spot is cleared and you set it again. If you later change the site address under Sharing and a saved spot becomes too small, the row shows a warning: set a new spot or clear it, otherwise that layout cannot print.
