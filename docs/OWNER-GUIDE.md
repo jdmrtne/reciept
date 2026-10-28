@@ -97,7 +97,8 @@ Open **ADMIN → Frames** to switch frame designs on or off for the frame list g
 
 ## Editing the text inside frames (ADMIN → Frame text)
 Open **ADMIN → Frame text** to change the wording printed inside nine built-in frames: Classic Receipt, Minimal Receipt, Retro Receipt, Ticket / Stub, Birthday, Graduation, Friends, Couple and Event. Wanted / Bounty, Straw Hat Wanted, the picture frames and the NCL Boarding Pass cannot be edited here.
-- Each frame has a card with a live preview and one field per header or footer line. The grey text in a field is the built-in wording. **Leave a field empty to keep the built-in wording.**
+- Pick the frame in the **FRAME TO EDIT** dropdown. Only that frame's header and footer lines are shown (one field per line), and a live preview of it sits beside the fields (under them on a small screen). The grey text in a field is the built-in wording. **Leave a field empty to keep the built-in wording.**
+- Switching frames in the dropdown keeps your unsaved lines for every frame; one **SAVE** saves them all. A frame with unsaved lines shows (UNSAVED) in the dropdown, and one with a problem shows (FIX).
 - Type your own text (up to 40 characters; no emoji). Long text shrinks to fit the paper, down to the smallest readable size, then is shortened with "...".
 - **Tokens** are filled in for every customer: `{EVENT}` `{DATE}` `{TIME}` `{YEAR}` `{SERIAL}` `{THANKS}`. Any other word in braces is not printed.
 - **HIDE LINE** prints nothing on that line. **A saved empty line means hidden**, and the space for it stays reserved, so the frame keeps its size. **SHOW LINE** brings the built-in wording back.

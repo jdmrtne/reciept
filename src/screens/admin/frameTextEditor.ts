@@ -22,6 +22,8 @@ const same = (a: FrameTextOverrides, b: FrameTextOverrides): boolean => {
   });
 };
 export const isFrameTextDirty = (s: BoothSettings, d: FrameTextDraft): boolean => !!d && !same(d, s.frameText);
+/** Does this ONE frame have unsaved edits? (Used to mark it in the frame dropdown.) */
+export const isFrameDirty = (s: BoothSettings, d: FrameTextDraft, frameId: string): boolean => !!d && !same({ [frameId]: d[frameId] ?? {} }, { [frameId]: s.frameText[frameId] ?? {} });
 
 /** A line the owner blanked on purpose: stored '' and prints nothing. */
 export const isHidden = (v: string | undefined): boolean => v !== undefined && finalText(v) === '';
@@ -87,5 +89,20 @@ export const frameTextEditorStore = {
     if (!persist(saved)) return false;
     if (draft) { const { [frameId]: _d, ...rest } = draft; void _d; set(same(rest, saved) ? null : rest); }
     return true;
+  }
+};
+
+let picked: string = EDITABLE_TEXT_FRAMES[0];
+const pickListeners = new Set<() => void>();
+/**
+ * Which frame the ADMIN > Frame text editor and its preview are showing (the dropdown). Module-level so the editor card and the preview card
+ * share it. Switching frames never touches the draft: the draft holds every frame's unsaved lines, and one SAVE writes them all.
+ */
+export const frameTextPick = {
+  get: () => picked,
+  subscribe(l: () => void) { pickListeners.add(l); return () => { pickListeners.delete(l); }; },
+  set(id: string) {
+    if (!(EDITABLE_TEXT_FRAMES as readonly string[]).includes(id) || id === picked) return;
+    picked = id; pickListeners.forEach((l) => l());
   }
 };
