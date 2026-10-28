@@ -186,6 +186,15 @@ select.adm-in { text-transform: uppercase; }
 .lv-thumb .lay-svg { height: auto; width: 100%; max-height: 90px; }
 @media (max-width: 560px) { .lv-row { grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; } }
 
+/* frame picker grid (FramesSection.tsx): one tile per frame (thumbnail, name, switch); a hidden frame is dimmed */
+.fg-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 22vw, 170px), 1fr)); gap: 10px; }
+.fg-tile { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; background: var(--surface); border: var(--line-thin); border-radius: var(--radius-s); min-width: 0; }
+.fg-tile[data-shown="false"] { border-style: dashed; }
+.fg-tile[data-shown="false"] .fg-thumb { opacity: .45; }
+.fg-thumb { display: grid; place-items: center; padding: 6px; background: var(--paper); border: 1.5px dashed var(--hairline); border-radius: var(--radius-s); }
+.fg-thumb .lay-svg { display: block; width: 100%; height: auto; max-height: 150px; }
+.fg-name { text-align: center; font-weight: 700; letter-spacing: .06em; font-size: .85em; line-height: 1.3; overflow-wrap: anywhere; }
+.fg-tile .switch { align-self: center; }
 /* frame groups (FramesSection.tsx): a heading row with group actions, a flat list (no indent) */
 .lv-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .lv-h { margin: 0; letter-spacing: .16em; font-size: 1em; color: var(--ink); }

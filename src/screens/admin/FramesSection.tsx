@@ -30,7 +30,7 @@ function Frames({ s, set }: AdminCtx) {
   const locked = (id: string) => shownCount === 1 && !hidden.includes(id);
   return (
     <>
-      <Hint>Choose which frame designs guests can pick in the editor. Hidden frames are only removed from that list; a guest who already has one keeps it. New frames added later appear automatically.</Hint>
+      <Hint>Tap a frame's switch to show or hide it. Choose which frame designs guests can pick in the editor. Hidden frames are only removed from that list; a guest who already has one keeps it. New frames added later appear automatically.</Hint>
       <Hint>The JLC NCL Boarding Pass frame is not listed here: it always goes with the JLC layouts (ADMIN {'\u203A'} Layouts).</Hint>
       {shownCount === 1 && <Hint>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
       {GROUPS.map((g) => {
@@ -47,14 +47,17 @@ function Frames({ s, set }: AdminCtx) {
                 <button type="button" className="btn ghost" disabled={!canHideGroup} onClick={() => apply(ids, false)} aria-label={`HIDE ALL ${g.title}`}>HIDE ALL</button>
               </div>
             </div>
-            <ul className="lv-kids lv-flat">
-              {g.frames.map((f) => (
-                <li key={f.id} className="lv-row">
-                  <div className="lv-thumb"><FramePreview frameId={f.id} layoutId={PREVIEW_LAYOUT} /></div>
-                  <div className="row-l"><span>{f.name.toUpperCase()}</span></div>
-                  <Switch label={`SHOW FRAME ${f.name.toUpperCase()}`} checked={!hidden.includes(f.id)} disabled={locked(f.id)} onChange={(v) => apply([f.id], v)} />
-                </li>
-              ))}
+            <ul className="fg-grid" aria-label={g.title}>
+              {g.frames.map((f) => {
+                const shown = !hidden.includes(f.id);
+                return (
+                  <li key={f.id} className="fg-tile" data-shown={shown ? 'true' : 'false'}>
+                    <div className="fg-thumb"><FramePreview frameId={f.id} layoutId={PREVIEW_LAYOUT} /></div>
+                    <span className="fg-name">{f.name.toUpperCase()}</span>
+                    <Switch label={`SHOW FRAME ${f.name.toUpperCase()}`} checked={shown} disabled={locked(f.id)} onChange={(v) => apply([f.id], v)} />
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );

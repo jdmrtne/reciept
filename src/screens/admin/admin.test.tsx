@@ -124,6 +124,14 @@ describe('frames section', () => {
     expect(h).toContain('RECEIPT STYLES');
     expect(h).toContain('DESIGNS');
   });
+  it('lays the frames out as a grid of tiles (thumbnail, name, switch) and dims a hidden one', () => {
+    const h = render(['event']);
+    expect((h.match(/class="fg-grid"/g) ?? []).length).toBe(2);
+    expect((h.match(/class="fg-tile"/g) ?? []).length).toBe(STD.length);
+    expect((h.match(/<svg/g) ?? []).length).toBeGreaterThanOrEqual(STD.length);
+    expect((h.match(/data-shown="false"/g) ?? []).length).toBe(1);
+    expect(h).not.toContain('lv-flat');
+  });
   it('reflects hidden frames and enables SHOW ALL FRAMES only when something is hidden', () => {
     expect(render(['event'])).toMatch(/aria-checked="false"[^>]*aria-label="SHOW FRAME EVENT"/);
     expect(render([])).toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL FRAMES/);
