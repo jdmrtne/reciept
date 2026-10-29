@@ -3,7 +3,7 @@
  * Design notes and decisions: docs/CUSTOM-FRAMES.md.
  */
 
-/** Layouts a custom frame can supply art for: the six ordinary layouts (never the frame-locked NCL pass layouts). */
+/** Layouts a custom frame can supply art for: the six ordinary layouts (the built-in frame-locked NCL pass layouts were removed). */
 export type CustomLayoutId = 'single' | 'strip-2' | 'strip-3' | 'strip-4' | 'grid-2x2' | 'classic';
 
 /**
@@ -47,6 +47,8 @@ export interface CustomFrameDef {
   updatedAt: number;
   /** Only the layouts the owner uploaded. A frame is offered only on these layouts. */
   layouts: Partial<Record<CustomLayoutId, CustomLayoutArt>>;
+  /** Owner's ON/OFF switch (ADMIN > Events > Event special frames). Absent = on. Off: guests no longer see it in the frame tray; a guest already holding it keeps it. */
+  enabled?: boolean;
 }
 
 export const CUSTOM_FRAME_PREFIX = 'custom-';

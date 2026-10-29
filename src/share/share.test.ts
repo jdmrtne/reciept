@@ -11,7 +11,7 @@ import { createBridge } from '../../bridge/server.mjs';
 import { createShareServer, createShareStore } from '../../bridge/share.mjs';
 import { buildSnapshot } from '../editor/model';
 import { buildPlan } from '../render/plan';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { slotCount } from '../layouts/engine';
 import { makeCtx } from '../frames/prims';
 import type { RenderEnv } from '../render/render';

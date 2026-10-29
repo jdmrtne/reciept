@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { IMAGE_FRAMES, getFrameBands, resolveFramed } from './registry';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 
 const S = 3; // artwork scale: 3 px per layout unit (1152 px wide, ~ native size of the supplied designs)
 

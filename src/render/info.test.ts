@@ -12,7 +12,7 @@ import { addSticker, buildSnapshot } from '../editor/model';
 import { isSticker } from '../editor/types';
 import { STANDARD_FRAMES as FRAMES, getFrame, isImageFrame, resolveFramed } from '../frames/registry';
 import { makeCtx, makeEventCtx } from '../frames/prims';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { PAPER_DOTS } from '../layouts/engine';
 import { DEFAULT_EVENT_PROFILE, EVENT_LIMITS, getActiveEvent, type EventProfile } from '../config/events';
 import { CUT_HALF, QrPlacementError, rotatedBounds } from '../qr/placement';

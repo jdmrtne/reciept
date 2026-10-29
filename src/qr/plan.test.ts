@@ -5,7 +5,7 @@ import { buildPlan, verifyPlanQr } from '../render/plan';
 import { renderPlan, renderPrint, type RenderEnv } from '../render/render';
 import { buildSnapshot } from '../editor/model';
 import { STANDARD_FRAMES as FRAMES } from '../frames/registry';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { makeCtx } from '../frames/prims';
 import { QrPlacementError, cutBand, CUT_SW } from './placement';
 import { QUIET } from '../share/qr';

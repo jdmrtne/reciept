@@ -29,12 +29,30 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); store.resetStore(); rt.resetCustomRuntime(); delete (globalThis as any).indexedDB; });
 
-describe('ADMIN > Frames > Your own frames', () => {
-  it('is the second card of the Frames section, after the built-in visibility card, and is searchable', () => {
-    const frames = SECTIONS.find((s) => s.id === 'frames')!;
-    expect(frames.cards.map((c) => c.id)).toEqual(['frames-visibility', 'frames-custom']);
-    expect(searchSettings(SECTIONS, 'upload png').map((h) => h.card.id)).toContain('frames-custom');
+describe('ADMIN > Events > Event special frames', () => {
+  it('lives in the Events section (not Frames) and is searchable', () => {
+    const frames = SECTIONS.find((s) => s.id === 'frames')!, events = SECTIONS.find((s) => s.id === 'events')!;
+    expect(frames.cards.map((c) => c.id)).toEqual(['frames-visibility']);
+    expect(events.cards.map((c) => c.id)).toContain('events-special-frames');
+    expect(customFramesCard.title).toBe('Event special frames');
+    expect(searchSettings(SECTIONS, 'upload png').map((h) => h.card.id)).toContain('events-special-frames');
+    expect(searchSettings(SECTIONS, 'event special').map((h) => h.card.id)).toContain('events-special-frames');
     expect(searchSettings(SECTIONS, 'frame design').map((h) => h.card.id)).toContain('frames-visibility');
+  });
+
+  it('has an ON/OFF switch per frame; OFF is shown on the frame button, and the pictures stay', async () => {
+    await rt.initCustomFrames();
+    const c = await rt.createCustomFrame('Gala Night');
+    if (!c.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
+    let h = html();
+    expect(h).toMatch(/role="switch"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"|aria-checked="true"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"/);
+    expect(h).not.toContain('(OFF)');
+    await rt.setCustomEnabled(c.value.id, false);
+    h = html();
+    expect(h).toContain('GALA NIGHT (OFF)');
+    expect(h).toMatch(/aria-checked="false"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"/);
+    expect(h).toContain('data-layout="single" data-state="ready"');
   });
 
   it('shows a loading note before the registry has loaded', () => {

@@ -31,13 +31,13 @@ describe('layout visibility setting', () => {
     expect(mergeSettings({ printer: 'mock' }).layoutVisibility).toEqual({ hidden: [] });
   });
   it('keeps valid hidden ids and repairs bad values', () => {
-    expect(mergeSettings({ layoutVisibility: { hidden: ['single', 'pass-2'] } }).layoutVisibility.hidden).toEqual(['single', 'pass-2']);
+    expect(mergeSettings({ layoutVisibility: { hidden: ['single', 'strip-2'] } }).layoutVisibility.hidden).toEqual(['single', 'strip-2']);
     expect(mergeSettings({ layoutVisibility: { hidden: 'single' } }).layoutVisibility.hidden).toEqual([]);
     expect(mergeSettings({ layoutVisibility: null }).layoutVisibility.hidden).toEqual([]);
     expect(mergeSettings({ layoutVisibility: { hidden: ['single', 3, 'ghost', 'single'] } }).layoutVisibility.hidden).toEqual(['single']);
   });
   it('resets to nothing hidden when every layout would be hidden, and is idempotent', () => {
-    const all = ['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'classic', 'pass-1', 'pass-2', 'pass-3', 'pass-4'];
+    const all = ['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'classic'];
     expect(mergeSettings({ layoutVisibility: { hidden: all } }).layoutVisibility.hidden).toEqual([]);
     const once = mergeSettings({ layoutVisibility: { hidden: ['classic'] } });
     expect(mergeSettings(once).layoutVisibility).toEqual(once.layoutVisibility);
@@ -49,7 +49,7 @@ describe('frame visibility setting', () => {
     expect(mergeSettings({}).frameVisibility).toEqual({ hidden: [] });
     expect(mergeSettings({ printer: 'mock' }).frameVisibility).toEqual({ hidden: [] });
   });
-  it('keeps valid ids; repairs bad values; unknown ids and the NCL frame are ignored', () => {
+  it('keeps valid ids; repairs bad values; unknown ids (and the id of the removed NCL frame) are ignored', () => {
     expect(mergeSettings({ frameVisibility: { hidden: ['event', 'birthday'] } }).frameVisibility.hidden).toEqual(['event', 'birthday']);
     expect(mergeSettings({ frameVisibility: { hidden: 'event' } }).frameVisibility.hidden).toEqual([]);
     expect(mergeSettings({ frameVisibility: null }).frameVisibility.hidden).toEqual([]);

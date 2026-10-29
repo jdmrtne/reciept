@@ -85,13 +85,13 @@ describe('layouts section', () => {
     expect(searchSettings(SECTIONS, 'choose your strip').map((h) => h.card.id)).toContain('layouts-visibility');
     expect(searchSettings(SECTIONS, 'hide layout').map((h) => h.card.id)).toContain('layouts-visibility');
   });
-  it('has one switch per layout plus a whole-group switch, with photo counts and a preview each', () => {
+  it('has one switch per layout, with photo counts and a preview each', () => {
     const h = render([]);
-    expect((h.match(/role="switch"/g) ?? []).length).toBe(11);
-    expect(h).toContain('SHOW WHOLE GROUP JLC 20TH ANNIV. SPECIAL');
-    for (const n of ['SINGLE', 'TWO STRIP', 'THREE STRIP', 'FOUR STRIP', '2 × 2', 'CLASSIC', 'NCL PASS 1', 'NCL PASS 4']) expect(h).toContain(`aria-label="SHOW ${n}"`);
+    expect((h.match(/role="switch"/g) ?? []).length).toBe(6);
+    expect(h).not.toContain('WHOLE GROUP');
+    for (const n of ['SINGLE', 'TWO STRIP', 'THREE STRIP', 'FOUR STRIP', '2 × 2', 'CLASSIC']) expect(h).toContain(`aria-label="SHOW ${n}"`);
     expect(h).toContain('4 PHOTOS');
-    expect((h.match(/data-sample-qr/g) ?? []).length).toBe(11); // six ordinary + the group's own preview + four passes
+    expect((h.match(/data-sample-qr/g) ?? []).length).toBe(6);
   });
   it('reflects hidden layouts, and offers SHOW ALL only when something is hidden', () => {
     expect(render(['single'])).toMatch(/aria-checked="false"[^>]*aria-label="SHOW SINGLE"/);
@@ -99,7 +99,7 @@ describe('layouts section', () => {
     expect(render(['single'])).not.toMatch(/<button[^>]*disabled=""[^>]*>SHOW ALL/);
   });
   it('locks the last visible layout and explains why', () => {
-    const h = render(['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'pass-1', 'pass-2', 'pass-3', 'pass-4']); // only classic shown
+    const h = render(['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2']); // only classic shown
     expect(h).toMatch(/aria-label="SHOW CLASSIC"[^>]*disabled=""|disabled=""[^>]*aria-label="SHOW CLASSIC"/);
     expect(h).toContain('At least one layout must stay shown');
   });
@@ -115,12 +115,12 @@ describe('frames section', () => {
     expect(searchSettings(SECTIONS, 'hide border').map((h) => h.card.id)).toContain('frames-visibility');
     expect(searchSettings(SECTIONS, 'kawaii cats').map((h) => h.card.id)).toContain('frames-visibility');
   });
-  it('one switch per standard frame (two groups), a preview each, and the NCL frame is not listed but explained', () => {
+  it('one switch per standard frame (two groups), a preview each, and no NCL frame', () => {
     const h = render([]);
     expect((h.match(/role="switch"/g) ?? []).length).toBe(STD.length);
     for (const f of STD) expect(h).toContain(`aria-label="SHOW FRAME ${f.name.toUpperCase()}"`);
     expect(h).not.toContain('NCL BOARDING PASS');
-    expect(h).toContain('JLC NCL Boarding Pass frame is not listed');
+    expect(h).not.toContain('J146 NCL');
     expect(h).toContain('RECEIPT STYLES');
     expect(h).toContain('DESIGNS');
   });

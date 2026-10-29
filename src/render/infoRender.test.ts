@@ -16,7 +16,7 @@ import { toThermalBitmap } from '../print/pipeline';
 import { bitmapToRGBA, getDot } from '../print/bitmap';
 import { DEFAULT_THERMAL } from '../print/types';
 import { PAPER_DOTS } from '../layouts/engine';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { STANDARD_FRAMES as FRAMES, resolveFramed } from '../frames/registry';
 import { makeEventCtx } from '../frames/prims';
 import { addSticker, buildSnapshot, withFilter, withFrame } from '../editor/model';

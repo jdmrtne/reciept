@@ -1,10 +1,11 @@
 import { DEFAULT_FRAME, FRAMES, frameForLayout, framesForLayout, isFrameAllowed } from './registry';
 import type { FrameDef } from './types';
+import { customEnabled, isCustomFrameId } from './custom/runtime';
 
 /**
  * Owner-chosen frame visibility (ADMIN > Frames). PURE: no DOM, no storage. Mirrors layouts/visibility.ts: the setting stores what is HIDDEN,
  * so a frame added later shows up on its own. Display only: frame ids, artwork, frame locking, rendering and printing never read it.
- * The frame-locked NCL boarding pass (FrameDef.onlyLayouts) is NOT hideable here: the layouts setting already controls the JLC passes.
+ * A frame-locked frame (FrameDef.onlyLayouts, none built in now) is NOT hideable here. Owner-uploaded event special frames have their own ON/OFF switch (ADMIN > Events).
  */
 export interface FrameVisibility { hidden: string[] }
 
@@ -32,10 +33,10 @@ export function setHidden(hidden: readonly string[], ids: readonly string[], sho
 
 /**
  * The frame tray a guest sees for a layout: framesForLayout minus hidden frames, order kept, BUT the frame the guest currently holds always stays
- * (it never vanishes from under them mid-session). A frame-locked layout (NCL passes) has only its own frame, as before.
+ * (it never vanishes from under them mid-session). An event special (custom) frame the owner switched OFF is left out the same way. A frame-locked layout has only its own frame.
  */
 export const guestFramesForLayout = (layoutId: string, hidden: readonly string[], currentFrameId: string | null): FrameDef[] =>
-  framesForLayout(layoutId).filter((f) => f.onlyLayouts || !hidden.includes(f.id) || f.id === currentFrameId);
+  framesForLayout(layoutId).filter((f) => f.onlyLayouts || f.id === currentFrameId || (!hidden.includes(f.id) && (!isCustomFrameId(f.id) || customEnabled(f.id))));
 
 /**
  * frameForLayout that respects hidden frames. Nothing hidden = EXACTLY frameForLayout. A usable current frame is kept even when hidden (a session

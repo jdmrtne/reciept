@@ -4,7 +4,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { buildPlan } from '../render/plan';
 import { renderPlan, type RenderEnv } from '../render/render';
 import { buildSnapshot, withFilter, withFrame } from '../editor/model';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { STANDARD_FRAMES as FRAMES, getFrame, resolveFramed } from './registry';
 import { framePrims, makeCtx } from './prims';
 

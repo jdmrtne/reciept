@@ -83,7 +83,7 @@ export interface BoothSettings {
   share: { enabled: boolean; publicBaseUrl: string };
   /** Which layouts the guest picker (CHOOSE YOUR STRIP) hides. Default: none. Repaired by mergeSettings; at least one layout always stays visible (layouts/visibility.ts). */
   layoutVisibility: LayoutVisibility;
-  /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; the frame-locked NCL pass frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
+  /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; a frame-locked frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
   frameVisibility: FrameVisibility;
   /** Admin auto-save of finished outputs into the chosen folder (autosave/). Independent switches (photo, GIF, MP4 video), all OFF by default; the folder handle lives in IndexedDB, not here. */
   autoSave: { images: boolean; gifs: boolean; videos: boolean };

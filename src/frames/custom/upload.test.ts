@@ -48,7 +48,7 @@ describe('prepareUpload (Phase 4)', () => {
   it('refuses an empty file and an unknown layout', async () => {
     expect((await prepareUpload('single', new Blob([], { type: 'image/png' }))).ok).toBe(false);
     const f = makeArt(W, heightFor(SINGLE), SINGLE);
-    const r = await prepareUpload('pass-1', blobOf(f.png), decoderFor(f));
+    const r = await prepareUpload('mystery', blobOf(f.png), decoderFor(f));
     expect(r).toEqual({ ok: false, errors: ['This layout cannot have a custom frame.'] });
   });
 

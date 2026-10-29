@@ -3,7 +3,6 @@ import { FRAMES, isImageFrame } from '../../frames/registry';
 import { hideableFrames, setHidden } from '../../frames/visibility';
 import type { FrameDef } from '../../frames/types';
 import { Hint } from './ui';
-import { customFramesCard } from './CustomFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
 const POOL = hideableFrames(FRAMES);
@@ -31,7 +30,6 @@ function Frames({ s, set }: AdminCtx) {
   return (
     <>
       <Hint>Tap a frame's switch to show or hide it. Choose which frame designs guests can pick in the editor. Hidden frames are only removed from that list; a guest who already has one keeps it. New frames added later appear automatically.</Hint>
-      <Hint>The JLC NCL Boarding Pass frame is not listed here: it always goes with the JLC layouts (ADMIN {'\u203A'} Layouts).</Hint>
       {shownCount === 1 && <Hint>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
       {GROUPS.map((g) => {
         const ids = g.frames.map((f) => f.id);
@@ -73,11 +71,10 @@ export const framesSection: SectionDef = {
   id: 'frames',
   label: 'Frames',
   icon: 'frame',
-  description: 'Choose which frame designs customers can pick, and add your own.',
+  description: 'Choose which built-in frame designs customers can pick. Event special frames are in ADMIN \u203A Events.',
   cards: [
     { id: 'frames-visibility', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
       keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...POOL.map((f) => f.name.toLowerCase())],
-      render: (c) => <Frames {...c} /> },
-    customFramesCard
+      render: (c) => <Frames {...c} /> }
   ]
 };

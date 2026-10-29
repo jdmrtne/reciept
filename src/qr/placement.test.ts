@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { collisions, inflate, occupiedRegions, overlaps, placeQr, primRegions, qrAreaFor, qrMinSide, regionIsClear, rotatedBounds, canPlaceQr, type OccupancyInput } from './placement';
 import { STANDARD_FRAMES as FRAMES, isImageFrame, resolveFramed } from '../frames/registry';
-import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry'; // frame-locked layouts (NCL pass) have their own suite: nclBoardingPass.test.ts
+import { STANDARD_LAYOUTS as LAYOUTS } from '../layouts/registry';
 import { framePrims, makeCtx } from '../frames/prims';
 import { vectorFrameOf, getFrame } from '../frames/registry';
 import type { FrameDef } from '../frames/types';

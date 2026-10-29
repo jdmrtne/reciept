@@ -4,7 +4,7 @@ import { getLayout } from '../layouts/registry';
  * READING ORIENTATION for sideways layouts (LayoutDef.photoRotation, i.e. the NCL boarding pass).
  *
  * The ticket is a LANDSCAPE design, but a receipt printer feeds a roll of fixed width, so the ticket is printed turned 90° clockwise
- * (its long side runs ALONG the roll, see docs/NCL-BOARDING-PASS.md). The PRINTED bitmap therefore stays in paper space and is never touched
+ * (its long side runs ALONG the roll, the built-in NCL pass that used it was removed 2026-10-28). The PRINTED bitmap therefore stays in paper space and is never touched
  * here. Anything a PERSON looks at (editor, preview, print preview, the saved colour JPEG and GIF) is shown turned 90° counter-clockwise, which
  * is exactly what they do with the paper, so the ticket reads landscape and upright.
  *

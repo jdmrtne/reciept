@@ -4,8 +4,8 @@ import type { BoothSettings } from '../../config/settings';
 import { FramePreview } from '../../frames/FrameLayer';
 import { MESSAGES, NAME_MAX, cleanName } from '../../frames/custom/store';
 import {
-  createCustomFrame, customAsset, customFrameDefs, customRecord, customVersion, deleteCustomFrame, getCustomStatus, isPersistent,
-  removeCustomLayoutArt, renameCustomFrame, setCustomLayoutArt, setCustomLayoutQr, subscribeCustom
+  createCustomFrame, customAsset, customEnabled, customFrameDefs, customRecord, customVersion, deleteCustomFrame, getCustomStatus, isPersistent,
+  removeCustomLayoutArt, renameCustomFrame, setCustomEnabled, setCustomLayoutArt, setCustomLayoutQr, subscribeCustom
 } from '../../frames/custom/runtime';
 import { browserDecode, prepareUpload } from '../../frames/custom/upload';
 import { QR_MODULE_SLACK, checkQrGeometry, requiredSpotPercent, suggestQrSpot, validateQrSpot } from '../../frames/custom/qrArea';
@@ -15,7 +15,7 @@ import { getLayout } from '../../layouts/registry';
 import { getShareStore, makeSessionId } from '../../share/backend';
 import { makePageQr, qrBase } from '../../share/service';
 import { normalizePublicBase, resolvePageBase } from '../../share/url';
-import { ConfirmDialog, Hint } from './ui';
+import { ConfirmDialog, Hint, SwitchRow } from './ui';
 import type { AdminCtx, CardDef } from './types';
 
 /** Owner-facing layout name, upper case like every other admin label. */
@@ -188,6 +188,16 @@ function CustomFrames({ notify, s }: AdminCtx) {
     } finally { if (alive.current) setBusy(null); }
   };
 
+  const toggle = async (frameId: string, on: boolean) => {
+    setBusy('frame');
+    try {
+      const r = await setCustomEnabled(frameId, on);
+      if (!alive.current) return;
+      if (!r.ok) { notify('error', 'COULD NOT CHANGE THIS FRAME'); setNameErr(r.message); return; }
+      notify('success', on ? `${r.value.name.toUpperCase()} IS ON. THE NEXT GUEST CAN PICK IT` : `${r.value.name.toUpperCase()} IS OFF. GUESTS NO LONGER SEE IT`);
+    } finally { if (alive.current) setBusy(null); }
+  };
+
   const removeFrame = async (frameId: string) => {
     setBusy('frame');
     try {
@@ -260,7 +270,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
 
   return (
     <>
-      <Hint>Add your own frame designs. For each layout you want to offer, upload one picture with see-through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself.</Hint>
+      <Hint>Add your own event special frames, for example for a wedding, a party or an anniversary. For each layout you want to offer, upload one picture with see-through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself.</Hint>
       <Hint>
         PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Each hole must be a plain rectangle and fully see-through, with a little picture all around it.
         A layout needs one hole per photo.
@@ -270,7 +280,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
       <div className="seg cf-frames" role="radiogroup" aria-label="Your frames">
         {frames.map((f) => (
           <button key={f.id} type="button" role="radio" aria-checked={frame?.id === f.id} className="seg-o" disabled={!!busy}
-            onClick={() => { setSelected(f.id); setPreviewId(null); setRenameDraft(null); setNameErr(''); }}>{f.name.toUpperCase()}</button>
+            onClick={() => { setSelected(f.id); setPreviewId(null); setRenameDraft(null); setNameErr(''); }}>{f.name.toUpperCase()}{customEnabled(f.id) ? '' : ' (OFF)'}</button>
         ))}
         <button type="button" className="btn ghost" disabled={!!busy} onClick={() => { setShowNew((v) => !v); setNameErr(''); }}><Icon name="frame" />NEW FRAME</button>
       </div>
@@ -324,6 +334,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
               </small>
             </div>
           </div>
+          <SwitchRow label="SHOW THIS FRAME TO GUESTS" hint="ON: guests can pick it in the editor. OFF: hidden from guests, your pictures are kept." checked={customEnabled(frame.id)} disabled={!!busy} onChange={(v) => void toggle(frame.id, v)} />
 
           <ul className="lv-kids lv-flat cf-list" aria-label={`Pictures for ${frame.name}`}>
             {CUSTOM_LAYOUT_IDS.map((lid) => {
@@ -353,7 +364,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
               );
             })}
           </ul>
-          <Hint>You can also drop a file onto a row. Custom frames cannot be hidden like the built in ones: remove a picture or delete the frame instead.</Hint>
+          <Hint>You can also drop a file onto a row. Use the switch above to turn the frame on or off for guests without losing its pictures.</Hint>
 
           {previewAsset && previewLayout && (
             <figure className="cf-prev" data-preview={previewLayout}>
@@ -394,11 +405,11 @@ function CustomFrames({ notify, s }: AdminCtx) {
   );
 }
 
-/** Second card of ADMIN > Frames (FramesSection.tsx lists it). */
+/** The "Event special frames" card of ADMIN > Events (EventSection.tsx lists it): upload your own frames, each with an ON/OFF switch. */
 export const customFramesCard: CardDef = {
-  id: 'frames-custom',
-  title: 'Your own frames',
-  description: 'Upload your own frame pictures. Guests pick them like the built in frames.',
-  keywords: ['custom', 'own', 'upload', 'png', 'picture', 'image', 'artwork', 'frame', 'frames', 'transparent', 'window', 'windows', 'holes', 'new frame', 'rename', 'delete', 'remove', 'replace', 'preview'],
+  id: 'events-special-frames',
+  title: 'Event special frames',
+  description: 'Upload your own frames for this event and switch each one on or off for guests.',
+  keywords: ['event special', 'special frames', 'special', 'event frame', 'toggle', 'on', 'off', 'switch', 'enable', 'disable', 'custom', 'own', 'upload', 'png', 'picture', 'image', 'artwork', 'frame', 'frames', 'transparent', 'window', 'windows', 'holes', 'new frame', 'rename', 'delete', 'remove', 'replace', 'preview'],
   render: (c) => <CustomFrames {...c} />
 };

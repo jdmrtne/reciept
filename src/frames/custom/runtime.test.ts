@@ -54,11 +54,23 @@ describe('runtime registry', () => {
     expect(frameForLayout('strip-3', id)).toBe(DEFAULT_FRAME);
     expect(frameForLayout('single', id)).toBe(id);
   });
-  it('is never offered on the frame-locked NCL layouts and never takes the NCL frame', async () => {
+  it('is never offered on a layout it has no art for, and an unknown layout offers no custom frame', async () => {
     const id = await mk('Party', ['single']);
-    for (const l of ['pass-1', 'pass-2', 'pass-3', 'pass-4']) expect(framesForLayout(l).map((f) => f.id)).toEqual(['ncl-boarding-pass']);
-    expect(isFrameAllowed('ncl-boarding-pass', 'single')).toBe(false);
-    expect(isFrameAllowed(id, 'pass-1')).toBe(false);
+    expect(framesForLayout('mystery').map((f) => f.id)).not.toContain(id);
+    expect(isFrameAllowed(id, 'mystery')).toBe(false);
+  });
+  it('the ON/OFF flag: on by default, persisted, and it does not change what is allowed', async () => {
+    await rt.initCustomFrames();
+    const id = await mk('Gala', ['single']);
+    expect(rt.customEnabled(id)).toBe(true);
+    expect((await rt.setCustomEnabled(id, false)).ok).toBe(true);
+    expect(rt.customEnabled(id)).toBe(false);
+    expect(isFrameAllowed(id, 'single')).toBe(true); // a session that already holds it keeps working
+    rt.resetCustomRuntime(); store.resetStore();
+    await rt.initCustomFrames();
+    expect(rt.customEnabled(id)).toBe(false); // survives a reload
+    expect(rt.customLayouts(id)).toEqual(['single']); // pictures untouched
+    expect((await rt.setCustomEnabled('custom-nope', true)).ok).toBe(false);
   });
   it('built-in frames keep priority over a custom frame with the same id', () => {
     expect(getFrame('kawaii')).toBe(FRAMES.find((f) => f.id === 'kawaii'));

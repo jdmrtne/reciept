@@ -78,6 +78,8 @@ export function subscribeCustom(fn: () => void): () => void { listeners.add(fn);
 // ---- synchronous lookups (used by frames/registry.ts and, in Phase 3, frames/assets.ts) ----
 export const customFrameDefs = (): FrameDef[] => [...entries.values()].map((e) => e.frame);
 export const customFrameById = (id: string | null | undefined): FrameDef | undefined => (id ? entries.get(id)?.frame : undefined);
+/** ON unless the owner switched it off (absent flag = on). Unknown ids count as on: they are never offered anyway. */
+export const customEnabled = (id: string): boolean => entries.get(id)?.def.enabled !== false;
 export const customRecord = (id: string): CustomFrameDef | undefined => entries.get(id)?.def;
 export const customLayouts = (id: string): CustomLayoutId[] => { const e = entries.get(id); return e ? (Object.keys(e.urls) as CustomLayoutId[]) : []; };
 /** A layout is offered only when the frame has art for it AND its object URL exists. */
@@ -96,6 +98,7 @@ async function apply(r: StoreResult<CustomFrameDef>): Promise<StoreResult<Custom
   return r;
 }
 export const createCustomFrame = async (name: string) => apply(await store.createFrame(name));
+export const setCustomEnabled = async (id: string, enabled: boolean) => apply(await store.setEnabled(id, enabled));
 export const renameCustomFrame = async (id: string, name: string) => apply(await store.renameFrame(id, name));
 export const setCustomLayoutArt = async (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt) => apply(await store.setLayoutArt(id, layoutId, art));
 /** Phase 5: set or clear (null) the QR spot of one layout. Memory changes only after the store accepted it; a layout with no art is refused (`missing`). */

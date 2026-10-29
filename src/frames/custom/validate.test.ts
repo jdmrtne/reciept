@@ -61,8 +61,8 @@ describe('validateArtwork', () => {
     expect(!r.ok && r.errors[0]).toMatch(/Windows 1 and 2 touch or overlap/);
   });
   it('rejects a layout that cannot take a custom frame', () => {
-    const r = validateArtwork('pass-1', art('single'));
-    expect(!r.ok && r.errors[0]).toBe('pass-1 cannot use a custom frame.');
+    const r = validateArtwork('mystery', art('single'));
+    expect(!r.ok && r.errors[0]).toBe('mystery cannot use a custom frame.');
   });
   it('error text has no dashes or emojis', () => {
     const msgs = [validateArtwork('strip-3', art('strip-2')), validateArtwork('single', makeArt(W, 1700, [])), validateUpload({ size: 0 }, new Uint8Array())];

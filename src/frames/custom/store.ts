@@ -138,6 +138,8 @@ export const renameFrame = (id: string, name: string): Promise<StoreResult<Custo
   const clean = cleanName(name);
   return clean ? updateFrame(id, (f) => ({ ...f, name: clean })) : Promise.resolve(bad('invalid', 'Give the frame a name.'));
 };
+/** The owner's ON/OFF switch for guests. The pictures are untouched. */
+export const setEnabled = (id: string, enabled: boolean): Promise<StoreResult<CustomFrameDef>> => updateFrame(id, (f) => ({ ...f, enabled }));
 export const setLayoutArt = (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt): Promise<StoreResult<CustomFrameDef>> =>
   updateFrame(id, (f) => ({ ...f, layouts: { ...f.layouts, [layoutId]: { ...art, rev: newRev() } } }));
 /** Phase 5: set or clear (null) the QR spot of ONE layout. The picture, its `rev` and its blob stay exactly as stored, so nothing is re-decoded. A layout without art is `missing`. */

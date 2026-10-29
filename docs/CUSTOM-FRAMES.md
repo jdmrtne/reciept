@@ -88,7 +88,7 @@ A custom frame is an ordinary image frame to every consumer. Only three source f
 
 ## Phase 4: admin UI (done)
 
-Where: ADMIN > Frames > second card "Your own frames" (`frames-custom`, searchable: upload, png, custom, window). The built-in "Frame designs in the editor" card is unchanged and still the first card.
+Where (moved 2026-10-28): ADMIN > Events > card "Event special frames" (`events-special-frames`, searchable: upload, png, custom, window, event special). ADMIN > Frames keeps only the built-in "Frame designs in the editor" card. Each frame has an ON/OFF switch (`CustomFrameDef.enabled`, absent = on; `runtime.setCustomEnabled`, honoured by `guestFramesForLayout`, never by `isFrameAllowed`, so a guest already holding it keeps it).
 
 **Flow.** NEW FRAME (name, at most 40 characters, Enter creates) selects the new frame. The frame shows its thumbnail (first layout with art), RENAME, DELETE FRAME (confirm, safe button focused) and one row per layout in picker order: status (PICTURE ADDED with window count and width, or MISSING with the window count it needs), UPLOAD or REPLACE, PREVIEW, REMOVE (confirm). A file can also be dropped on a row. One upload runs at a time (every control is disabled while one is checking or saving).
 
@@ -120,7 +120,7 @@ The owner can put the session QR INSIDE a layout's picture instead of on the str
 4. one flat colour in the stored artwork (same tolerance as the renderer gate), transparent pixels counted as white paper.
 Rules 1 to 3 are cheap and run while the owner drags; rule 4 reads pixels and runs on release and before saving. Fractions are rounded to 4 decimals and the rounded value is what is checked and stored.
 
-**Screen** (ADMIN > Frames > Your own frames > PREVIEW of a layout). A status line says whether a spot is set. DRAW SPOT turns dragging on the preview into a rectangle (pointer events, so mouse, pen and touch; the SVG's own matrix maps the pointer, so the letterboxed preview cannot skew it; touch scrolling is off over the picture only while drawing). FIND EMPTY SPACE (`suggestQrSpot`) returns the largest plain rectangle that is clear of the windows, with one cell of clearance, already validated; it says so when there is none. SAVE QR SPOT is enabled only for a fully checked spot. CLEAR SPOT goes back to the strip. "HOW IT PRINTS" shows the real `FramePreview` with the sample QR, so the owner sees the placement the printer will use. Problems show as sentences under the controls.
+**Screen** (ADMIN > Events > Event special frames > PREVIEW of a layout). A status line says whether a spot is set. DRAW SPOT turns dragging on the preview into a rectangle (pointer events, so mouse, pen and touch; the SVG's own matrix maps the pointer, so the letterboxed preview cannot skew it; touch scrolling is off over the picture only while drawing). FIND EMPTY SPACE (`suggestQrSpot`) returns the largest plain rectangle that is clear of the windows, with one cell of clearance, already validated; it says so when there is none. SAVE QR SPOT is enabled only for a fully checked spot. CLEAR SPOT goes back to the strip. "HOW IT PRINTS" shows the real `FramePreview` with the sample QR, so the owner sees the placement the printer will use. Problems show as sentences under the controls.
 
 **Behaviour decided**
 - Replacing a picture drops its spot (the new geometry may not fit it); the row tells the owner. Removing the picture or deleting the frame removes the spot with it.
