@@ -91,7 +91,7 @@ Open **ADMIN → Layouts** to switch layouts on or off for the **CHOOSE YOUR STR
 Open **ADMIN → Frames** to switch frame designs on or off for the frame list guests see while editing their strip.
 - Frames are split into **RECEIPT STYLES** and **DESIGNS**. Every frame has a switch and a small preview. Each group has **SHOW ALL** / **HIDE ALL**, and **SHOW ALL FRAMES** at the bottom turns everything back on.
 - At least one frame always stays on: the last one cannot be switched off, and **HIDE ALL** is unavailable when it would hide the last frames.
-- Your own **event special frames** (uploaded pictures) are not listed here: they have their own card, with an ON/OFF switch each, under **ADMIN → Events → Event special frames**.
+- Pictures you upload are in the card below (**Your own frames**); event special frames are under **ADMIN → Events**.
 - A guest who already picked a frame keeps it, even if you hide it afterwards; it just won't be offered to the next guest. If you hide the default frame (Classic Receipt), new guests start with the first frame that is still shown.
 - Changes save immediately and apply the next time a guest opens the editor (no reload). The setting is stored on this device, and new frames added in a future update appear automatically. It does not affect the frame choice in **ADMIN → Events** (that preview is for you).
 
@@ -111,8 +111,8 @@ Open **ADMIN → Frame text** to change the wording printed inside nine built-in
 - It works only in **Chrome or Edge** (needs the browser's built-in video encoder). If the browser cannot do it, **LAST SAVE** says VIDEO ENCODING NOT SUPPORTED IN THIS BROWSER and the photo and GIF still save. Use the switch independently of AUTO-SAVE GIFS; a folder chosen earlier gets its Videos folder automatically.
 - Videos are saved on this device only; they are not uploaded and are not part of the QR page.
 
-## Event special frames (ADMIN → Events → Event special frames)
-The built-in J146 NCL frame and the NCL Boarding Pass layouts were removed. For an event with its own look (a wedding, a party, an anniversary), upload your own frames in **ADMIN → Events → Event special frames**.
+## Your own frames and event special frames
+You can upload frames in TWO places, with the same steps. **ADMIN → Events → Event special frames** (the first card on the Events page) is for frames made for one event (a wedding, a party, an anniversary). **ADMIN → Frames → Your own frames** is for everyday frames of your own. The two lists are kept apart. (The built-in J146 NCL frame and the NCL Boarding Pass layouts were removed.)
 1. Make one picture per layout you want to offer (PNG or WebP, 1152 pixels wide is best). Leave the places for photos fully see-through (transparent) and rectangular, with a little picture all around each one. A layout needs one hole per photo: 1 for Single, 2 for Two Strip, 3 for Three Strip, 4 for Four Strip, 2 x 2 and Classic.
 2. Press NEW FRAME, type a name, then UPLOAD a picture for each layout. The app finds the holes by itself and tells you in plain words if something is wrong.
 3. Press PREVIEW to check the numbered outlines. The numbers are the order the photos are placed.

@@ -35,7 +35,7 @@ const two = (): BoothSettings => {
 
 describe('the Events section is part of the existing settings map', () => {
   it('is registered with four cards (the event special frames card sits before the preview), and ids stay unique across the whole map', () => {
-    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-edit', 'events-special-frames', 'events-preview']);
+    expect(section.cards.map((c) => c.id)).toEqual(['events-special-frames', 'events-list', 'events-edit', 'events-preview']);
     const all = SECTIONS.flatMap((s) => s.cards.map((c) => c.id));
     expect(new Set(all).size).toBe(all.length);
     expect(SECTIONS.map((s) => s.id)).toEqual(expect.arrayContaining(['events', 'printer', 'quality', 'sharing', 'appearance', 'security']));

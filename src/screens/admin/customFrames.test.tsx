@@ -6,7 +6,7 @@ import * as store from '../../frames/custom/store';
 import * as rt from '../../frames/custom/runtime';
 import type { CustomLayoutArt } from '../../frames/custom/types';
 import { DEFAULT_SETTINGS } from '../../config/settings';
-import { ArtPreview, FALLBACK_MODULES, customFramesCard, layoutLabel, qrModulesFor } from './CustomFramesSection';
+import { ArtPreview, FALLBACK_MODULES, customFramesCard, layoutLabel, qrModulesFor, specialFramesCard } from './CustomFramesSection';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
 import type { AdminCtx } from './types';
@@ -29,15 +29,30 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); store.resetStore(); rt.resetCustomRuntime(); delete (globalThis as any).indexedDB; });
 
-describe('ADMIN > Events > Event special frames', () => {
-  it('lives in the Events section (not Frames) and is searchable', () => {
+describe('ADMIN > Events > Event special frames and ADMIN > Frames > Your own frames', () => {
+  it('both sections have an upload card: special frames first on Events, own frames after the built-in card on Frames', () => {
     const frames = SECTIONS.find((s) => s.id === 'frames')!, events = SECTIONS.find((s) => s.id === 'events')!;
-    expect(frames.cards.map((c) => c.id)).toEqual(['frames-visibility']);
-    expect(events.cards.map((c) => c.id)).toContain('events-special-frames');
-    expect(customFramesCard.title).toBe('Event special frames');
+    expect(frames.cards.map((c) => c.id)).toEqual(['frames-visibility', 'frames-custom']);
+    expect(events.cards[0].id).toBe('events-special-frames');
+    expect(specialFramesCard.title).toBe('Event special frames');
+    expect(customFramesCard.title).toBe('Your own frames');
+    expect(searchSettings(SECTIONS, 'upload png').map((h) => h.card.id)).toEqual(expect.arrayContaining(['frames-custom', 'events-special-frames']));
     expect(searchSettings(SECTIONS, 'upload png').map((h) => h.card.id)).toContain('events-special-frames');
     expect(searchSettings(SECTIONS, 'event special').map((h) => h.card.id)).toContain('events-special-frames');
     expect(searchSettings(SECTIONS, 'frame design').map((h) => h.card.id)).toContain('frames-visibility');
+  });
+
+  it('keeps the two lists apart: a frame made in one card is not listed in the other', async () => {
+    await rt.initCustomFrames();
+    const a = await rt.createCustomFrame('Own One'), b = await rt.createCustomFrame('Gala Special', true);
+    if (!a.ok || !b.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(a.value.id, 'single', art(1)); await rt.setCustomLayoutArt(b.value.id, 'single', art(1));
+    expect(rt.customIsSpecial(a.value.id)).toBe(false);
+    expect(rt.customIsSpecial(b.value.id)).toBe(true);
+    const own = html(), special = renderToStaticMarkup(<>{specialFramesCard.render(ctx)}</>);
+    expect(own).toContain('OWN ONE'); expect(own).not.toContain('GALA SPECIAL');
+    expect(special).toContain('GALA SPECIAL'); expect(special).not.toContain('OWN ONE');
+    expect(special).toContain('event special frames');
   });
 
   it('has an ON/OFF switch per frame; OFF is shown on the frame button, and the pictures stay', async () => {

@@ -49,6 +49,8 @@ export interface CustomFrameDef {
   layouts: Partial<Record<CustomLayoutId, CustomLayoutArt>>;
   /** Owner's ON/OFF switch (ADMIN > Events > Event special frames). Absent = on. Off: guests no longer see it in the frame tray; a guest already holding it keeps it. */
   enabled?: boolean;
+  /** True = an EVENT SPECIAL frame (listed in ADMIN > Events); absent/false = a normal own frame (ADMIN > Frames). Same pictures, same rules, just two lists. */
+  special?: boolean;
 }
 
 export const CUSTOM_FRAME_PREFIX = 'custom-';

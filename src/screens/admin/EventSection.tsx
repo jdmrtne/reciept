@@ -30,7 +30,7 @@ import {
   type EditorState
 } from './eventEditor';
 import { ConfirmDialog, Hint, SwitchRow, TextField } from './ui';
-import { customFramesCard } from './CustomFramesSection';
+import { specialFramesCard } from './CustomFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
 /**
@@ -260,9 +260,9 @@ export const eventsSection: SectionDef = {
   icon: 'sticker',
   description: 'The text printed on every receipt, which event the next customer gets, and your own event special frames.',
   cards: [
+    specialFramesCard, // first: the owner's own event special frames sit on top of the page
     { id: 'events-list', title: 'Events', description: 'Pick an event to edit, make one active, add, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
     { id: 'events-edit', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
-    customFramesCard,
     { id: 'events-preview', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
   ]
 };

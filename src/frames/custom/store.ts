@@ -112,10 +112,10 @@ export async function getFrameRecord(id: string): Promise<StoreResult<CustomFram
   return isFrameRecord(r.value) ? ok(r.value) : bad('invalid');
 }
 
-export async function createFrame(name: string, now: number = Date.now()): Promise<StoreResult<CustomFrameDef>> {
+export async function createFrame(name: string, now: number = Date.now(), special = false): Promise<StoreResult<CustomFrameDef>> {
   const clean = cleanName(name);
   if (!clean) return bad('invalid', 'Give the frame a name.');
-  const def: CustomFrameDef = { id: newFrameId(), name: clean, createdAt: now, updatedAt: now, layouts: {} };
+  const def: CustomFrameDef = { id: newFrameId(), name: clean, createdAt: now, updatedAt: now, layouts: {}, ...(special ? { special: true } : {}) };
   const r = await run<CustomFrameDef>('readwrite', (s, done, fail) => { const q = s.add(def); onErr(q, fail); q.onsuccess = () => done(def); });
   return r;
 }

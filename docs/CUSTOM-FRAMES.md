@@ -88,7 +88,7 @@ A custom frame is an ordinary image frame to every consumer. Only three source f
 
 ## Phase 4: admin UI (done)
 
-Where (moved 2026-10-28): ADMIN > Events > card "Event special frames" (`events-special-frames`, searchable: upload, png, custom, window, event special). ADMIN > Frames keeps only the built-in "Frame designs in the editor" card. Each frame has an ON/OFF switch (`CustomFrameDef.enabled`, absent = on; `runtime.setCustomEnabled`, honoured by `guestFramesForLayout`, never by `isFrameAllowed`, so a guest already holding it keeps it).
+Where (2026-10-28): TWO cards share one component and one store, split by `CustomFrameDef.special`: ADMIN > Events > first card "Event special frames" (`events-special-frames`, `specialFramesCard`, new frames get `special: true`) and ADMIN > Frames > second card "Your own frames" (`frames-custom`, `customFramesCard`; frames without the flag). Each card lists only its own kind (`runtime.customIsSpecial`). Each frame has an ON/OFF switch (`CustomFrameDef.enabled`, absent = on; `runtime.setCustomEnabled`, honoured by `guestFramesForLayout`, never by `isFrameAllowed`, so a guest already holding it keeps it).
 
 **Flow.** NEW FRAME (name, at most 40 characters, Enter creates) selects the new frame. The frame shows its thumbnail (first layout with art), RENAME, DELETE FRAME (confirm, safe button focused) and one row per layout in picker order: status (PICTURE ADDED with window count and width, or MISSING with the window count it needs), UPLOAD or REPLACE, PREVIEW, REMOVE (confirm). A file can also be dropped on a row. One upload runs at a time (every control is disabled while one is checking or saving).
 

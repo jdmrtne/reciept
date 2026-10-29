@@ -3,6 +3,7 @@ import { FRAMES, isImageFrame } from '../../frames/registry';
 import { hideableFrames, setHidden } from '../../frames/visibility';
 import type { FrameDef } from '../../frames/types';
 import { Hint } from './ui';
+import { customFramesCard } from './CustomFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
 const POOL = hideableFrames(FRAMES);
@@ -71,10 +72,11 @@ export const framesSection: SectionDef = {
   id: 'frames',
   label: 'Frames',
   icon: 'frame',
-  description: 'Choose which built-in frame designs customers can pick. Event special frames are in ADMIN \u203A Events.',
+  description: 'Choose which frame designs customers can pick, and add your own. Event special frames are in ADMIN \u203A Events.',
   cards: [
     { id: 'frames-visibility', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
       keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...POOL.map((f) => f.name.toLowerCase())],
-      render: (c) => <Frames {...c} /> }
+      render: (c) => <Frames {...c} /> },
+    customFramesCard
   ]
 };
