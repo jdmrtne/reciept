@@ -248,3 +248,18 @@ select.adm-in { text-transform: uppercase; }
 .cf-how { display: flex; flex-direction: column; gap: 6px; color: var(--muted); letter-spacing: .06em; }
 .cf-how .lv-thumb .lay-svg { max-height: 260px; }
 @media (max-width: 560px) { .cf-prev-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Event frame groups (EventFramesSection.tsx): the grid reuses .fg-*; only these small additions are new */
+.fg-open { font: inherit; color: inherit; cursor: pointer; }
+button.fg-name.fg-open { background: none; border: 0; padding: 2px 0; min-height: 44px; }
+button.fg-thumb.fg-open { width: 100%; min-height: 64px; }
+button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.fg-thumb .cf-none-s { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 4; color: var(--muted); font-size: .7em; font-weight: 700; letter-spacing: .1em; text-align: center; padding: 4px; }
+.fg-add { align-items: center; justify-content: center; border-style: dashed; min-height: 120px; }
+.ef-add.over { border-color: var(--ink); }
+.ef-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ef-file { color: var(--muted); letter-spacing: .06em; overflow-wrap: anywhere; min-width: 0; }
+.cf-back { display: flex; }
+.ev-new { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.ev-new .field { flex: 1 1 220px; min-width: 0; }
+.ev-new .btn { min-height: 48px; }

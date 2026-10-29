@@ -47,10 +47,12 @@ export interface CustomFrameDef {
   updatedAt: number;
   /** Only the layouts the owner uploaded. A frame is offered only on these layouts. */
   layouts: Partial<Record<CustomLayoutId, CustomLayoutArt>>;
-  /** Owner's ON/OFF switch (ADMIN > Events > Event special frames). Absent = on. Off: guests no longer see it in the frame tray; a guest already holding it keeps it. */
+  /** Owner's ON/OFF switch (ADMIN > Events > Event frames, or ADMIN > Frames for own frames). Absent = on. Off: guests no longer see it in the frame tray; a guest already holding it keeps it. */
   enabled?: boolean;
   /** True = an EVENT SPECIAL frame (listed in ADMIN > Events); absent/false = a normal own frame (ADMIN > Frames). Same pictures, same rules, just two lists. */
   special?: boolean;
+  /** Event frame groups: id of the `EventProfile` (settings.events) this frame belongs to. Only meaningful with `special: true`. Absent = not assigned to an event (old special frames from before groups; see groups.ts `unassignedSpecialFrames`). Display and grouping only: guests, rendering and printing never read it. */
+  eventId?: string;
 }
 
 export const CUSTOM_FRAME_PREFIX = 'custom-';

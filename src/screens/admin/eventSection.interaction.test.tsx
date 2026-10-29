@@ -191,14 +191,26 @@ describe.skipIf(!available)('Events section: real interaction', () => {
     expect(saved().events[0].name).toBe('WEDDING');
   });
 
-  it('NEW EVENT adds a profile with a new stable id, selects it, and does NOT make it active', () => {
+  it('typing a name and pressing CREATE adds a profile with a new stable id, selects it, and does NOT make it active', () => {
     seed(); mount();
-    click(btn('NEW EVENT'));
+    type(input('E.G. ANNIVERSARY NIGHT'), '  Gala   Night ');
+    click(btn('CREATE'));
     const s = saved();
     expect(s.events.map((e: { id: string }) => e.id)).toEqual(['event-1', 'event-2', 'event-3']);
-    expect(s.events[2].name).toBe('NEW EVENT');
+    expect(s.events[2].name).toBe('Gala Night');
     expect(s.activeEventId).toBe('event-1');
-    expect(input('MARIA & JOSE').value).toBe('NEW EVENT');
+    expect(input('MARIA & JOSE').value).toBe('Gala Night');
+    expect(input('E.G. ANNIVERSARY NIGHT').value).toBe(''); // the field is ready for the next one
+  });
+
+  it('CREATE needs a name: an empty or unprintable name shows a message and creates nothing', () => {
+    seed(); mount();
+    click(btn('CREATE'));
+    expect(RTL.screen.getByText('TYPE A NAME FOR THE EVENT')).toBeTruthy();
+    type(input('E.G. ANNIVERSARY NIGHT'), 'PARTY \u{1F389}');
+    click(btn('CREATE'));
+    expect(RTL.screen.getByRole('alert').textContent).toContain('CANNOT BE PRINTED');
+    expect(saved().events).toHaveLength(2);
   });
 
   it('MAKE ACTIVE saves the choice for the next customer and moves the ACTIVE tag', () => {
@@ -220,7 +232,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
     expect(s.activeEventId).toBe('event-1');
   });
 
-  it('DELETE asks first; cancelling keeps it, confirming removes it; the active event can never be deleted', () => {
+  it('DELETE asks first; cancelling keeps it, confirming removes it; the active event can never be deleted', async () => {
     seed(); mount();
     expect(btn('DELETE').disabled).toBe(true); // event-1 is active
     click(text('BIRTHDAY')[0]);
@@ -230,7 +242,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
     expect(saved().events).toHaveLength(2);
     click(btn('DELETE'));
     click(RTL.screen.getAllByRole('button').filter((b: HTMLElement) => b.textContent === 'DELETE').at(-1)!);
-    expect(saved().events.map((e: { id: string }) => e.id)).toEqual(['event-1']);
+    await RTL.waitFor(() => expect(saved().events.map((e: { id: string }) => e.id)).toEqual(['event-1'])); // frames (none here) go first, so the delete finishes a moment later
     expect(saved().activeEventId).toBe('event-1');
     expect(btn('DELETE').disabled).toBe(true); // now the last one
     expect(RTL.screen.getByText(/AT LEAST ONE EVENT/)).toBeTruthy();
@@ -251,7 +263,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   it('profile actions are blocked while there are unsaved changes', () => {
     seed(); mount();
     type(input('MARIA & JOSE'), 'CHANGED');
-    for (const l of ['NEW EVENT', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(btn(l).disabled, l).toBe(true);
+    for (const l of ['CREATE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(btn(l).disabled, l).toBe(true);
     expect(RTL.screen.getByText('SAVE OR CANCEL YOUR CHANGES FIRST')).toBeTruthy();
   });
 

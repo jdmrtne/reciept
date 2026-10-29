@@ -99,20 +99,34 @@ export function ArtPreview({ src, meta, qr, draft, drawing, onSpot }: {
   );
 }
 
+/** The picture rules (type, width, size, holes) and the "this browser may clear files" note. One text for every place that uploads a frame picture. */
+export function SpecHints() {
+  useSyncExternalStore(subscribeCustom, customVersion, customVersion); // isPersistent() changes after the first save
+  return (
+    <>
+      <Hint>
+        PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Each hole must be a plain rectangle and fully see-through, with a little picture all around it.
+        A layout needs one hole per photo.
+      </Hint>
+      {isPersistent() === false && <Hint>This browser has not promised to keep these files. If the tablet runs very low on space it may clear them, so keep the original pictures somewhere safe.</Hint>}
+    </>
+  );
+}
+
 type Confirm = { kind: 'delete' } | { kind: 'remove'; layoutId: CustomLayoutId } | null;
 /** The QR spot being worked on for the layout in the preview. `key` ties it to one frame, layout and stored picture (a replaced picture drops it). `ok` = fully checked and savable. */
 type Spot = { key: string; draft: CustomQrArea | null; errors: string[]; ok: boolean; draw: boolean };
 
-type Kind = 'normal' | 'special';
-function CustomFrames({ notify, s, kind }: AdminCtx & { kind: Kind }) {
-  const special = kind === 'special';
+/**
+ * ONE custom frame: rename, delete, per-layout pictures (upload, replace, preview, remove) and the QR spot tools. Used by "Your own frames"
+ * (ADMIN > Frames) and by the event frame groups (ADMIN > Events). It owns all of its own state, so a parent just mounts it with a frame id
+ * (give it `key={frameId}` so switching frames starts clean). `onBack` adds a BACK TO GRID button, `onDeleted` runs after a successful delete,
+ * `onBusyChange` tells the parent while a save is running.
+ */
+export function FrameEditor({ frameId, s, notify, onBack, onDeleted, onBusyChange }: Pick<AdminCtx, 's' | 'notify'> & { frameId: string; onBack?: () => void; onDeleted?: () => void; onBusyChange?: (busy: boolean) => void }) {
   useSyncExternalStore(subscribeCustom, customVersion, customVersion); // re-render on every registry change
-  const frames = customFrameDefs().filter((f) => customIsSpecial(f.id) === special); // two lists: event special frames (Events) and normal own frames (Frames)
-  const [selected, setSelected] = useState<string | null>(null);
-  const frame = frames.find((f) => f.id === selected) ?? frames[0] ?? null;
-  const rec = frame ? customRecord(frame.id) : undefined;
-  const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState('');
+  const rec = customRecord(frameId);
+  const frame = rec ? { id: rec.id, name: rec.name } : null;
   const [nameErr, setNameErr] = useState('');
   const [renameDraft, setRenameDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -128,25 +142,15 @@ function CustomFrames({ notify, s, kind }: AdminCtx & { kind: Kind }) {
   const [spotBusy, setSpotBusy] = useState(false);
   const decoded = useRef(new Map<string, Promise<DecodedImage>>()); // the picture of the layout being previewed, decoded once for the spot checks
   const seq = useRef(0); // a newer drawing or search makes a running check stale
+  const tell = useRef(onBusyChange); tell.current = onBusyChange;
+  useEffect(() => { tell.current?.(!!busy); }, [busy]);
+  useEffect(() => () => { tell.current?.(false); }, []);
 
   const status = getCustomStatus();
   if (status === 'unavailable') return <Hint>{MESSAGES.unavailable}</Hint>;
   if (status === 'idle' || status === 'loading') return <Hint>Loading your frames.</Hint>;
 
   const setMsg = (key: string, errs: string[], warns: string[]) => { setProblems((p) => ({ ...p, [key]: errs })); setNotes((p) => ({ ...p, [key]: warns })); };
-
-  const create = async () => {
-    const name = cleanName(newName);
-    if (!name) { setNameErr(`Type a name for the frame, up to ${NAME_MAX} characters.`); return; }
-    setBusy('frame'); setNameErr('');
-    try {
-      const r = await createCustomFrame(name, special);
-      if (!alive.current) return;
-      if (!r.ok) { setNameErr(r.message); notify('error', 'FRAME NOT CREATED'); return; }
-      setSelected(r.value.id); setPreviewId(null); setNewName(''); setShowNew(false);
-      notify('success', `FRAME ${r.value.name.toUpperCase()} CREATED. NOW ADD ITS PICTURES`);
-    } finally { if (alive.current) setBusy(null); }
-  };
 
   const rename = async () => {
     if (!frame || renameDraft === null) return;
@@ -206,8 +210,9 @@ function CustomFrames({ notify, s, kind }: AdminCtx & { kind: Kind }) {
       const r = await deleteCustomFrame(frameId);
       if (!alive.current) return;
       if (!r.ok) { notify('error', 'FRAME NOT DELETED'); setNameErr(r.message); return; }
-      setSelected(null); setPreviewId(null); setRenameDraft(null);
+      setPreviewId(null); setRenameDraft(null);
       notify('success', 'FRAME DELETED');
+      onDeleted?.();
     } finally { if (alive.current) setBusy(null); }
   };
 
@@ -272,39 +277,9 @@ function CustomFrames({ notify, s, kind }: AdminCtx & { kind: Kind }) {
 
   return (
     <>
-      <Hint>{special ? 'Add your own event special frames, for example for a wedding, a party or an anniversary.' : 'Add your own frame designs.'} For each layout you want to offer, upload one picture with see-through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself.</Hint>
-      <Hint>
-        PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Each hole must be a plain rectangle and fully see-through, with a little picture all around it.
-        A layout needs one hole per photo.
-      </Hint>
-      {isPersistent() === false && <Hint>This browser has not promised to keep these files. If the tablet runs very low on space it may clear them, so keep the original pictures somewhere safe.</Hint>}
-
-      <div className="seg cf-frames" role="radiogroup" aria-label={special ? 'Your event special frames' : 'Your frames'}>
-        {frames.map((f) => (
-          <button key={f.id} type="button" role="radio" aria-checked={frame?.id === f.id} className="seg-o" disabled={!!busy}
-            onClick={() => { setSelected(f.id); setPreviewId(null); setRenameDraft(null); setNameErr(''); }}>{f.name.toUpperCase()}{customEnabled(f.id) ? '' : ' (OFF)'}</button>
-        ))}
-        <button type="button" className="btn ghost" disabled={!!busy} onClick={() => { setShowNew((v) => !v); setNameErr(''); }}><Icon name="frame" />NEW FRAME</button>
-      </div>
-      {frames.length === 0 && !showNew && <Hint>{special ? 'You have no event special frame yet.' : 'You have not made a frame yet.'} Press NEW FRAME to start.</Hint>}
-
-      {showNew && (
-        <div className="cf-new">
-          <label className={nameErr ? 'field has-err' : 'field'}>
-            <span className="field-top"><span className="field-l">NEW FRAME NAME</span><span className="field-n">{newName.trim().length}/{NAME_MAX}</span></span>
-            <input className="adm-in" value={newName} placeholder={special ? 'E.G. ANNIVERSARY NIGHT' : 'E.G. SUMMER PARTY'} aria-invalid={nameErr ? true : undefined} onChange={(e) => { setNewName(e.target.value); setNameErr(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') void create(); }} />
-            {nameErr && <small className="field-err" role="alert">{nameErr}</small>}
-          </label>
-          <div className="test-actions">
-            <button type="button" className="btn" disabled={!!busy} onClick={() => void create()}>CREATE FRAME</button>
-            <button type="button" className="btn ghost" disabled={!!busy} onClick={() => { setShowNew(false); setNewName(''); setNameErr(''); }}>CANCEL</button>
-          </div>
-        </div>
-      )}
-
       {frame && rec && (
         <div className="cf-frame" data-custom-frame={frame.id}>
+          {onBack && <div className="cf-back"><button type="button" className="btn ghost" disabled={!!busy} onClick={onBack}><Icon name="back" />BACK TO GRID</button></div>}
           <div className="cf-head">
             <div className="lv-thumb cf-thumb">
               {offered.length > 0 ? <FramePreview frameId={frame.id} layoutId={offered[0]} /> : <div className="cf-none" aria-hidden="true">NO PICTURES YET</div>}
@@ -407,7 +382,72 @@ function CustomFrames({ notify, s, kind }: AdminCtx & { kind: Kind }) {
   );
 }
 
-const KEYWORDS = ['toggle', 'on', 'off', 'switch', 'enable', 'disable', 'custom', 'own', 'upload', 'png', 'picture', 'image', 'artwork', 'frame', 'frames', 'transparent', 'window', 'windows', 'holes', 'new frame', 'rename', 'delete', 'remove', 'replace', 'preview'];
+function CustomFrames({ notify, s }: AdminCtx) {
+  useSyncExternalStore(subscribeCustom, customVersion, customVersion); // re-render on every registry change
+  const frames = customFrameDefs().filter((f) => !customIsSpecial(f.id)); // normal own frames only: event frames live in their event's group (EventFramesSection)
+  const [selected, setSelected] = useState<string | null>(null);
+  const frame = frames.find((f) => f.id === selected) ?? frames[0] ?? null;
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [nameErr, setNameErr] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [editorBusy, setEditorBusy] = useState(false); // the open frame is saving: the list waits, as before the editor was split out
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+
+  const status = getCustomStatus();
+  if (status === 'unavailable') return <Hint>{MESSAGES.unavailable}</Hint>;
+  if (status === 'idle' || status === 'loading') return <Hint>Loading your frames.</Hint>;
+  const wait = !!busy || editorBusy;
+
+  const create = async () => {
+    const name = cleanName(newName);
+    if (!name) { setNameErr(`Type a name for the frame, up to ${NAME_MAX} characters.`); return; }
+    setBusy('frame'); setNameErr('');
+    try {
+      const r = await createCustomFrame(name);
+      if (!alive.current) return;
+      if (!r.ok) { setNameErr(r.message); notify('error', 'FRAME NOT CREATED'); return; }
+      setSelected(r.value.id); setNewName(''); setShowNew(false);
+      notify('success', `FRAME ${r.value.name.toUpperCase()} CREATED. NOW ADD ITS PICTURES`);
+    } finally { if (alive.current) setBusy(null); }
+  };
+
+  return (
+    <>
+      <Hint>Add your own frame designs. For each layout you want to offer, upload one picture with see-through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself.</Hint>
+      <SpecHints />
+
+      <div className="seg cf-frames" role="radiogroup" aria-label="Your frames">
+        {frames.map((f) => (
+          <button key={f.id} type="button" role="radio" aria-checked={frame?.id === f.id} className="seg-o" disabled={wait}
+            onClick={() => { setSelected(f.id); setNameErr(''); }}>{f.name.toUpperCase()}{customEnabled(f.id) ? '' : ' (OFF)'}</button>
+        ))}
+        <button type="button" className="btn ghost" disabled={wait} onClick={() => { setShowNew((v) => !v); setNameErr(''); }}><Icon name="frame" />NEW FRAME</button>
+      </div>
+      {frames.length === 0 && !showNew && <Hint>You have not made a frame yet. Press NEW FRAME to start.</Hint>}
+
+      {showNew && (
+        <div className="cf-new">
+          <label className={nameErr ? 'field has-err' : 'field'}>
+            <span className="field-top"><span className="field-l">NEW FRAME NAME</span><span className="field-n">{newName.trim().length}/{NAME_MAX}</span></span>
+            <input className="adm-in" value={newName} placeholder="E.G. SUMMER PARTY" aria-invalid={nameErr ? true : undefined} onChange={(e) => { setNewName(e.target.value); setNameErr(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void create(); }} />
+            {nameErr && <small className="field-err" role="alert">{nameErr}</small>}
+          </label>
+          <div className="test-actions">
+            <button type="button" className="btn" disabled={wait} onClick={() => void create()}>CREATE FRAME</button>
+            <button type="button" className="btn ghost" disabled={wait} onClick={() => { setShowNew(false); setNewName(''); setNameErr(''); }}>CANCEL</button>
+          </div>
+        </div>
+      )}
+
+      {frame && <FrameEditor key={frame.id} frameId={frame.id} s={s} notify={notify} onDeleted={() => setSelected(null)} onBusyChange={setEditorBusy} />}
+    </>
+  );
+}
+
+export const KEYWORDS = ['toggle', 'on', 'off', 'switch', 'enable', 'disable', 'custom', 'own', 'upload', 'png', 'picture', 'image', 'artwork', 'frame', 'frames', 'transparent', 'window', 'windows', 'holes', 'new frame', 'rename', 'delete', 'remove', 'replace', 'preview'];
 
 /** ADMIN > Frames: your own (normal) frames. Each has an ON/OFF switch. */
 export const customFramesCard: CardDef = {
@@ -415,14 +455,5 @@ export const customFramesCard: CardDef = {
   title: 'Your own frames',
   description: 'Upload your own frame pictures. Guests pick them like the built in frames; switch each one on or off.',
   keywords: KEYWORDS,
-  render: (c) => <CustomFrames {...c} kind="normal" />
-};
-
-/** ADMIN > Events (first card): event special frames, uploaded the same way, kept in their own list. */
-export const specialFramesCard: CardDef = {
-  id: 'events-special-frames',
-  title: 'Event special frames',
-  description: 'Upload frames made for this event and switch each one on or off for guests.',
-  keywords: ['event special', 'special frames', 'special', 'event frame', ...KEYWORDS],
-  render: (c) => <CustomFrames {...c} kind="special" />
+  render: (c) => <CustomFrames {...c} />
 };

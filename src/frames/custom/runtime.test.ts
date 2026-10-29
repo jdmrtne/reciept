@@ -140,6 +140,39 @@ describe('runtime registry', () => {
     off(); fn.mockClear(); await rt.renameCustomFrame(id, 'B');
     expect(fn).not.toHaveBeenCalled();
   });
+  it('event frame groups: a frame is created inside an event, can be moved, and the group helpers see it', async () => {
+    const { framesOfEvent, unassignedSpecialFrames } = await import('./groups');
+    await rt.initCustomFrames();
+    const a = await rt.createCustomFrame('Gala A', true, 'event-1'), b = await rt.createCustomFrame('Gala B', true, 'event-2'), old = await rt.createCustomFrame('Old', true);
+    if (!a.ok || !b.ok || !old.ok) throw new Error('create');
+    expect(rt.customRecord(a.value.id)?.eventId).toBe('event-1');
+    expect(rt.customIsSpecial(a.value.id)).toBe(true); // stays special so every guest-side rule keeps working
+    expect(framesOfEvent(rt.customRecords(), 'event-1').map((f) => f.name)).toEqual(['Gala A']);
+    expect(unassignedSpecialFrames(rt.customRecords(), ['event-1', 'event-2']).map((f) => f.name)).toEqual(['Old']);
+    const seen = vi.fn(); rt.subscribeCustom(seen);
+    const moved = await rt.setCustomFrameEvent(old.value.id, 'event-1');
+    expect(moved.ok).toBe(true); expect(seen).toHaveBeenCalled();
+    expect(framesOfEvent(rt.customRecords(), 'event-1').map((f) => f.name)).toEqual(['Gala A', 'Old']);
+    expect(framesOfEvent(rt.customRecords(), 'event-2').map((f) => f.name)).toEqual(['Gala B']);
+    expect(await rt.setCustomFrameEvent('custom-nope', 'event-1')).toMatchObject({ ok: false, reason: 'missing' });
+  });
+  it('moving a frame to an event keeps its pictures and its object URLs (nothing is re-created)', async () => {
+    await rt.initCustomFrames();
+    const id = await mk('Keep', ['single']);
+    const before = created.length;
+    await rt.setCustomFrameEvent(id, 'event-1');
+    expect(created.length).toBe(before); expect(rt.customLayouts(id)).toEqual(['single']);
+  });
+  it('a frame is still offered to guests on its layouts by its own switch only, whatever its event', async () => {
+    await rt.initCustomFrames();
+    const f = await rt.createCustomFrame('Gala', true, 'event-1'); if (!f.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(f.value.id, 'single', art());
+    expect(framesForLayout('single').map((x) => x.id)).toContain(f.value.id);
+    expect(rt.customEnabled(f.value.id)).toBe(true);
+    await rt.setCustomEnabled(f.value.id, false);
+    expect(rt.customEnabled(f.value.id)).toBe(false);
+    expect(rt.customLayouts(f.value.id)).toEqual(['single']); // hidden, pictures kept
+  });
   it('IndexedDB unavailable: feature off, status says so, nothing throws, built-ins unchanged', async () => {
     delete (globalThis as any).indexedDB; store.resetStore();
     await rt.initCustomFrames();

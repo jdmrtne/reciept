@@ -49,7 +49,7 @@ export const draftsEqual = (a: EventDraft, b: EventDraft): boolean =>
 /** Number of characters that count toward the limit: the trimmed text (edge spaces are not saved). */
 export const textLength = (raw: string): number => finalText(raw, Infinity).length;
 
-function checkLine(raw: string, required = false): string | undefined {
+export function checkLine(raw: string, required = false): string | undefined {
   if (required && !raw.trim()) return 'REQUIRED';
   const bad = unsupportedChars(raw);
   if (bad.length) return `CANNOT BE PRINTED: ${bad.join(' ')} \u2014 REMOVE ${bad.length === 1 ? 'IT' : 'THEM'}`;

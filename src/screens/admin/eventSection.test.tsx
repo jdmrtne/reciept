@@ -34,8 +34,8 @@ const two = (): BoothSettings => {
 };
 
 describe('the Events section is part of the existing settings map', () => {
-  it('is registered with four cards (the event special frames card sits before the preview), and ids stay unique across the whole map', () => {
-    expect(section.cards.map((c) => c.id)).toEqual(['events-special-frames', 'events-list', 'events-edit', 'events-preview']);
+  it('is registered with four cards (the Event frames group card sits right under the event list), and ids stay unique across the whole map', () => {
+    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-edit', 'events-preview']);
     const all = SECTIONS.flatMap((s) => s.cards.map((c) => c.id));
     expect(new Set(all).size).toBe(all.length);
     expect(SECTIONS.map((s) => s.id)).toEqual(expect.arrayContaining(['events', 'printer', 'quality', 'sharing', 'appearance', 'security']));
@@ -75,7 +75,9 @@ describe('event list', () => {
     expect(h).toContain('#event-1');
     expect(h).toContain('#event-2');
     expect((h.match(/>ACTIVE</g) ?? []).length).toBe(1);
-    for (const l of ['NEW EVENT', 'MAKE ACTIVE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(button(h, l), l).not.toBe('');
+    for (const l of ['CREATE', 'MAKE ACTIVE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(button(h, l), l).not.toBe('');
+    expect(h).toContain('NEW EVENT NAME');
+    expect(button(h, 'NEW EVENT')).toBe(''); // the old one-press NEW EVENT button is gone: an event is created by typing its name
   });
   it('two events with the same name are listed separately, told apart by id', () => {
     let s = addEventProfile(two(), { name: 'WEDDING' }, false);
@@ -102,13 +104,13 @@ describe('event list', () => {
     expect(disabled(h, 'MAKE ACTIVE')).toBe(false);
     expect(disabled(h, 'DELETE')).toBe(false);
     expect(disabled(h, 'DUPLICATE')).toBe(false);
-    expect(disabled(h, 'NEW EVENT')).toBe(false);
+    expect(disabled(h, 'CREATE')).toBe(false);
   });
-  it('at the profile limit, NEW EVENT and DUPLICATE are off and the limit is explained', () => {
+  it('at the profile limit, CREATE and DUPLICATE are off and the limit is explained', () => {
     let s = mergeSettings({});
     while (s.events.length < EVENT_LIMITS.maxEvents) s = addEventProfile(s, {}, false);
     const h = decode(card('events-list', s));
-    expect(disabled(h, 'NEW EVENT')).toBe(true);
+    expect(disabled(h, 'CREATE')).toBe(true);
     expect(disabled(h, 'DUPLICATE')).toBe(true);
     expect(h).toContain(`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS`);
   });
@@ -117,8 +119,13 @@ describe('event list', () => {
     eventEditorStore.select('event-2');
     eventEditorStore.edit(s, { name: 'CHANGED' });
     const h = decode(card('events-list', s));
-    for (const l of ['NEW EVENT', 'MAKE ACTIVE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(disabled(h, l), l).toBe(true);
+    for (const l of ['CREATE', 'MAKE ACTIVE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(disabled(h, l), l).toBe(true);
     expect(h).toContain('SAVE OR CANCEL YOUR CHANGES FIRST');
+  });
+  it('says DUPLICATE copies the text only (frames are not copied) and that CREATE makes an inactive event with just a name', () => {
+    const h = decode(card('events-list', two()));
+    expect(h).toContain('DUPLICATE copies the event text only. The frames are not copied');
+    expect(h).toContain('CREATE makes a new event with just a name. It is not active.');
   });
   it('explains that MAKE ACTIVE applies to the next customer only', () => {
     expect(decode(card('events-list', two()))).toContain('NEXT customer');

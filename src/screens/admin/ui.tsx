@@ -50,6 +50,15 @@ export function SwitchRow({ label, hint, checked, onChange, disabled }: { label:
   );
 }
 
+/** SHOWN / HIDDEN switch for one tile (ADMIN > Frames grid and the event frame groups). SwitchRow above is the ON / OFF row version. */
+export function Switch({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} className="switch" disabled={disabled} onClick={() => onChange(!checked)}>
+      <i aria-hidden="true" /><b>{checked ? 'SHOWN' : 'HIDDEN'}</b>
+    </button>
+  );
+}
+
 export interface Choice<T extends string | number> { value: T; label: string; icon?: string }
 
 /** Pick one of a few. Replaces the old "+ cycles through the list" rows (PAPER, PRESET, DITHER). `value` null = none selected (e.g. CUSTOM tuning). */

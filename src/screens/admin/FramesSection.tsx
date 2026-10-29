@@ -2,7 +2,7 @@ import { FramePreview } from '../../frames/FrameLayer';
 import { FRAMES, isImageFrame } from '../../frames/registry';
 import { hideableFrames, setHidden } from '../../frames/visibility';
 import type { FrameDef } from '../../frames/types';
-import { Hint } from './ui';
+import { Hint, Switch } from './ui';
 import { customFramesCard } from './CustomFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
@@ -13,14 +13,6 @@ const GROUPS: { id: string; title: string; frames: FrameDef[] }[] = [
 ];
 /** One standard layout for every thumbnail, so frames are compared like for like. */
 const PREVIEW_LAYOUT = 'strip-3';
-
-function Switch({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} className="switch" disabled={disabled} onClick={() => onChange(!checked)}>
-      <i aria-hidden="true" /><b>{checked ? 'SHOWN' : 'HIDDEN'}</b>
-    </button>
-  );
-}
 
 function Frames({ s, set }: AdminCtx) {
   const hidden = s.frameVisibility.hidden;
@@ -72,7 +64,7 @@ export const framesSection: SectionDef = {
   id: 'frames',
   label: 'Frames',
   icon: 'frame',
-  description: 'Choose which frame designs customers can pick, and add your own. Event special frames are in ADMIN \u203A Events.',
+  description: 'Choose which frame designs customers can pick, and add your own. Event frames are in ADMIN \u203A Events.',
   cards: [
     { id: 'frames-visibility', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
       keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...POOL.map((f) => f.name.toLowerCase())],

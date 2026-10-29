@@ -66,6 +66,40 @@ describe('custom frame store', () => {
   });
 });
 
+describe('event frame groups: eventId', () => {
+  it('createFrame keeps the event id on a special frame; without it nothing is added (old shape)', async () => {
+    const a = await store.createFrame('Gala', 1, true, 'event-2'), b = await store.createFrame('Plain', 2), c = await store.createFrame('Legacy', 3, true);
+    expect(a.ok && a.value).toMatchObject({ special: true, eventId: 'event-2' });
+    expect(b.ok && 'eventId' in b.value).toBe(false);
+    expect(c.ok && 'eventId' in c.value).toBe(false);
+    const got = await store.getFrameRecord(a.ok ? a.value.id : '');
+    expect(got.ok && got.value.eventId).toBe('event-2');
+  });
+  it('a normal frame never gets an event id, even if one is passed', async () => {
+    const r = await store.createFrame('Own', 1, false, 'event-1');
+    expect(r.ok && 'eventId' in r.value).toBe(false);
+  });
+  it('setEventId moves a frame into an event, out again with null, and keeps its pictures', async () => {
+    const f = await store.createFrame('Old special', 1, true); if (!f.ok) throw 0;
+    await store.setLayoutArt(f.value.id, 'single', art(4));
+    const moved = await store.setEventId(f.value.id, 'event-3');
+    expect(moved.ok && moved.value.eventId).toBe('event-3');
+    expect(moved.ok && moved.value.layouts.single!.blob.size).toBe(4);
+    const out = await store.setEventId(f.value.id, null);
+    expect(out.ok && 'eventId' in out.value).toBe(false);
+    expect(await store.setEventId('custom-nope', 'event-1')).toMatchObject({ ok: false, reason: 'missing' });
+  });
+  it('an old record saved before groups (no eventId) is still read, listed and edited', async () => {
+    await store.listFrames(); // opens the fake database
+    (idb as any).db.data.set('custom-legacy', { id: 'custom-legacy', name: 'From before', createdAt: 1, updatedAt: 1, layouts: {}, special: true });
+    const list = await store.listFrames();
+    expect(list.ok && list.value.map((x) => x.name)).toEqual(['From before']);
+    expect(store.isFrameRecord((idb as any).db.data.get('custom-legacy'))).toBe(true);
+    const r = await store.renameFrame('custom-legacy', 'Renamed');
+    expect(r.ok && r.value).toMatchObject({ name: 'Renamed', special: true });
+  });
+});
+
 describe('failures give readable messages', () => {
   it('IndexedDB missing: unavailable, never throws', async () => {
     delete (globalThis as any).indexedDB;

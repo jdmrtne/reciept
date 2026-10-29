@@ -14,10 +14,13 @@ import {
 } from '../../config/settings';
 import { DEFAULT_THANK_YOU, finalText } from '../../config/events';
 import { FRAMES, isImageFrame } from '../../frames/registry';
+import { customRecords, customVersion, deleteCustomFrame, initCustomFrames, subscribeCustom } from '../../frames/custom/runtime';
+import { framesOfEvent } from '../../frames/custom/groups';
 import { makeEventCtx } from '../../frames/prims';
 import { buildSnapshot } from '../../editor/model';
 import { canvasToBlob, renderPreview } from '../../render/render';
 import {
+  checkLine,
   commitSave,
   currentDraft,
   draftPreviewProfile,
@@ -30,7 +33,7 @@ import {
   type EditorState
 } from './eventEditor';
 import { ConfirmDialog, Hint, SwitchRow, TextField } from './ui';
-import { specialFramesCard } from './CustomFramesSection';
+import { eventFramesCard } from './EventFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
 /**
@@ -51,24 +54,35 @@ function useOnce() {
 
 type Ask = { kind: 'delete' | 'reset' | 'switch'; id: string };
 
+/** The question before an event is deleted. Says what happens to its frames when it has any. */
+export const deleteBody = (eventName: string, frameCount: number): string =>
+  `"${eventName}" and its receipt text will be removed.${frameCount === 0 ? '' : frameCount === 1 ? ' This event has 1 frame. It will be deleted with it.' : ` This event has ${frameCount} frames. They will be deleted with it.`} This cannot be undone.`;
+
 // ------------------------------------------------------------------ list + actions
 
 function EventList(c: AdminCtx) {
   const { s, notify, busy } = c;
   const st = useEditor(), once = useOnce();
+  useSyncExternalStore(subscribeCustom, customVersion, customVersion); // the frame count in the delete question follows the registry
   const [ask, setAsk] = useState<Ask | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newErr, setNewErr] = useState('');
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => { eventEditorStore.reconcile(s); }, [s.events]); // a profile that no longer exists cannot stay selected
   const profile = selectedProfile(s, st), dirty = isDirty(s, st);
   const isActive = profile.id === s.activeEventId, del = canDeleteEvent(s, profile.id);
   const full = s.events.length >= EVENT_LIMITS.maxEvents;
-  const locked = busy || dirty; // profile-level actions wait until the open edit is saved or cancelled
+  const locked = busy || dirty || deleting; // profile-level actions wait until the open edit is saved or cancelled
 
   const select = (id: string) => { if (id === profile.id) return; if (dirty) setAsk({ kind: 'switch', id }); else eventEditorStore.select(id); };
+  // The owner types only the NAME. That creates the event (not active) and selects it; its text is edited, and its frames added, in the cards below.
   const create = () => once(() => {
-    const next = addEventProfile(s, { name: 'NEW EVENT' }, false);
+    const problem = !newName.trim() ? 'TYPE A NAME FOR THE EVENT' : checkLine(newName);
+    if (problem) { setNewErr(problem); return; }
+    const next = addEventProfile(s, { name: finalText(newName) }, false);
     const made = next.events.find((e) => !s.events.some((o) => o.id === e.id));
     if (!made) { notify('error', `THE LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS IS REACHED \u2014 DELETE ONE FIRST`); return; }
-    if (apply(c, next)) { eventEditorStore.select(made.id); notify('success', 'NEW EVENT CREATED \u2014 EDIT IT BELOW. IT IS NOT ACTIVE YET'); }
+    if (apply(c, next)) { eventEditorStore.select(made.id); setNewName(''); setNewErr(''); notify('success', `EVENT ${nameOf(made.name)} CREATED. ADD ITS FRAMES BELOW. IT IS NOT ACTIVE YET`); }
   });
   const duplicate = () => once(() => {
     const next = duplicateEventProfile(s, profile.id);
@@ -81,12 +95,22 @@ function EventList(c: AdminCtx) {
     if (next.activeEventId !== profile.id) { notify('error', 'THAT EVENT NO LONGER EXISTS'); return; }
     if (apply(c, next)) notify('success', `ACTIVE EVENT: ${nameOf(profile.name)}. THE NEXT CUSTOMER USES IT`);
   });
-  const remove = () => once(() => {
-    const next = deleteEventProfile(s, ask?.id ?? profile.id);
+  // Frames first, then the event. If any frame refuses to go, nothing more is deleted and the event stays (its remaining frames are still its own).
+  const remove = async () => {
+    if (deleting) return;
+    const id = ask?.id ?? profile.id;
     setAsk(null);
+    const next = deleteEventProfile(s, id);
     if (next === s) { notify('error', 'THIS EVENT CANNOT BE DELETED'); return; }
-    if (apply(c, next)) { eventEditorStore.select(next.activeEventId); notify('success', 'EVENT DELETED'); }
-  });
+    setDeleting(true);
+    try {
+      await initCustomFrames(); // no-op once loaded; makes sure the frame list is complete before it is used
+      for (const f of framesOfEvent(customRecords(), id)) {
+        if (!(await deleteCustomFrame(f.id)).ok) { notify('error', 'A FRAME COULD NOT BE DELETED, SO THE EVENT WAS KEPT. TRY AGAIN'); return; }
+      }
+      if (apply(c, next)) { eventEditorStore.select(next.activeEventId); notify('success', 'EVENT DELETED'); }
+    } finally { setDeleting(false); }
+  };
   const reset = () => once(() => {
     const id = ask?.id ?? profile.id;
     setAsk(null);
@@ -113,8 +137,16 @@ function EventList(c: AdminCtx) {
           </li>
         ))}
       </ul>
+      <div className="ev-new">
+        <label className={newErr ? 'field has-err' : 'field'}>
+          <span className="field-top"><span className="field-l">NEW EVENT NAME</span><span className={newErr ? 'field-n bad' : 'field-n'}>{textLength(newName)}/{EVENT_LIMITS.lineMax}</span></span>
+          <input className="adm-in" value={newName} placeholder="E.G. ANNIVERSARY NIGHT" disabled={locked || full} aria-invalid={newErr ? true : undefined} onChange={(e) => { setNewName(e.target.value); setNewErr(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !locked && !full) create(); }} />
+          {newErr && <small className="field-err" role="alert">{newErr}</small>}
+        </label>
+        <button type="button" className="btn" disabled={locked || full} onClick={create}><Icon name="sticker" />CREATE</button>
+      </div>
       <div className="test-actions ev-actions">
-        <button type="button" className="btn ghost" disabled={locked || full} onClick={create}><Icon name="sticker" />NEW EVENT</button>
         <button type="button" className="btn" disabled={locked || isActive} onClick={activate}><Icon name="check" />MAKE ACTIVE</button>
         <button type="button" className="btn ghost" disabled={locked || full} onClick={duplicate}><Icon name="copy" />DUPLICATE</button>
         <button type="button" className="btn ghost" disabled={locked} onClick={() => setAsk({ kind: 'reset', id: profile.id })}><Icon name="reset" />RESET TEXT</button>
@@ -122,14 +154,16 @@ function EventList(c: AdminCtx) {
       </div>
       {why && <Hint>{why}</Hint>}
       {full && <Hint>{`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS REACHED.`}</Hint>}
+      <Hint>CREATE makes a new event with just a name. It is not active. Add its frames in the Event frames card below, and its text in Event text.</Hint>
       <Hint>MAKE ACTIVE decides what the NEXT customer gets. A customer who already started keeps the event text they started with.</Hint>
+      <Hint>DUPLICATE copies the event text only. The frames are not copied, so add them again in the copy.</Hint>
 
       {ask?.kind === 'switch' && (
         <ConfirmDialog title="UNSAVED CHANGES" body="You changed this event but did not save. Switching to another event throws those changes away." confirmLabel="DISCARD AND SWITCH" cancelLabel="KEEP EDITING"
           danger onCancel={() => setAsk(null)} onConfirm={() => { eventEditorStore.select(ask.id); setAsk(null); }} />
       )}
       {ask?.kind === 'delete' && (
-        <ConfirmDialog title="DELETE THIS EVENT?" body={`"${nameOf(s.events.find((e) => e.id === ask.id)?.name ?? '')}" and its receipt text will be removed. This cannot be undone.`} confirmLabel="DELETE" danger onCancel={() => setAsk(null)} onConfirm={remove} />
+        <ConfirmDialog title="DELETE THIS EVENT?" body={deleteBody(nameOf(s.events.find((e) => e.id === ask.id)?.name ?? ''), framesOfEvent(customRecords(), ask.id).length)} confirmLabel="DELETE" danger onCancel={() => setAsk(null)} onConfirm={() => void remove()} />
       )}
       {ask?.kind === 'reset' && (
         <ConfirmDialog title="RESET THE TEXT?" body={`Name, header, details, thank-you and branding of "${nameOf(s.events.find((e) => e.id === ask.id)?.name ?? '')}" go back to the defaults. The event keeps its place in the list.${ask.id === s.activeEventId ? ' It is the ACTIVE event, so the next customer gets the default text.' : ''}`} confirmLabel="RESET" danger onCancel={() => setAsk(null)} onConfirm={reset} />
@@ -258,10 +292,10 @@ export const eventsSection: SectionDef = {
   id: 'events',
   label: 'Events',
   icon: 'sticker',
-  description: 'The text printed on every receipt, which event the next customer gets, and your own event special frames.',
+  description: 'The text printed on every receipt, which event the next customer gets, and each event\u2019s own frames.',
   cards: [
-    specialFramesCard, // first: the owner's own event special frames sit on top of the page
-    { id: 'events-list', title: 'Events', description: 'Pick an event to edit, make one active, add, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
+    { id: 'events-list', title: 'Events', description: 'Type a name to create an event, pick one to edit, make one active, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'create', 'create event', 'event name', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
+    eventFramesCard, // the frame group of the event picked in the list above
     { id: 'events-edit', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
     { id: 'events-preview', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
   ]

@@ -112,10 +112,10 @@ export async function getFrameRecord(id: string): Promise<StoreResult<CustomFram
   return isFrameRecord(r.value) ? ok(r.value) : bad('invalid');
 }
 
-export async function createFrame(name: string, now: number = Date.now(), special = false): Promise<StoreResult<CustomFrameDef>> {
+export async function createFrame(name: string, now: number = Date.now(), special = false, eventId?: string): Promise<StoreResult<CustomFrameDef>> {
   const clean = cleanName(name);
   if (!clean) return bad('invalid', 'Give the frame a name.');
-  const def: CustomFrameDef = { id: newFrameId(), name: clean, createdAt: now, updatedAt: now, layouts: {}, ...(special ? { special: true } : {}) };
+  const def: CustomFrameDef = { id: newFrameId(), name: clean, createdAt: now, updatedAt: now, layouts: {}, ...(special ? { special: true } : {}), ...(special && eventId ? { eventId } : {}) };
   const r = await run<CustomFrameDef>('readwrite', (s, done, fail) => { const q = s.add(def); onErr(q, fail); q.onsuccess = () => done(def); });
   return r;
 }
@@ -140,6 +140,9 @@ export const renameFrame = (id: string, name: string): Promise<StoreResult<Custo
 };
 /** The owner's ON/OFF switch for guests. The pictures are untouched. */
 export const setEnabled = (id: string, enabled: boolean): Promise<StoreResult<CustomFrameDef>> => updateFrame(id, (f) => ({ ...f, enabled }));
+/** Move a frame into an event group (or out of any group with null). The pictures are untouched. */
+export const setEventId = (id: string, eventId: string | null): Promise<StoreResult<CustomFrameDef>> =>
+  updateFrame(id, (f) => { const { eventId: _old, ...rest } = f; return eventId ? { ...rest, eventId } : rest; });
 export const setLayoutArt = (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt): Promise<StoreResult<CustomFrameDef>> =>
   updateFrame(id, (f) => ({ ...f, layouts: { ...f.layouts, [layoutId]: { ...art, rev: newRev() } } }));
 /** Phase 5: set or clear (null) the QR spot of ONE layout. The picture, its `rev` and its blob stay exactly as stored, so nothing is re-decoded. A layout without art is `missing`. */

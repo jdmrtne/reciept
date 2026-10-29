@@ -82,6 +82,8 @@ export const customFrameById = (id: string | null | undefined): FrameDef | undef
 /** An event special frame (ADMIN > Events) as opposed to a normal own frame (ADMIN > Frames). */
 export const customIsSpecial = (id: string): boolean => entries.get(id)?.def.special === true;
 export const customEnabled = (id: string): boolean => entries.get(id)?.def.enabled !== false;
+/** Every stored frame record in creation order (the pure helpers in groups.ts take these). */
+export const customRecords = (): CustomFrameDef[] => [...entries.values()].map((e) => e.def).sort((a, b) => a.createdAt - b.createdAt);
 export const customRecord = (id: string): CustomFrameDef | undefined => entries.get(id)?.def;
 export const customLayouts = (id: string): CustomLayoutId[] => { const e = entries.get(id); return e ? (Object.keys(e.urls) as CustomLayoutId[]) : []; };
 /** A layout is offered only when the frame has art for it AND its object URL exists. */
@@ -99,7 +101,9 @@ async function apply(r: StoreResult<CustomFrameDef>): Promise<StoreResult<Custom
   if (r.ok) { install(r.value); bump(); void store.requestPersistence().then((p) => { if (p !== persisted) { persisted = p; bump(); } }); }
   return r;
 }
-export const createCustomFrame = async (name: string, special = false) => apply(await store.createFrame(name, Date.now(), special));
+export const createCustomFrame = async (name: string, special = false, eventId?: string) => apply(await store.createFrame(name, Date.now(), special, eventId));
+/** Event frame groups: move a frame into an event (null = no event). Memory changes only after the store accepted it. */
+export const setCustomFrameEvent = async (id: string, eventId: string | null) => apply(await store.setEventId(id, eventId));
 export const setCustomEnabled = async (id: string, enabled: boolean) => apply(await store.setEnabled(id, enabled));
 export const renameCustomFrame = async (id: string, name: string) => apply(await store.renameFrame(id, name));
 export const setCustomLayoutArt = async (id: string, layoutId: CustomLayoutId, art: CustomLayoutArt) => apply(await store.setLayoutArt(id, layoutId, art));
