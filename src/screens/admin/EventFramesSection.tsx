@@ -201,7 +201,7 @@ function EventFramesBody({ s, notify, eventId, eventName }: AdminCtx & { eventId
 
 /** ADMIN > Events (second card): the frame group of the selected event. */
 export const eventFramesCard: CardDef = {
-  id: 'events-frames',
+  id: 'events-frames', tab: 'uploads',
   title: 'Event frames',
   description: 'The frames of the event picked above. Add pictures and switch each frame on or off for guests.',
   keywords: ['event special', 'special frames', 'special', 'event frame', 'event frames', 'frame group', 'group', 'add frame', 'grid', 'shown', 'hidden', 'show all', 'hide all', 'unassigned', 'move', ...KEYWORDS],

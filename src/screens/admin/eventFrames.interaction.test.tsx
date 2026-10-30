@@ -59,7 +59,9 @@ describe.skipIf(!available)('Events section: frame groups, real interaction', ()
     activeEventId: 'event-1', printer: 'usb', paperWidthMm: 80, share: { enabled: true, publicBaseUrl: 'https://booth.example.com' }
   }));
   const saved = () => JSON.parse(localStorage.getItem(KEY)!);
-  const mount = () => RTL.render(<AdminPanel onChangePin={noop} initialSection="events" />);
+  // Events has sub-tabs; these tests are about the frame group, which lives in Uploads & Media. The Event List tab is visited first so it stays mounted (hidden) for the steps that pick an event.
+  const tab = (name: string) => RTL.fireEvent.click(RTL.screen.getByRole('tab', { name: new RegExp(`^${name}`) }));
+  const mount = () => { const r = RTL.render(<AdminPanel onChangePin={noop} initialSection="events" />); tab('Uploads & Media'); return r; };
   const label = (el: Element) => el.textContent?.replace(/\s+/g, ' ').trim();
   const btn = (name: string) => { const b = RTL.screen.getAllByRole('button').find((x: HTMLElement) => label(x) === name); if (!b) throw new Error(`no button "${name}"`); return b as HTMLButtonElement; };
   const maybeBtn = (name: string) => RTL.screen.queryAllByRole('button').find((x: HTMLElement) => label(x) === name) as HTMLButtonElement | undefined;
@@ -74,8 +76,10 @@ describe.skipIf(!available)('Events section: frame groups, real interaction', ()
 
   it('CREATE with just a name makes a new, inactive, selected event whose group is empty', () => {
     seed(); mount();
+    tab('Event List');
     type(input('E.G. ANNIVERSARY NIGHT'), 'Gala Night');
     click(btn('CREATE'));
+    tab('Uploads & Media');
     expect(saved().events.map((e: { name: string }) => e.name)).toEqual(['WEDDING', 'BIRTHDAY', 'Gala Night']);
     expect(saved().activeEventId).toBe('event-1');
     expect(document.querySelector('.lv-h')?.textContent).toContain('FRAME GROUP: GALA NIGHT');
@@ -177,6 +181,7 @@ describe.skipIf(!available)('Events section: frame groups, real interaction', ()
 
   it('deleting an event with frames asks first (naming the count), then deletes its frames and the event; other events keep theirs', async () => {
     seed(); await mk('Cake', 'event-2'); await mk('Toast', 'event-2'); const keep = await mk('Rings', 'event-1'); mount();
+    tab('Event List');
     click(eventItem('BIRTHDAY'));
     click(btn('DELETE'));
     expect(RTL.screen.getByRole('alertdialog').textContent).toContain('This event has 2 frames. They will be deleted with it.');
@@ -191,6 +196,7 @@ describe.skipIf(!available)('Events section: frame groups, real interaction', ()
 
   it('if a frame cannot be deleted, the event is kept and an error says so', async () => {
     seed(); await mk('Cake', 'event-2'); mount();
+    tab('Event List');
     click(eventItem('BIRTHDAY'));
     click(btn('DELETE'));
     idb.inject({ op: 'delete', error: { name: 'UnknownError' }, kind: 'request' });
@@ -202,6 +208,7 @@ describe.skipIf(!available)('Events section: frame groups, real interaction', ()
 
   it('an event without frames deletes exactly as before', async () => {
     seed(); mount();
+    tab('Event List');
     click(eventItem('BIRTHDAY')); click(btn('DELETE'));
     expect(RTL.screen.getByRole('alertdialog').textContent).not.toContain('This event has');
     click(RTL.screen.getAllByRole('button').filter((b: HTMLElement) => label(b) === 'DELETE').at(-1)!);

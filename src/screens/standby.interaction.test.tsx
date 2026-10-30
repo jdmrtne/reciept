@@ -86,7 +86,7 @@ describe.skipIf(!available)('Standby + standby photo: real interaction', () => {
 
   it('REMOVE PHOTO (after confirming) turns the photo off and the saved settings say so', async () => {
     localStorage.setItem(KEY, JSON.stringify({ standbyPhoto: { enabled: true, fit: 'contain', showReceipt: false, version: 4 } }));
-    RTL.render(<AdminPanel onChangePin={noop} initialSection="appearance" />);
+    RTL.render(<AdminPanel onChangePin={noop} initialSection="appearance" initialTab="standby" />);
     const btn = (name: string) => RTL.screen.getAllByRole('button').find((x: HTMLElement) => x.textContent?.replace(/\s+/g, ' ').trim() === name) as HTMLButtonElement;
     RTL.fireEvent.click(btn('REMOVE PHOTO'));
     expect(saved().standbyPhoto.enabled).toBe(true); // nothing happens until the owner confirms

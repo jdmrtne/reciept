@@ -17,12 +17,24 @@ export interface AdminCtx {
   notify: (kind: NoticeKind, text: string) => void;
   clearNotice: () => void;
   actions: { pair: () => void; testPrint: () => void; testShare: () => void; changePin: () => void };
+  /** Jump to another sub-tab of the SAME category (never changes the category, never discards a draft). Absent outside the panel (tests). */
+  goTab?: (tab: string) => void;
 }
 
 export type SectionId = 'events' | 'layouts' | 'frames' | 'frameText' | 'printer' | 'quality' | 'sharing' | 'autosave' | 'appearance' | 'security';
 
+/** One horizontal sub-tab of a category. A category with a single tab shows no tab bar. */
+export interface TabDef {
+  id: string;
+  label: string;
+  /** This tab holds an unsaved draft (event text / frame text): its label gets a marker while the draft is dirty, even when another tab is open. */
+  draft?: 'event' | 'frameText';
+}
+
 export interface CardDef {
   id: string;
+  /** Which of the section's tabs shows this card. */
+  tab: string;
   title: string;
   description?: string;
   /** Extra search terms: every setting label in the card plus plain-language synonyms. */
@@ -38,5 +50,7 @@ export interface SectionDef {
   /** Icon name from components/Icon. */
   icon: string;
   description: string;
+  /** Sub-tabs in display order; the first is the default. Every card names one of them. */
+  tabs: TabDef[];
   cards: CardDef[];
 }

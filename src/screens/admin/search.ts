@@ -8,7 +8,8 @@ const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 export function cardMatches(section: SectionDef, card: CardDef, query: string): boolean {
   const words = norm(query).split(' ').filter(Boolean);
   if (words.length === 0) return true;
-  const hay = norm([card.title, card.description ?? '', section.label, section.description, ...card.keywords].join(' '));
+  const tab = section.tabs.find((x) => x.id === card.tab)?.label ?? '';
+  const hay = norm([card.title, card.description ?? '', section.label, tab, section.description, ...card.keywords].join(' '));
   return words.every((w) => hay.includes(w));
 }
 

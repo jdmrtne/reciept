@@ -65,8 +65,9 @@ export const framesSection: SectionDef = {
   label: 'Frames',
   icon: 'frame',
   description: 'Choose which frame designs customers can pick, and add your own. Event frames are in ADMIN \u203A Events.',
+  tabs: [{ id: 'builtin', label: 'Built-in Frames' }, { id: 'custom', label: 'Custom Frames' }],
   cards: [
-    { id: 'frames-visibility', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
+    { id: 'frames-visibility', tab: 'builtin', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
       keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...POOL.map((f) => f.name.toLowerCase())],
       render: (c) => <Frames {...c} /> },
     customFramesCard

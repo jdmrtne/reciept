@@ -72,8 +72,9 @@ export const layoutsSection: SectionDef = {
   label: 'Layouts',
   icon: 'layout',
   description: 'Choose which strip layouts customers can pick.',
+  tabs: [{ id: 'options', label: 'Layout Options' }],
   cards: [
-    { id: 'layouts-visibility', title: 'Layouts on the picker', description: 'Switch layouts on or off for CHOOSE YOUR STRIP.',
+    { id: 'layouts-visibility', tab: 'options', title: 'Layouts on the picker', description: 'Switch layouts on or off for CHOOSE YOUR STRIP.',
       keywords: ['layout', 'layouts', 'strip', 'choose your strip', 'picker', 'hide', 'show', 'visible', 'single', 'two strip', 'three strip', 'four strip', '2 x 2', 'classic', 'jlc', 'special', 'ncl', 'pass', 'boarding pass', 'group', 'choices', 'options', 'frame layouts', 'show all'],
       render: (c) => <Layouts {...c} /> }
   ]

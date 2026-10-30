@@ -44,9 +44,10 @@ export const qualitySection: SectionDef = {
   label: 'Print quality',
   icon: 'sliders',
   description: 'Paper size and how photos are converted to black-and-white dots. Changes save instantly; print a test page to see them.',
+  tabs: [{ id: 'photo', label: 'Photo Quality' }, { id: 'paper', label: 'Paper & Cutting' }, { id: 'test', label: 'Test Print' }],
   cards: [
-    { id: 'quality-tone', title: 'Photo tone', description: 'Brightness, contrast and dot pattern.', keywords: ['preset', 'photobooth face', 'halftone', 'legacy', 'dither', 'atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'dot size', 'brightness', 'contrast', 'density', 'sharpen', 'auto level', 'too dark', 'too pale', 'image', 'photo'], render: (c) => <Tone {...c} /> },
-    { id: 'quality-paper', title: 'Paper & cutting', description: 'Roll width, margins and what happens after printing.', keywords: ['paper', '58 mm', '80 mm', 'width', 'side margin', 'margin', 'feed lines', 'feed', 'cut', 'cutter', 'roll', 'receipt'], render: (c) => <Paper {...c} /> },
-    { id: 'quality-test', title: 'Test print', description: 'The 1-bit result, exactly as the printer receives it.', aside: true, keywords: ['test print', 'preview', 'test page', 'result'], render: (c) => <TestPrintBody c={c} /> }
+    { id: 'quality-tone', tab: 'photo', title: 'Photo tone', description: 'Brightness, contrast and dot pattern.', keywords: ['preset', 'photobooth face', 'halftone', 'legacy', 'dither', 'atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'dot size', 'brightness', 'contrast', 'density', 'sharpen', 'auto level', 'too dark', 'too pale', 'image', 'photo'], render: (c) => <Tone {...c} /> },
+    { id: 'quality-paper', tab: 'paper', title: 'Paper & cutting', description: 'Roll width, margins and what happens after printing.', keywords: ['paper', '58 mm', '80 mm', 'width', 'side margin', 'margin', 'feed lines', 'feed', 'cut', 'cutter', 'roll', 'receipt'], render: (c) => <Paper {...c} /> },
+    { id: 'quality-test', tab: 'test', title: 'Test print', description: 'The 1-bit result, exactly as the printer receives it.', aside: true, keywords: ['test print', 'preview', 'test page', 'result'], render: (c) => <TestPrintBody c={c} /> }
   ]
 };

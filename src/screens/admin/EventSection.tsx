@@ -82,7 +82,7 @@ function EventList(c: AdminCtx) {
     const next = addEventProfile(s, { name: finalText(newName) }, false);
     const made = next.events.find((e) => !s.events.some((o) => o.id === e.id));
     if (!made) { notify('error', `THE LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS IS REACHED \u2014 DELETE ONE FIRST`); return; }
-    if (apply(c, next)) { eventEditorStore.select(made.id); setNewName(''); setNewErr(''); notify('success', `EVENT ${nameOf(made.name)} CREATED. ADD ITS FRAMES BELOW. IT IS NOT ACTIVE YET`); }
+    if (apply(c, next)) { eventEditorStore.select(made.id); setNewName(''); setNewErr(''); notify('success', `EVENT ${nameOf(made.name)} CREATED. ADD ITS FRAMES IN UPLOADS & MEDIA. IT IS NOT ACTIVE YET`); }
   });
   const duplicate = () => once(() => {
     const next = duplicateEventProfile(s, profile.id);
@@ -153,8 +153,9 @@ function EventList(c: AdminCtx) {
         <button type="button" className="btn ghost" disabled={locked || !del.ok} onClick={() => setAsk({ kind: 'delete', id: profile.id })}><Icon name="trash" />DELETE</button>
       </div>
       {why && <Hint>{why}</Hint>}
+      {dirty && c.goTab && <div className="test-actions"><button type="button" className="btn ghost" onClick={() => c.goTab?.('details')}>GO TO EVENT DETAILS TO SAVE OR CANCEL</button></div>}
       {full && <Hint>{`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS REACHED.`}</Hint>}
-      <Hint>CREATE makes a new event with just a name. It is not active. Add its frames in the Event frames card below, and its text in Event text.</Hint>
+      <Hint>CREATE makes a new event with just a name. It is not active. Add its frames in the Uploads & Media tab, and its text in Event Details.</Hint>
       <Hint>MAKE ACTIVE decides what the NEXT customer gets. A customer who already started keeps the event text they started with.</Hint>
       <Hint>DUPLICATE copies the event text only. The frames are not copied, so add them again in the copy.</Hint>
 
@@ -293,10 +294,11 @@ export const eventsSection: SectionDef = {
   label: 'Events',
   icon: 'sticker',
   description: 'The text printed on every receipt, which event the next customer gets, and each event\u2019s own frames.',
+  tabs: [{ id: 'list', label: 'Event List' }, { id: 'details', label: 'Event Details', draft: 'event' }, { id: 'uploads', label: 'Uploads & Media' }],
   cards: [
-    { id: 'events-list', title: 'Events', description: 'Type a name to create an event, pick one to edit, make one active, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'create', 'create event', 'event name', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
+    { id: 'events-list', tab: 'list', title: 'Events', description: 'Type a name to create an event, pick one to edit, make one active, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'create', 'create event', 'event name', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
     eventFramesCard, // the frame group of the event picked in the list above
-    { id: 'events-edit', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
-    { id: 'events-preview', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
+    { id: 'events-edit', tab: 'details', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
+    { id: 'events-preview', tab: 'details', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
   ]
 };

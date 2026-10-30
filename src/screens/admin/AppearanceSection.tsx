@@ -85,8 +85,9 @@ export const appearanceSection: SectionDef = {
   label: 'Appearance',
   icon: 'contrast',
   description: 'Light or dark look, and the photo guests see on the standby screen.',
+  tabs: [{ id: 'theme', label: 'Theme' }, { id: 'standby', label: 'Standby Screen' }],
   cards: [
-    { id: 'appearance-theme', title: 'Colour scheme', keywords: ['theme', 'dark mode', 'light mode', 'dark', 'light', 'system', 'appearance', 'colour', 'color', 'night', 'display', 'screen'], render: (c) => <Theme {...c} /> },
-    { id: 'appearance-standby', title: 'Standby screen', description: 'Use your own photo as the idle screen.', keywords: ['standby', 'idle', 'wallpaper', 'background', 'photo', 'image', 'picture', 'welcome screen', 'home screen', 'upload', 'cover', 'contain', 'fit', 'tap to start', 'receipt over photo', 'screen saver'], render: (c) => <StandbyScreen {...c} /> }
+    { id: 'appearance-theme', tab: 'theme', title: 'Colour scheme', keywords: ['theme', 'dark mode', 'light mode', 'dark', 'light', 'system', 'appearance', 'colour', 'color', 'night', 'display', 'screen'], render: (c) => <Theme {...c} /> },
+    { id: 'appearance-standby', tab: 'standby', title: 'Standby screen', description: 'Use your own photo as the idle screen.', keywords: ['standby', 'idle', 'wallpaper', 'background', 'photo', 'image', 'picture', 'welcome screen', 'home screen', 'upload', 'cover', 'contain', 'fit', 'tap to start', 'receipt over photo', 'screen saver'], render: (c) => <StandbyScreen {...c} /> }
   ]
 };

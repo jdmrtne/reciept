@@ -59,9 +59,11 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   const type = (el: HTMLInputElement, v: string) => RTL.fireEvent.change(el, { target: { value: v } });
   const click = (el: Element) => RTL.fireEvent.click(el);
   const dialog = () => RTL.screen.queryByRole('alertdialog');
+  /** Events now has sub-tabs (Event List / Event Details / Uploads & Media): open the one a step needs. Visited tabs stay mounted. */
+  const tab = (name: string) => click(RTL.screen.getByRole('tab', { name: new RegExp(`^${name}`) }));
 
   it('typing changes only the draft: the saved event, and so what the next customer gets, is untouched until SAVE', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     expect(btn('SAVE').disabled).toBe(true);
     type(input('MARIA & JOSE'), 'WEDDING 2');
     expect(RTL.screen.getByText('UNSAVED CHANGES')).toBeTruthy();
@@ -70,7 +72,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('SAVE writes the profile, clears the unsaved state and confirms; other settings are untouched', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     type(input('MARIA & JOSE'), 'NEW NAME');
     type(input('WEDDING RECEPTION'), 'NEW HEADER');
     click(btn('SAVE'));
@@ -86,7 +88,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('a double tap on SAVE writes once', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     type(input('MARIA & JOSE'), 'ONCE');
     const spy = vi.spyOn(dom.window.Storage.prototype, 'setItem');
     const save = btn('SAVE');
@@ -95,7 +97,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('CANCEL restores the saved text and writes nothing', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     const before = localStorage.getItem(KEY);
     type(input('MARIA & JOSE'), 'NOPE');
     click(btn('CANCEL'));
@@ -105,7 +107,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('too-long text stays as typed, is flagged, and cannot be saved', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     const long = 'L'.repeat(55);
     type(input('MARIA & JOSE'), long);
     expect(input('MARIA & JOSE').value).toBe(long);
@@ -115,7 +117,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('an empty name is refused; clearing every optional field is fine', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     type(input('MARIA & JOSE'), '');
     expect(RTL.screen.getByText('EVENT NAME IS REQUIRED')).toBeTruthy();
     expect(btn('SAVE').disabled).toBe(true);
@@ -129,7 +131,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
 
   it('switching profiles with unsaved changes asks first: KEEP EDITING stays, DISCARD AND SWITCH drops the draft', () => {
     seed(); mount();
-    type(input('MARIA & JOSE'), 'CHANGED');
+    tab('Event Details'); type(input('MARIA & JOSE'), 'CHANGED'); tab('Event List');
     click(text('BIRTHDAY')[0]);
     expect(dialog()).toBeTruthy();
     click(btn('KEEP EDITING'));
@@ -146,11 +148,12 @@ describe.skipIf(!available)('Events section: real interaction', () => {
     seed(); mount();
     click(text('BIRTHDAY')[0]);
     expect(dialog()).toBeNull();
+    tab('Event Details');
     expect(input('MARIA & JOSE').value).toBe('BIRTHDAY');
   });
 
   it('leaving the section, searching, or pressing EXIT with unsaved changes asks first', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     const reset = vi.spyOn(sessionStore, 'reset').mockImplementation(noop);
     type(input('MARIA & JOSE'), 'CHANGED');
     click(RTL.screen.getAllByRole('button').find((b: HTMLElement) => /Printer/i.test(b.textContent ?? ''))!);
@@ -171,7 +174,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('the browser is asked to confirm closing the page only while there are unsaved changes', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     const fire = () => { const e = new dom.window.Event('beforeunload', { cancelable: true }); dom.window.dispatchEvent(e); return e.defaultPrevented; };
     expect(fire()).toBe(false);
     type(input('MARIA & JOSE'), 'CHANGED');
@@ -182,10 +185,10 @@ describe.skipIf(!available)('Events section: real interaction', () => {
 
   it('an unsaved draft survives the panel being re-mounted (inactivity reset) and is still unsaved', () => {
     seed();
-    const first = mount();
+    const first = mount(); tab('Event Details');
     type(input('MARIA & JOSE'), 'HALF TYPED');
     first.unmount();
-    mount();
+    mount(); tab('Event Details');
     expect(input('MARIA & JOSE').value).toBe('HALF TYPED');
     expect(RTL.screen.getByText('UNSAVED CHANGES')).toBeTruthy();
     expect(saved().events[0].name).toBe('WEDDING');
@@ -199,6 +202,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
     expect(s.events.map((e: { id: string }) => e.id)).toEqual(['event-1', 'event-2', 'event-3']);
     expect(s.events[2].name).toBe('Gala Night');
     expect(s.activeEventId).toBe('event-1');
+    tab('Event Details');
     expect(input('MARIA & JOSE').value).toBe('Gala Night');
     expect(input('E.G. ANNIVERSARY NIGHT').value).toBe(''); // the field is ready for the next one
   });
@@ -262,13 +266,13 @@ describe.skipIf(!available)('Events section: real interaction', () => {
 
   it('profile actions are blocked while there are unsaved changes', () => {
     seed(); mount();
-    type(input('MARIA & JOSE'), 'CHANGED');
+    tab('Event Details'); type(input('MARIA & JOSE'), 'CHANGED'); tab('Event List');
     for (const l of ['CREATE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(btn(l).disabled, l).toBe(true);
     expect(RTL.screen.getByText('SAVE OR CANCEL YOUR CHANGES FIRST')).toBeTruthy();
   });
 
   it('a refused write shows the error and the owner keeps the text on screen', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     type(input('MARIA & JOSE'), 'KEEP THIS');
     vi.spyOn(dom.window.Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     click(btn('SAVE'));
@@ -278,7 +282,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('the branding switch toggles the draft and its text box', () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     const sw = RTL.screen.getByRole('switch', { name: 'SHOW BRANDING' });
     expect(sw.getAttribute('aria-checked')).toBe('true');
     click(sw);
@@ -296,7 +300,7 @@ describe.skipIf(!available)('Events section: real interaction', () => {
   });
 
   it('the preview says it is unavailable (instead of crashing) when the device has no canvas', async () => {
-    seed(); mount();
+    seed(); mount(); tab('Event Details');
     await RTL.waitFor(() => expect(RTL.screen.getByText(/PREVIEW UNAVAILABLE|DRAWING PREVIEW/)).toBeTruthy(), { timeout: 2000 });
   });
 });

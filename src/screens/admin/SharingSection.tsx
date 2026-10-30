@@ -38,8 +38,9 @@ export const sharingSection: SectionDef = {
   label: 'Photo sharing',
   icon: 'qr',
   description: 'Let customers scan a QR code to get their photo on their phone.',
+  tabs: [{ id: 'qr', label: 'QR Sharing' }, { id: 'links', label: 'Photo Links' }],
   cards: [
-    { id: 'share-toggle', title: 'Share QR', keywords: ['share qr', 'qr', 'qr code', 'phone', 'digital', 'gif', 'photo', 'sharing', 'download'], render: (c) => <Toggle {...c} /> },
-    { id: 'share-links', title: 'Photo links', description: 'Where photos are stored and what the QR code opens.', keywords: ['site url', 'public url', 'bridge url', 'uploads', 'supabase', 'check share', 'link', 'address', 'domain', 'tunnel'], render: (c) => <Links {...c} /> }
+    { id: 'share-toggle', tab: 'qr', title: 'Share QR', keywords: ['share qr', 'qr', 'qr code', 'phone', 'digital', 'gif', 'photo', 'sharing', 'download'], render: (c) => <Toggle {...c} /> },
+    { id: 'share-links', tab: 'links', title: 'Photo links', description: 'Where photos are stored and what the QR code opens.', keywords: ['site url', 'public url', 'bridge url', 'uploads', 'supabase', 'check share', 'link', 'address', 'domain', 'tunnel'], render: (c) => <Links {...c} /> }
   ]
 };

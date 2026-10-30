@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { sessionStore } from '../../state/session';
 import { loadSettings, mergeSettings, saveSettings, type BoothSettings } from '../../config/settings';
 import { PAPER_DOTS } from '../../layouts/engine';
@@ -17,7 +17,9 @@ import { ConfirmDialog, SaveStatus, SettingsCard, Toast, type SaveState } from '
 import { eventEditorStore, isDirty } from './eventEditor';
 import { frameTextEditorStore, isFrameTextDirty } from './frameTextEditor';
 import { ThemeToggle } from './ThemeToggle';
-import type { AdminCtx, Notice, NoticeKind, SectionId } from './types';
+import { SubTabs, panelId, tabId } from './SubTabs';
+import { attachSwipe } from './swipe';
+import type { AdminCtx, Notice, NoticeKind, SectionDef, SectionId, TabDef } from './types';
 
 /** Owner-facing failure text: the plain title plus the technical reason (customers never see this screen). */
 const why = (e: unknown) => { const p = toPrinterError(e), t = PRINTER_MESSAGES[p.code].title; return p.message && p.message !== p.code ? `${t} \u2014 ${p.message}` : t; };
@@ -33,21 +35,25 @@ const shareCheckMessage = (code: ShareFailure): string => ({
 let noticeSeq = 0;
 
 /**
- * Owner settings, organised by topic: a section list on the left (a menu on small screens), that section's cards on the right,
- * and a search across all of them. Settings still save the moment they change, exactly as before: there is no Save button
+ * Owner settings, organised by topic: a section list on the left (a menu on small screens), then, for the selected section, a
+ * compact row of horizontal sub-tabs (click, arrow keys or swipe) with only the selected tab's cards under it, and a search across all of them. Settings still save the moment they change, exactly as before: there is no Save button
  * because there is no unsaved state; the SAVED indicator and error notices say so instead.
  */
-export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChangePin: () => void; initialSection?: SectionId }) {
+export function AdminPanel({ onChangePin, initialSection = 'printer', initialTab }: { onChangePin: () => void; initialSection?: SectionId; initialTab?: string }) {
   const [s, setS] = useState<BoothSettings>(loadSettings);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [active, setActive] = useState<SectionId>(initialSection);
+  const [tabOf, setTabOf] = useState<Partial<Record<SectionId, string>>>(initialTab ? { [initialSection]: initialTab } : {}); // each category remembers its own tab
+  const [seen, setSeen] = useState<string[]>([]); // tabs of the open category visited so far: they stay mounted (hidden) so their local state, previews and uploads survive a tab switch
   const [query, setQuery] = useState('');
   const [save, setSave] = useState<{ status: SaveState; n: number }>({ status: 'idle', n: 0 });
   const [leaving, setLeaving] = useState<(() => void) | null>(null); // what the owner wanted to do, waiting for an answer about unsaved event text
   const rootRef = useRef<HTMLElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const uid = useId();
 
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
@@ -118,16 +124,43 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
     } finally { setBusy(false); }
   };
 
-  const ctx: AdminCtx = { s, set, tune, busy, testUrl: url, notify, clearNotice, actions: { pair, testPrint, testShare, changePin: onChangePin } };
-
   const searching = query.trim() !== '';
   const hits = searching ? searchSettings(SECTIONS, query) : [];
   const section = SECTIONS.find((x) => x.id === active) ?? SECTIONS[0];
-  const shown = searching ? hits : section.cards.map((card) => ({ section, card }));
-  const hasAside = !searching && shown.some((h) => h.card.aside);
+  const tabs = section.tabs;
+  const tab = tabs.find((x) => x.id === tabOf[section.id])?.id ?? tabs[0].id; // a remembered tab that no longer exists falls back to the first
+  const tabbed = !searching && tabs.length > 1;
+  const cardsOf = (id: string) => section.cards.filter((card) => card.tab === id);
+  const hasAside = !searching && cardsOf(tab).some((card) => card.aside);
 
-  const go = (id: SectionId) => { if (id === active && !searching) return; leave(() => { setQuery(''); setActive(id); }); };
-  useEffect(() => { paneRef.current?.scrollTo?.({ top: 0 }); rootRef.current?.scrollTo?.({ top: 0 }); }, [active, searching]);
+  // Switching tabs never touches a draft: event / frame text live in their own stores and the visited tabs stay mounted. So no leave() here.
+  const showTab = (id: string, sec: SectionDef = section) => {
+    setTabOf((p) => (p[sec.id] === id ? p : { ...p, [sec.id]: id }));
+    // the tab being left stays mounted (hidden) too, so its drafts-in-progress, previews and uploads are not torn down
+    setSeen((p) => { const add = [`${sec.id}/${id}`, ...(sec.id === section.id ? [`${sec.id}/${tab}`] : [])].filter((k) => !p.includes(k)); return add.length ? [...p, ...add] : p; });
+  };
+  const ctx: AdminCtx = { s, set, tune, busy, testUrl: url, notify, clearNotice, actions: { pair, testPrint, testShare, changePin: onChangePin }, goTab: (id) => { if (tabs.some((x) => x.id === id)) showTab(id); } };
+
+  const go = (id: SectionId) => { if (id === active && !searching) return; leave(() => { setQuery(''); setActive(id); setSeen([]); }); };
+  // A search result opens its own category AND tab; the unsaved-text question comes first, exactly like the section list.
+  const openHit = (sec: SectionDef, tabId: string) => leave(() => { setQuery(''); setActive(sec.id); setSeen([]); showTab(tabId, sec); });
+  const isDirtyTab = (x: TabDef) => (x.draft === 'event' ? isDirty(s, editor) : x.draft === 'frameText' ? isFrameTextDirty(s, frameDraft) : false);
+  const tabLabel = (sec: SectionDef, id: string) => sec.tabs.find((x) => x.id === id)?.label ?? '';
+
+  // swipe left = next tab, swipe right = previous (never wraps). Passive touch listeners on the settings body only: scrolling and controls keep working.
+  const live = useRef({ tabs, tab, tabbed, section });
+  live.current = { tabs, tab, tabbed, section };
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    return attachSwipe(el, (dir) => {
+      const { tabs: ts, tab: cur, tabbed: on, section: sec } = live.current;
+      if (!on) return;
+      const to = ts[ts.findIndex((x) => x.id === cur) + dir];
+      if (to) showTab(to.id, sec);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- reads the latest tab through `live`
+  useEffect(() => { bodyRef.current?.scrollTo?.({ top: 0 }); paneRef.current?.scrollTo?.({ top: 0 }); rootRef.current?.scrollTo?.({ top: 0 }); }, [active, searching, tab]);
 
   return (
     <main className="adm" ref={rootRef}>
@@ -169,22 +202,47 @@ export function AdminPanel({ onChangePin, initialSection = 'printer' }: { onChan
             </div>
             <SaveStatus state={save.status} />
           </div>
-          {searching && hits.length === 0 ? (
-            <div className="empty">
-              <Icon name="search" />
-              <p>NOTHING MATCHES {'\u201C'}{query.trim()}{'\u201D'}</p>
-              <small>Try {'\u201C'}printer{'\u201D'}, {'\u201C'}dark mode{'\u201D'}, {'\u201C'}brightness{'\u201D'} or {'\u201C'}QR{'\u201D'}.</small>
-              <button type="button" className="btn ghost" onClick={() => setQuery('')}>CLEAR SEARCH</button>
-            </div>
-          ) : (
-            <div className={hasAside ? 'cards has-aside' : 'cards'}>
-              {shown.map(({ section: sec, card }) => (
-                <SettingsCard key={card.id} title={card.title} description={card.description} tag={searching ? sec.label : undefined} aside={!searching && card.aside}>
-                  {card.render(ctx)}
-                </SettingsCard>
-              ))}
-            </div>
-          )}
+          {tabbed && <SubTabs tabs={tabs} active={tab} onSelect={(id) => showTab(id)} label={`${section.label} sections`} prefix={`${uid}${section.id}`} dirty={isDirtyTab} />}
+          <div className="adm-body" ref={bodyRef}>
+            {searching ? (
+              hits.length === 0 ? (
+                <div className="empty">
+                  <Icon name="search" />
+                  <p>NOTHING MATCHES {'\u201C'}{query.trim()}{'\u201D'}</p>
+                  <small>Try {'\u201C'}printer{'\u201D'}, {'\u201C'}dark mode{'\u201D'}, {'\u201C'}brightness{'\u201D'} or {'\u201C'}QR{'\u201D'}.</small>
+                  <button type="button" className="btn ghost" onClick={() => setQuery('')}>CLEAR SEARCH</button>
+                </div>
+              ) : (
+                <div className="cards">
+                  {hits.map(({ section: sec, card }) => {
+                    const multi = sec.tabs.length > 1, where = multi ? `${sec.label} \u203A ${tabLabel(sec, card.tab)}` : sec.label;
+                    return (
+                      <SettingsCard key={card.id} title={card.title} description={card.description} tag={where} open={{ label: multi ? `OPEN ${tabLabel(sec, card.tab).toUpperCase()}` : `OPEN ${sec.label.toUpperCase()}`, onOpen: () => openHit(sec, card.tab) }}>
+                        {card.render(ctx)}
+                      </SettingsCard>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              tabs.map((x) => {
+                const on = x.id === tab;
+                if (!on && !seen.includes(`${section.id}/${x.id}`)) return null; // not visited yet: nothing mounted, nothing running
+                const list = cardsOf(x.id), aside = list.some((card) => card.aside);
+                return (
+                  <div key={x.id} className="adm-tabpanel" role={tabbed ? 'tabpanel' : undefined} id={panelId(`${uid}${section.id}`, x.id)} aria-labelledby={tabbed ? tabId(`${uid}${section.id}`, x.id) : undefined} hidden={!on}>
+                    <div className={aside ? 'cards has-aside' : 'cards'}>
+                      {list.map((card) => (
+                        <SettingsCard key={card.id} title={card.title} description={card.description} aside={card.aside}>
+                          {card.render(ctx)}
+                        </SettingsCard>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
       <Toast notice={notice} onDismiss={clearNotice} />

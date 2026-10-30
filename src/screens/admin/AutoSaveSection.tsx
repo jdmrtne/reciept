@@ -59,8 +59,9 @@ export const autoSaveSection: SectionDef = {
   label: 'Auto-save',
   icon: 'save',
   description: 'Automatically keep a copy of every finished photo, GIF and video in a folder on this device. Changes apply immediately.',
+  tabs: [{ id: 'options', label: 'Save Options' }, { id: 'storage', label: 'Storage Location' }],
   cards: [
-    { id: 'autosave-toggles', title: 'What to save', keywords: ['auto-save', 'autosave', 'images', 'gifs', 'gif', 'videos', 'video', 'mp4', 'photos', 'save', 'automatic', 'backup'], render: (c) => <Toggles {...c} /> },
-    { id: 'autosave-folder', title: 'Save folder', description: 'Where the files go.', keywords: ['folder', 'directory', 'choose save folder', 'permission', 'location', 'path', 'save', 'storage', 'memorys'], render: (c) => <Folder {...c} /> }
+    { id: 'autosave-toggles', tab: 'options', title: 'What to save', keywords: ['auto-save', 'autosave', 'images', 'gifs', 'gif', 'videos', 'video', 'mp4', 'photos', 'save', 'automatic', 'backup'], render: (c) => <Toggles {...c} /> },
+    { id: 'autosave-folder', tab: 'storage', title: 'Save folder', description: 'Where the files go.', keywords: ['folder', 'directory', 'choose save folder', 'permission', 'location', 'path', 'save', 'storage', 'memorys'], render: (c) => <Folder {...c} /> }
   ]
 };

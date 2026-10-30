@@ -99,15 +99,16 @@ export const frameTextSection: SectionDef = {
   label: 'Frame text',
   icon: 'frame',
   description: 'Change the wording printed inside the built-in frames (header and footer text).',
+  tabs: [{ id: 'editor', label: 'Text Editor', draft: 'frameText' }],
   cards: [
     {
-      id: 'frametext-edit',
+      id: 'frametext-edit', tab: 'editor',
       title: 'Frame text',
       description: 'Pick a frame, then edit its header and footer wording. Saved only when you press SAVE; reaches the next customer.',
       keywords: ['frame text', 'text', 'wording', 'header', 'footer', 'caption', 'title', 'line', 'lines', 'label', 'hide line', 'reset frame', 'tokens', 'default phrases', 'words', 'edit text', 'save', 'cancel',
         ...editableFrameDefs().flatMap((f) => [f.name.toLowerCase(), f.id, ...phrasesOf(f)])],
       render: (c: AdminCtx) => <FrameTextEditor c={c} />
     },
-    { id: 'frametext-preview', title: 'Frame preview', description: 'How the chosen frame looks with your text.', aside: true, keywords: ['preview', 'frame preview', 'sample', 'look'], render: (c: AdminCtx) => <FrameTextPreview c={c} /> }
+    { id: 'frametext-preview', tab: 'editor', title: 'Frame preview', description: 'How the chosen frame looks with your text.', aside: true, keywords: ['preview', 'frame preview', 'sample', 'look'], render: (c: AdminCtx) => <FrameTextPreview c={c} /> }
   ]
 };

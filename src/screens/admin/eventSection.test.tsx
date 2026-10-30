@@ -61,9 +61,14 @@ describe('the Events section is part of the existing settings map', () => {
     expect(def).toContain('Search settings');
     expect(def).toContain('EXIT');
     const open = renderToStaticMarkup(<AdminPanel onChangePin={noop} initialSection="events" />);
-    expect(open).toContain('ACTIVE EVENT');
-    expect(open).toContain('Event text');
-    expect(open).toContain('Receipt preview');
+    expect(open).toContain('ACTIVE EVENT'); // the Event List tab is the default
+    for (const tab of ['Event List', 'Event Details', 'Uploads &amp; Media']) expect(open).toContain(tab);
+    // each tab shows only its own cards: the text form and its live preview sit together under Event Details
+    expect(open).not.toContain('Event text');
+    const details = renderToStaticMarkup(<AdminPanel onChangePin={noop} initialSection="events" initialTab="details" />);
+    expect(details).toContain('Event text');
+    expect(details).toContain('Receipt preview');
+    expect(details).not.toContain('ACTIVE EVENT');
   });
 });
 

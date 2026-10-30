@@ -451,7 +451,7 @@ export const KEYWORDS = ['toggle', 'on', 'off', 'switch', 'enable', 'disable', '
 
 /** ADMIN > Frames: your own (normal) frames. Each has an ON/OFF switch. */
 export const customFramesCard: CardDef = {
-  id: 'frames-custom',
+  id: 'frames-custom', tab: 'custom',
   title: 'Your own frames',
   description: 'Upload your own frame pictures. Guests pick them like the built in frames; switch each one on or off.',
   keywords: KEYWORDS,

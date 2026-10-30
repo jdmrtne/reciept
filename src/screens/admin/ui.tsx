@@ -4,7 +4,7 @@ import type { Notice } from './types';
 
 /* Small presentational pieces shared by every settings card. No settings logic lives here. */
 
-export function SettingsCard({ title, description, tag, aside, children }: { title: string; description?: string; tag?: string; aside?: boolean; children: ReactNode }) {
+export function SettingsCard({ title, description, tag, aside, open, children }: { title: string; description?: string; tag?: string; aside?: boolean; /** Search results: jump to the tab this card lives in. */ open?: { label: string; onOpen: () => void }; children: ReactNode }) {
   const id = useId();
   return (
     <section className={aside ? 'card card-aside' : 'card'} aria-labelledby={id}>
@@ -12,6 +12,7 @@ export function SettingsCard({ title, description, tag, aside, children }: { tit
         {tag && <span className="card-tag">{tag}</span>}
         <h4 id={id} className="card-t">{title}</h4>
         {description && <p className="card-d">{description}</p>}
+        {open && <button type="button" className="btn ghost adm-open" onClick={open.onOpen}>{open.label}</button>}
       </header>
       <div className="card-b">{children}</div>
     </section>

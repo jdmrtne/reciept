@@ -68,9 +68,10 @@ export const printerSection: SectionDef = {
   label: 'Printer',
   icon: 'print',
   description: 'Which printer the booth prints to, how it connects, and a quick check that it works.',
+  tabs: [{ id: 'setup', label: 'Printer Setup' }, { id: 'connection', label: 'Connection' }, { id: 'testing', label: 'Testing' }],
   cards: [
-    { id: 'printer-type', title: 'Printer type', description: 'Choose how this booth reaches its printer.', keywords: ['printer', 'system print', 'windows printer', 'usb', 'network', 'bluetooth', 'test printer', 'mock', 'hardware', 'thermal', 'receipt'], render: (c) => <PrinterType {...c} /> },
-    { id: 'printer-connection', title: 'Connection details', description: 'Only the fields your printer type needs.', keywords: ['windows printer name', 'printer ip', 'bridge url', 'bridge', 'address', 'host', 'bt chunk', 'bt delay ms', 'bluetooth', 'chunk size', 'delay', 'network', 'lan'], render: (c) => <Connection {...c} /> },
-    { id: 'printer-test', title: 'Check & test', description: 'Confirm the printer is reachable, then print a test page.', keywords: ['test print', 'pair printer', 'check printer', 'pair', 'reachable', 'test page', 'preview'], render: (c) => <TestPrintBody c={c} withConnect /> }
+    { id: 'printer-type', tab: 'setup', title: 'Printer type', description: 'Choose how this booth reaches its printer.', keywords: ['printer', 'system print', 'windows printer', 'usb', 'network', 'bluetooth', 'test printer', 'mock', 'hardware', 'thermal', 'receipt'], render: (c) => <PrinterType {...c} /> },
+    { id: 'printer-connection', tab: 'connection', title: 'Connection details', description: 'Only the fields your printer type needs.', keywords: ['windows printer name', 'printer ip', 'bridge url', 'bridge', 'address', 'host', 'bt chunk', 'bt delay ms', 'bluetooth', 'chunk size', 'delay', 'network', 'lan'], render: (c) => <Connection {...c} /> },
+    { id: 'printer-test', tab: 'testing', title: 'Check & test', description: 'Confirm the printer is reachable, then print a test page.', keywords: ['test print', 'pair printer', 'check printer', 'pair', 'reachable', 'test page', 'preview'], render: (c) => <TestPrintBody c={c} withConnect /> }
   ]
 };

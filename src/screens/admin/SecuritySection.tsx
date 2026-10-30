@@ -17,7 +17,8 @@ export const securitySection: SectionDef = {
   label: 'Security',
   icon: 'lock',
   description: 'Who can open these settings.',
+  tabs: [{ id: 'pin', label: 'Owner PIN' }],
   cards: [
-    { id: 'security-pin', title: 'Owner PIN', keywords: ['change pin', 'pin', 'password', 'lock', 'access', 'security', 'owner', 'admin', 'user', 'code'], render: (c) => <Pin {...c} /> }
+    { id: 'security-pin', tab: 'pin', title: 'Owner PIN', keywords: ['change pin', 'pin', 'password', 'lock', 'access', 'security', 'owner', 'admin', 'user', 'code'], render: (c) => <Pin {...c} /> }
   ]
 };
