@@ -62,6 +62,7 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
   const type = (el: Element, v: string) => RTL.fireEvent.change(el, { target: { value: v } });
   const tiles = () => [...document.querySelectorAll('[data-event-layout]')] as HTMLElement[];
   const pickFile = (aria: string, name = 'layout.png') => RTL.fireEvent.change(document.querySelector(`input[type="file"][aria-label="${aria}"]`)!, { target: { files: [new File(['png'], name, { type: 'image/png' })] } });
+  const openSettings = (name: string) => click(btn(`OPEN SETTINGS OF ${name}`));
   const mk = async (name: string, eventId: string, w = 2) => { const r = await ev.createEventLayoutRecord({ name, eventId, art: art(w) }); if (!r.ok) throw new Error('create'); return r.value.id; };
 
   it('ADD LAYOUT needs a name and a picture, then a tile appears in this event only', async () => {
@@ -76,7 +77,7 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     await RTL.waitFor(() => expect(tiles()).toHaveLength(1));
     expect(ev.eventLayoutRecords()[0]).toMatchObject({ name: 'Dance Floor', eventId: 'event-1' });
     expect(tiles()[0].textContent).toContain('DANCE FLOOR');
-    expect(tiles()[0].textContent).toContain('2 PHOTOS');
+    expect(tiles()[0].textContent).toContain('DANCE FLOOR');
   });
 
   it('a picture that fails the check shows its plain sentences and creates nothing', async () => {
@@ -111,8 +112,28 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     await RTL.waitFor(() => expect(ev.eventLayoutRecords().every((d) => d.enabled !== false)).toBe(true));
   });
 
+  it('the grid tile has only the picture, the name and the switch; tapping it opens the QR view with the buttons below, and BACK returns to the grid', async () => {
+    seed(); await mk('Dance floor', 'event-1'); mount();
+    const t = tiles()[0];
+    expect([...t.querySelectorAll('button:not([role="switch"])')].map((b) => b.getAttribute('aria-label') ?? label(b))).toEqual(['OPEN SETTINGS OF DANCE FLOOR', 'DANCE FLOOR']);
+    expect(t.querySelectorAll('[role="switch"]')).toHaveLength(1);
+    expect(document.querySelector('[data-layout-settings]')).toBeNull();
+    openSettings('DANCE FLOOR');
+    const page = document.querySelector('[data-layout-settings]')!;
+    expect(page).toBeTruthy();
+    expect(page.querySelector('[data-qr-editor]')).toBeTruthy();          // the QR view is the default
+    expect(page.textContent).toContain('HOW IT PRINTS');                   // with the QR preview
+    const qrAt = page.innerHTML.indexOf('data-qr-editor'), actsAt = page.innerHTML.indexOf('el-below');
+    expect(actsAt).toBeGreaterThan(qrAt);                                  // buttons sit below it
+    for (const b of ['RENAME DANCE FLOOR', 'MOVE DANCE FLOOR TO ANOTHER EVENT', 'DELETE DANCE FLOOR']) expect(btn(b)).toBeTruthy();
+    click(btn('BACK TO LAYOUTS'));
+    expect(document.querySelector('[data-layout-settings]')).toBeNull();
+    expect(tiles()).toHaveLength(1);
+  });
+
   it('RENAME saves a new name, and an empty name is refused with a sentence', async () => {
     seed(); const a = await mk('Dance floor', 'event-1'); mount();
+    openSettings('DANCE FLOOR');
     click(btn('RENAME DANCE FLOOR'));
     const field = document.querySelector('input[aria-label="NEW NAME FOR DANCE FLOOR"]')!;
     type(field, '   ');
@@ -120,11 +141,13 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     type(field, 'Photo wall');
     click(btn('SAVE NAME'));
     await RTL.waitFor(() => expect(ev.eventLayoutById(a)!.name).toBe('Photo wall'));
+    click(btn('BACK TO LAYOUTS'));
     await RTL.waitFor(() => expect(tiles()[0].textContent).toContain('PHOTO WALL'));
   });
 
   it('REPLACE PICTURE swaps the art and drops the QR spot with a note; a bad picture changes nothing', async () => {
     seed(); const a = await mk('Dance floor', 'event-1', 2); await ev.setEventLayoutRecordQr(a, { x: 0.5, y: 0.8, w: 0.2, h: 0.1 }); mount();
+    openSettings('DANCE FLOOR');
     prep.fn = async () => ({ ok: false, errors: ['This picture could not be opened. Save it again as a PNG and try again.'] });
     pickFile('REPLACE PICTURE OF DANCE FLOOR');
     await RTL.waitFor(() => expect(document.querySelector('ul.cf-err')?.textContent).toContain('could not be opened'));
@@ -135,21 +158,23 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     await RTL.waitFor(() => expect(ev.eventLayoutById(a)!.art.slots).toHaveLength(3));
     expect(ev.eventLayoutById(a)!.art.qr).toBeUndefined();
     await RTL.waitFor(() => expect(RTL.screen.getByText(/saved QR code spot was cleared/)).toBeTruthy());
-    await RTL.waitFor(() => expect(tiles()[0].textContent).toContain('3 PHOTOS'));
+    await RTL.waitFor(() => expect(document.querySelector('[data-layout-photos="3"]')).toBeTruthy());
   });
 
   it('MOVE sends a layout to another event and it leaves this grid', async () => {
     seed(); const a = await mk('Dance floor', 'event-1'); mount();
+    openSettings('DANCE FLOOR');
     click(btn('MOVE DANCE FLOOR TO ANOTHER EVENT'));
     expect(btn('MOVE LAYOUT').disabled).toBe(true); // nothing picked yet
     type(document.querySelector('select[aria-label="MOVE DANCE FLOOR TO"]')!, 'event-2');
     click(btn('MOVE LAYOUT'));
     await RTL.waitFor(() => expect(ev.eventLayoutById(a)!.eventId).toBe('event-2'));
-    await RTL.waitFor(() => expect(tiles()).toHaveLength(0));
+    await RTL.waitFor(() => expect(tiles()).toHaveLength(0)); // the page closes by itself and the grid is back
   });
 
   it('DELETE asks first: KEEP LAYOUT changes nothing, DELETE LAYOUT removes it', async () => {
     seed(); await mk('Dance floor', 'event-1'); mount();
+    openSettings('DANCE FLOOR');
     click(btn('DELETE DANCE FLOOR'));
     expect(RTL.screen.getByText('DELETE THIS LAYOUT?')).toBeTruthy();
     click(btn('KEEP LAYOUT'));

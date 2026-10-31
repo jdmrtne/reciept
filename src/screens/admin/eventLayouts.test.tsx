@@ -48,7 +48,7 @@ describe('Event layouts card (server render)', () => {
     expect(html).not.toContain('data-unassigned-layouts');
   });
 
-  it('lists only the layouts of the picked event, with thumbnail, name, photo count and a SHOWN switch', async () => {
+  it('lists only the layouts of the picked event as a clean grid: thumbnail, name and a SHOWN switch, nothing else', async () => {
     const a = await mk('Dance floor', 'event-1', 3), b = await mk('Cake', 'event-1', 1), c = await mk('Candles', 'event-2');
     await ev.initEventLayouts();
     const html = page(two());
@@ -56,13 +56,13 @@ describe('Event layouts card (server render)', () => {
     expect(html).not.toContain(c);
     expect(html).toContain('lay-svg'); // the FramePreview thumbnail
     expect(text(html)).toContain('DANCE FLOOR');
-    expect(text(html)).toContain('3 PHOTOS');
-    expect(text(html)).toContain('1 PHOTO ');
+    expect(html).toContain('aria-label="OPEN SETTINGS OF DANCE FLOOR"'); // tapping the tile opens its settings page
     const sw = button(html, 'SHOWN');
     expect(sw).toContain('aria-checked="true"');
     expect(sw).toContain('SHOW LAYOUT DANCE FLOOR');
-    for (const l of ['RENAME', 'MOVE', 'DELETE']) expect(button(html, l), l).not.toBe('');
-    expect(html).toContain('aria-label="REPLACE PICTURE OF DANCE FLOOR"'); // a file picker inside a label button
+    for (const l of ['RENAME', 'MOVE', 'DELETE']) expect(button(html, l), l).toBe(''); // those live on the settings page, not on the tile
+    expect(html).not.toContain('REPLACE PICTURE OF');
+    expect(html).not.toContain('data-qr-editor');
     eventEditorStore.select('event-2');
     expect(tiles(page(two()))).toEqual([c]);
   });
@@ -153,14 +153,12 @@ describe('REPLACE PICTURE (replaceEventLayoutArt)', () => {
 });
 
 describe('QR spot of an event layout (EL-5, server render)', () => {
-  it('each tile says whether a QR spot is set and offers a QR SPOT button, closed by default', async () => {
+  it('the grid stays clean: no QR text or QR SPOT button on a tile (the QR view is on the settings page)', async () => {
     const a = await mk('Dance floor', 'event-1', 2), b = await mk('Cake table', 'event-1');
     await ev.initEventLayouts(); await ev.setEventLayoutRecordQr(a, { x: 0.5, y: 0.8, w: 0.2, h: 0.1 });
     const html = page(two());
-    expect(html).toContain(`data-layout-qr="set"`); expect(html).toContain(`data-layout-qr="none"`);
-    expect(text(html)).toContain('QR SPOT SET'); expect(text(html)).toContain('NO QR SPOT');
-    expect(html).toContain('aria-label="QR SPOT OF DANCE FLOOR"'); expect(html).toContain('aria-label="QR SPOT OF CAKE TABLE"');
-    expect(html).not.toContain('data-qr-editor');
+    expect(html).not.toContain('data-layout-qr'); expect(text(html)).not.toContain('NO QR SPOT');
+    expect(html).not.toContain('aria-label="QR SPOT OF'); expect(html).not.toContain('data-qr-editor');
     expect(b).toBeTruthy();
   });
   it('is found by the words an owner would use', () => {

@@ -20,7 +20,7 @@ import { QrSpotEditor, qrModulesFor, type SaveSpot } from './QrSpotEditor';
 import { EVENT_SPOT_INSET } from '../../frames/custom/qrArea';
 import { eventEditorStore, selectedProfile, type EditorState } from './eventEditor';
 import {
-  OLD_FRAMES_HELP, addedNotice, copiedNotice, copySummary, deleteLayoutBody, looseTiles, moveTargets, nameProblem, replaceNotes, shownCount, tilesOfEvent, toggleNotice, type LayoutTile
+  OLD_FRAMES_HELP, addedNotice, copiedNotice, copySummary, deleteLayoutBody, looseTiles, moveTargets, nameProblem, replaceNotes, shownCount, tileOf, tilesOfEvent, toggleNotice, type LayoutTile
 } from './eventLayoutsAdmin';
 import { ConfirmDialog, Hint, Switch } from './ui';
 import type { CustomFrameDef } from '../../frames/custom/types';
@@ -61,7 +61,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
   const [ask, setAsk] = useState<LayoutTile | null>(null);
   const [askFrame, setAskFrame] = useState<CustomFrameDef | null>(null);
   const [looseTarget, setLooseTarget] = useState<Record<string, string>>({});
-  const [qrId, setQrId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null); // the layout whose settings page is open (null = the grid)
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-armed on remount (StrictMode)
   const modules = useMemo(() => qrModulesFor(s), [s.share.publicBaseUrl, s.share.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -78,8 +78,9 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
   const shown = shownCount(tiles);
   const others = (current: string) => moveTargets(s.events, current, nameOf);
 
-  const qrDef = qrId ? defs.find((d) => d.id === qrId) : undefined;
-  const qrAsset = qrDef ? eventLayoutAsset(qrDef.id) : null;
+  // A layout that was deleted or moved to another event closes its own page by itself.
+  const openDef = openId ? defs.find((d) => d.id === openId && d.eventId === eventId) : undefined;
+  const openAsset = openDef ? eventLayoutAsset(openDef.id) : null;
 
   const oldFrames = [...framesOfEvent(customRecords(), eventId), ...unassignedSpecialFrames(customRecords(), s.events.map((e) => e.id))];
 
@@ -171,20 +172,40 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
     const r = await deleteEventLayoutRecord(t.id);
     if (!alive.current) return;
     setAsk(null);
+    if (r.ok) setOpenId(null);
     notify(r.ok ? 'success' : 'error', r.ok ? `LAYOUT ${t.label} DELETED` : 'LAYOUT NOT DELETED');
   });
 
-  const tile = (t: LayoutTile) => {
-    const editing = mode && mode.id === t.id ? mode.kind : null;
+  /** The grid tile: the picture, its name and the SHOWN switch, nothing else. Tapping the picture or the name opens the layout's settings page. */
+  const open = (id: string) => { setOpenId(id); setNotes([]); setTileErr(null); closeMode(); };
+  const tile = (t: LayoutTile) => (
+    <li key={t.id} className="fg-tile el-tile" data-shown={t.shown ? 'true' : 'false'} data-event-layout={t.id}>
+      <button type="button" className="fg-thumb fg-open" aria-label={`OPEN SETTINGS OF ${t.label}`} onClick={() => open(t.id)}><FramePreview frameId={t.id} layoutId={t.id} /></button>
+      <button type="button" className="fg-name fg-open" onClick={() => open(t.id)}>{t.label}</button>
+      <Switch label={`SHOW LAYOUT ${t.label}`} checked={t.shown} disabled={busy} onChange={(v) => void toggle(t, v)} />
+    </li>
+  );
+
+  /** The settings page of one layout. It opens on the QR view (spot editor + how it prints); the other buttons sit below it. */
+  const settings = (t: LayoutTile) => {
+    const def = openDef!, editing = mode && mode.id === t.id ? mode.kind : null;
     const dests = others(t.eventId);
     const problems = tileErr && tileErr.id === t.id ? tileErr.errors : [];
     return (
-      <li key={t.id} className="fg-tile el-tile" data-shown={t.shown ? 'true' : 'false'} data-event-layout={t.id}>
-        <div className="fg-thumb"><FramePreview frameId={t.id} layoutId={t.id} /></div>
-        <span className="fg-name">{t.label}</span>
-        <small className="ef-file" data-layout-photos={t.photos}>{t.photoText}</small>
-        <small className="ef-file" data-layout-qr={defs.find((d) => d.id === t.id)?.art.qr ? 'set' : 'none'}>{defs.find((d) => d.id === t.id)?.art.qr ? 'QR SPOT SET' : 'NO QR SPOT'}</small>
-        <Switch label={`SHOW LAYOUT ${t.label}`} checked={t.shown} disabled={busy} onChange={(v) => void toggle(t, v)} />
+      <div className="el-detail" data-layout-settings={t.id}>
+        <div className="lv-head">
+          <button type="button" className="btn ghost" disabled={busy} onClick={() => { setOpenId(null); closeMode(); setTileErr(null); setNotes([]); }}><Icon name="close" />BACK TO LAYOUTS</button>
+          <h5 className="lv-h">{t.label} <small data-layout-photos={t.photos}>{t.photoText}</small></h5>
+        </div>
+        {notes.length > 0 && <ul className="cf-warn" aria-label="Notes about the picture">{notes.map((m, i) => <li key={i}>{m}</li>)}</ul>}
+        {openAsset ? (
+          <figure className="cf-prev el-qr" data-qr-editor={t.id}>
+            <figcaption>QR SPOT: the numbered outlines show where the photos go. The colours are only placeholders. <span data-layout-qr={def.art.qr ? 'set' : 'none'}>{def.art.qr ? 'QR SPOT SET' : 'NO QR SPOT'}</span></figcaption>
+            <QrSpotEditor key={t.id} art={def.art} spotKey={`${t.id}:${def.art.rev ?? ''}`} src={openAsset.src} meta={openAsset.meta} modules={modules} inset={EVENT_SPOT_INSET} shareEnabled={s.share.enabled}
+              disabled={busy} label={t.label} noun="layout" onSave={saveSpot(t.id)} notify={notify}
+              how={<><small>HOW IT PRINTS (SAMPLE QR)</small><div className="lv-thumb"><FramePreview frameId={t.id} layoutId={t.id} qr /></div></>} />
+          </figure>
+        ) : <Hint>The picture of this layout is not ready. Go back and open it again.</Hint>}
         {editing === 'rename' && (
           <div className="el-panel">
             <input className="adm-in" value={typed} maxLength={NAME_MAX} aria-label={`NEW NAME FOR ${t.label}`} onChange={(e) => { setTyped(e.target.value); setTileErr(null); }} onKeyDown={(e) => { if (e.key === 'Enter') void rename(t); }} />
@@ -209,25 +230,33 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
           </div>
         )}
         {!editing && (
-          <div className="el-acts">
-            <button type="button" className="btn ghost" disabled={busy} aria-label={`RENAME ${t.label}`} onClick={() => { setMode({ id: t.id, kind: 'rename' }); setTyped(defs.find((d) => d.id === t.id)?.name ?? ''); setTileErr(null); }}>RENAME</button>
+          <div className="el-acts el-below">
+            <button type="button" className="btn ghost" disabled={busy} aria-label={`RENAME ${t.label}`} onClick={() => { setMode({ id: t.id, kind: 'rename' }); setTyped(def.name); setTileErr(null); }}>RENAME</button>
             <label className={busy ? 'btn ghost cf-up disabled' : 'btn ghost cf-up'}>
               <Icon name="up" />REPLACE PICTURE
               <input type="file" className="cf-file" accept={ACCEPT} disabled={busy} aria-label={`REPLACE PICTURE OF ${t.label}`} onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) void replace(t, f); }} />
             </label>
-            <button type="button" className="btn ghost" disabled={busy} aria-label={`QR SPOT OF ${t.label}`} aria-pressed={qrId === t.id} onClick={() => setQrId(qrId === t.id ? null : t.id)}>QR SPOT</button>
             <button type="button" className="btn ghost" disabled={busy} aria-label={`MOVE ${t.label} TO ANOTHER EVENT`} onClick={() => { setMode({ id: t.id, kind: 'move' }); setTarget(''); setTileErr(null); }}>MOVE</button>
             <button type="button" className="btn ghost" disabled={busy} aria-label={`DELETE ${t.label}`} onClick={() => setAsk(t)}>DELETE</button>
           </div>
         )}
         {problems.length > 0 && <ul className="cf-err" role="alert">{problems.map((m, i) => <li key={i}>{m}</li>)}</ul>}
-      </li>
+      </div>
     );
   };
 
+  const dialogs = (
+    <>
+      {askFrame && <ConfirmDialog title="DELETE THIS OLD FRAME?" body={`${askFrame.name.toUpperCase()} and its pictures will be removed from this device. Layouts you copied from it are kept. This cannot be undone.`} confirmLabel="DELETE FRAME" cancelLabel="KEEP FRAME" danger onConfirm={() => void removeFrame(askFrame)} onCancel={() => setAskFrame(null)} />}
+      {ask && <ConfirmDialog title="DELETE THIS LAYOUT?" body={deleteLayoutBody(ask.label)} confirmLabel="DELETE LAYOUT" cancelLabel="KEEP LAYOUT" danger onConfirm={() => void remove(ask)} onCancel={() => setAsk(null)} />}
+    </>
+  );
+
+  if (openDef) return <>{settings(tileOf(openDef))}{dialogs}</>;
+
   return (
     <>
-      <Hint>Every picture you add here becomes a layout of the event picked in the list above. Each picture needs see through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself and counts them: that is the number of photos the layout takes.</Hint>
+      <Hint>Every picture you add here becomes a layout of the event picked in the list above. Tap a layout to open its settings: QR spot, rename, replace picture, move and delete. Each picture needs see through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself and counts them: that is the number of photos the layout takes.</Hint>
       {notes.length > 0 && <ul className="cf-warn" aria-label="Notes about the picture">{notes.map((m, i) => <li key={i}>{m}</li>)}</ul>}
       <div className="lv-group" data-event-layouts={eventId}>
         <div className="lv-head">
@@ -269,16 +298,6 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
           </div>
           <Hint>The layout is added only if the picture passes the check.</Hint>
         </div>
-      )}
-
-      {qrDef && qrAsset && (
-        <figure className="cf-prev el-qr" data-qr-editor={qrDef.id}>
-          <figcaption>QR SPOT OF {qrDef.name.toUpperCase()}: the numbered outlines show where the photos go. The colours are only placeholders.</figcaption>
-          <QrSpotEditor key={qrDef.id} art={qrDef.art} spotKey={`${qrDef.id}:${qrDef.art.rev ?? ''}`} src={qrAsset.src} meta={qrAsset.meta} modules={modules} inset={EVENT_SPOT_INSET} shareEnabled={s.share.enabled}
-            disabled={busy} label={qrDef.name.toUpperCase()} noun="layout" onSave={saveSpot(qrDef.id)} notify={notify}
-            how={<><small>HOW IT PRINTS (SAMPLE QR)</small><div className="lv-thumb"><FramePreview frameId={qrDef.id} layoutId={qrDef.id} qr /></div></>} />
-          <div className="el-acts"><button type="button" className="btn ghost" disabled={busy} onClick={() => setQrId(null)}>CLOSE QR SPOT</button></div>
-        </figure>
       )}
 
       <Hint>A layout is offered to guests when it is SHOWN and its event is the ACTIVE one. Make another event active and its layouts replace these. A layout is only ever used with its own picture.</Hint>
@@ -328,8 +347,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
         </div>
       )}
 
-      {askFrame && <ConfirmDialog title="DELETE THIS OLD FRAME?" body={`${askFrame.name.toUpperCase()} and its pictures will be removed from this device. Layouts you copied from it are kept. This cannot be undone.`} confirmLabel="DELETE FRAME" cancelLabel="KEEP FRAME" danger onConfirm={() => void removeFrame(askFrame)} onCancel={() => setAskFrame(null)} />}
-      {ask && <ConfirmDialog title="DELETE THIS LAYOUT?" body={deleteLayoutBody(ask.label)} confirmLabel="DELETE LAYOUT" cancelLabel="KEEP LAYOUT" danger onConfirm={() => void remove(ask)} onCancel={() => setAsk(null)} />}
+      {dialogs}
     </>
   );
 }

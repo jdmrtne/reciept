@@ -115,6 +115,7 @@ Open **ADMIN → Frame text** to change the wording printed inside nine built-in
 ## Event layouts (ADMIN → Events → Uploads & Media)
 Every event has its own layouts. Each picture you upload for an event becomes one layout (the app finds the photo windows by itself).
 - **Only the active event shows its layouts.** Make an event active and the layout screen shows that event's EVENT SPECIAL card; make another event active and the first one's layouts disappear. Two events never show their specials at once.
+- The layouts show as a grid of pictures, each with only a **SHOWN / HIDDEN** switch. **Tap a layout** to open its settings: it opens on the **QR spot** view with a preview of how the QR prints, and the buttons **RENAME, REPLACE PICTURE, MOVE, DELETE** sit below it. **BACK TO LAYOUTS** returns to the grid.
 - Each layout also has its own **SHOWN / HIDDEN** switch. A layout is offered to guests only when it is SHOWN **and** its event is the active one.
 - Layouts whose event was deleted are listed as **Unassigned layouts**. Guests do not get them until you ASSIGN each one to an event.
 - **Old event frames** (made before event layouts existed) are listed under the layouts, with **COPY TO LAYOUTS** and **DELETE FRAME**. You can no longer upload new event frames; upload layouts instead. An old frame is also only offered while its event is active.
