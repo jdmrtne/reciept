@@ -1,21 +1,50 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../../components/Icon';
 import type { Notice } from './types';
 
 /* Small presentational pieces shared by every settings card. No settings logic lives here. */
 
 /**
- * The "?" circle. Explanations are kept out of sight until the owner taps it, so ADMIN only shows what matters. Put it inside a `.help-host`
- * (a wrapping flex row) next to the thing it explains: the text opens on its own line under it. The text is always in the page (just `hidden`
- * while closed), so search and screen readers still find it. `className` styles the text (e.g. a card description).
+ * The "?" circle. Explanations stay out of sight until the owner taps it, then open as a small popup next to the circle (it floats over the
+ * page, so nothing below it moves). Tap the circle again, the X, outside it, or press Esc to close. Put it inside a `.help-host` next to the thing
+ * it explains. The text is always in the page (just `hidden` while closed), so search and screen readers still find it. `className` styles the text.
  */
 export function Help({ children, className, label = 'Show help' }: { children: ReactNode; className?: string; label?: string }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<CSSProperties>({});
   const id = useId();
+  const btn = useRef<HTMLButtonElement>(null);
+  const pop = useRef<HTMLElement>(null);
+
+  /** Place the popup under the circle, kept inside the screen (flips above it when there is no room below). */
+  useLayoutEffect(() => {
+    if (!open || !btn.current) return;
+    const r = btn.current.getBoundingClientRect();
+    const w = Math.min(300, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(r.left + r.width / 2 - 24, window.innerWidth - w - 12));
+    const h = pop.current?.offsetHeight ?? 120;
+    const below = r.bottom + 10;
+    const top = below + h > window.innerHeight - 12 ? Math.max(12, r.top - 10 - h) : below;
+    setPos({ position: 'fixed', top, left, width: w });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => { const t = e.target as Node; if (!pop.current?.contains(t) && !btn.current?.contains(t)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const close = () => setOpen(false); /* the popup is fixed: scrolling or resizing would leave it behind */
+    document.addEventListener('pointerdown', away); document.addEventListener('keydown', esc);
+    window.addEventListener('resize', close); document.addEventListener('scroll', close, true);
+    return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc); window.removeEventListener('resize', close); document.removeEventListener('scroll', close, true); };
+  }, [open]);
+
   return (
     <>
-      <button type="button" className="help-btn" aria-label={label} aria-expanded={open} aria-controls={id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}>?</button>
-      <small id={id} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>{children}</small>
+      <button ref={btn} type="button" className="help-btn" aria-label={label} aria-expanded={open} aria-controls={id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}>?</button>
+      <small ref={pop} id={id} role={open ? 'dialog' : undefined} style={open ? pos : undefined} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>
+        {children}
+        {open && <button type="button" className="help-x" aria-label="Close help" onClick={(e) => { e.stopPropagation(); setOpen(false); btn.current?.focus(); }}>{'\u00D7'}</button>}
+      </small>
     </>
   );
 }
