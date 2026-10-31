@@ -5,7 +5,7 @@ function Pin({ busy, actions }: AdminCtx) {
   return (
     <>
       <Hint>The PIN keeps customers out of this panel. You will be asked to type the new PIN twice.</Hint>
-      <Row label="OWNER PIN" hint="Required each time this panel is opened">
+      <Row label="OWNER PIN">
         <button type="button" className="btn ghost" disabled={busy} onClick={actions.changePin}>CHANGE PIN</button>
       </Row>
     </>

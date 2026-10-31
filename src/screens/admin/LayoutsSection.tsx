@@ -30,7 +30,7 @@ function Layouts({ s, set }: AdminCtx) {
   const locked = (id: string) => shownCount === 1 && !hidden.includes(id);
   return (
     <>
-      <Hint>Choose which layouts guests see on CHOOSE YOUR STRIP. Hidden layouts are only removed from that screen; nothing else changes. New layouts added later appear automatically.</Hint>
+      <Hint>Switch a layout off to hide it from CHOOSE YOUR STRIP.</Hint>
       {shownCount === 1 && <Hint important>At least one layout must stay shown, so the last one cannot be switched off.</Hint>}
       <ul className="lv-list">
         {ENTRIES.map((e) => e.kind === 'layout' ? (
@@ -74,7 +74,7 @@ export const layoutsSection: SectionDef = {
   description: 'Choose which strip layouts customers can pick.',
   tabs: [{ id: 'options', label: 'Layout Options' }],
   cards: [
-    { id: 'layouts-visibility', tab: 'options', title: 'Layouts on the picker', description: 'Switch layouts on or off for CHOOSE YOUR STRIP.',
+    { id: 'layouts-visibility', tab: 'options', title: 'Layouts on the picker', description: '',
       keywords: ['layout', 'layouts', 'strip', 'choose your strip', 'picker', 'hide', 'show', 'visible', 'single', 'two strip', 'three strip', 'four strip', '2 x 2', 'classic', 'jlc', 'special', 'ncl', 'pass', 'boarding pass', 'group', 'choices', 'options', 'frame layouts', 'show all'],
       render: (c) => <Layouts {...c} /> }
   ]

@@ -20,7 +20,7 @@ function Theme({ notify }: AdminCtx) {
       <ChoiceRow label="THEME" hint="Applies to the whole booth, including the screens customers see" value={pref}
         options={THEME_PREFS.map((p) => ({ value: p, label: LABEL[p].label, icon: LABEL[p].icon }))}
         onChange={(p) => { if (!setPref(p)) notify('error', 'THEME CHANGED, BUT THIS DEVICE WOULD NOT REMEMBER IT'); }} />
-      <Hint>{pref === 'system' ? `SYSTEM follows this device\u2019s light/dark setting (it is ${resolved} now).` : `Saved on this device. Choose SYSTEM to follow the device setting instead.`} Receipts always print black on white, whatever the theme.</Hint>
+      <Hint>{pref === 'system' ? `SYSTEM follows this device\u2019s light/dark setting (${resolved} now).` : `Saved on this device.`}</Hint>
     </>
   );
 }
@@ -62,7 +62,7 @@ function StandbyScreen({ s, set, notify }: AdminCtx) {
 
   return (
     <>
-      <Row label="STANDBY PHOTO" hint="Shown behind the TAP TO START screen. JPG, PNG, WEBP or an animated GIF (it plays on loop). Saved on this device only." stack>
+      <Row label="STANDBY PHOTO" hint="Shown behind TAP TO START. JPG, PNG, WEBP or animated GIF. Saved on this device only." stack>
         {p.enabled && thumb && <img className="standby-thumb" src={thumb} alt="Current standby photo" />}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,.gif" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void pick(f); }} />
         <div className="test-actions">
@@ -74,7 +74,7 @@ function StandbyScreen({ s, set, notify }: AdminCtx) {
         options={[{ value: 'cover', label: 'COVER' }, { value: 'contain', label: 'CONTAIN' }]} onChange={(fit) => { set({ standbyPhoto: { ...p, fit } }); }} />
       <SwitchRow label="SHOW RECEIPT OVER PHOTO" hint="OFF = photo only, with a small TAP TO START label at the bottom." checked={p.showReceipt} disabled={!p.enabled}
         onChange={(showReceipt) => { set({ standbyPhoto: { ...p, showReceipt } }); }} />
-      <Hint>Use a photo at least 1080 px wide (for a GIF, keep it under 12 MB; large GIFs may stutter on older tablets), in the same orientation as the kiosk screen. Owner access: tap the top-right corner of the standby screen 3 times quickly (or open /admin), then enter the PIN.</Hint>
+      <Hint>Use a photo at least 1080 px wide, in the same orientation as the kiosk screen. Keep GIFs under 12 MB.</Hint>
       {confirming && <ConfirmDialog title="REMOVE STANDBY PHOTO?" body="Guests will see the normal receipt standby screen again. You can upload a photo again at any time." confirmLabel="REMOVE" danger onConfirm={() => { void remove(); }} onCancel={() => setConfirming(false)} />}
     </>
   );

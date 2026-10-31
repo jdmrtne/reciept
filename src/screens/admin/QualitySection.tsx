@@ -31,10 +31,10 @@ function Paper({ s, set, tune }: AdminCtx) {
   const t = s.thermal;
   return (
     <>
-      <ChoiceRow label="PAPER" hint="Roll width" value={s.paperWidthMm} options={[{ value: 58, label: '58 MM' }, { value: 80, label: '80 MM' }]} onChange={(w) => set({ paperWidthMm: w })} />
+      <ChoiceRow label="PAPER" value={s.paperWidthMm} options={[{ value: 58, label: '58 MM' }, { value: 80, label: '80 MM' }]} onChange={(w) => set({ paperWidthMm: w })} />
       <StepperRow label="SIDE MARGIN" value={String(t.marginX)} onMinus={() => tune({ marginX: t.marginX - 8 })} onPlus={() => tune({ marginX: t.marginX + 8 })} />
       <StepperRow label="FEED LINES" hint="Blank paper after the print" value={String(t.feedLines)} onMinus={() => tune({ feedLines: t.feedLines - 1 })} onPlus={() => tune({ feedLines: t.feedLines + 1 })} />
-      <SwitchRow label="CUT" hint="Cut the paper after each print" checked={t.cut} onChange={(v) => tune({ cut: v })} />
+      <SwitchRow label="CUT" checked={t.cut} onChange={(v) => tune({ cut: v })} />
     </>
   );
 }
@@ -46,7 +46,7 @@ export const qualitySection: SectionDef = {
   description: 'Paper size and how photos are converted to black-and-white dots. Changes save instantly; print a test page to see them.',
   tabs: [{ id: 'photo', label: 'Photo Quality' }, { id: 'paper', label: 'Paper & Cutting' }, { id: 'test', label: 'Test Print' }],
   cards: [
-    { id: 'quality-tone', tab: 'photo', title: 'Photo tone', description: 'Brightness, contrast and dot pattern.', keywords: ['preset', 'photobooth face', 'halftone', 'legacy', 'dither', 'atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'dot size', 'brightness', 'contrast', 'density', 'sharpen', 'auto level', 'too dark', 'too pale', 'image', 'photo'], render: (c) => <Tone {...c} /> },
+    { id: 'quality-tone', tab: 'photo', title: 'Photo tone', description: '', keywords: ['preset', 'photobooth face', 'halftone', 'legacy', 'dither', 'atkinson', 'floyd-steinberg', 'ordered', 'threshold', 'dot size', 'brightness', 'contrast', 'density', 'sharpen', 'auto level', 'too dark', 'too pale', 'image', 'photo'], render: (c) => <Tone {...c} /> },
     { id: 'quality-paper', tab: 'paper', title: 'Paper & cutting', description: 'Roll width, margins and what happens after printing.', keywords: ['paper', '58 mm', '80 mm', 'width', 'side margin', 'margin', 'feed lines', 'feed', 'cut', 'cutter', 'roll', 'receipt'], render: (c) => <Paper {...c} /> },
     { id: 'quality-test', tab: 'test', title: 'Test print', description: 'The 1-bit result, exactly as the printer receives it.', aside: true, keywords: ['test print', 'preview', 'test page', 'result'], render: (c) => <TestPrintBody c={c} /> }
   ]

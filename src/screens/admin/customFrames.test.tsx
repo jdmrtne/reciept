@@ -78,7 +78,7 @@ describe('ADMIN > Frames > Your own frames', () => {
     const h = html();
     expect(h).toContain('NEW FRAME');
     expect(h).toContain('You have not made a frame yet');
-    expect(h).toContain('transparent');
+    expect(h).toContain('see-through');
     expect(h).not.toContain('data-custom-frame');
   });
 

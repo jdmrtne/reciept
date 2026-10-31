@@ -22,7 +22,7 @@ function Frames({ s, set }: AdminCtx) {
   const locked = (id: string) => shownCount === 1 && !hidden.includes(id);
   return (
     <>
-      <Hint>Tap a frame's switch to show or hide it. Choose which frame designs guests can pick in the editor. Hidden frames are only removed from that list; a guest who already has one keeps it. New frames added later appear automatically.</Hint>
+      <Hint>Switch a frame off to hide it from guests. A guest who already picked it keeps it.</Hint>
       {shownCount === 1 && <Hint important>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
       {GROUPS.map((g) => {
         const ids = g.frames.map((f) => f.id);
@@ -67,7 +67,7 @@ export const framesSection: SectionDef = {
   description: 'Choose which frame designs customers can pick, and add your own. Event frames are in ADMIN \u203A Events.',
   tabs: [{ id: 'builtin', label: 'Built-in Frames' }, { id: 'custom', label: 'Custom Frames' }],
   cards: [
-    { id: 'frames-visibility', tab: 'builtin', title: 'Frame designs in the editor', description: 'Switch frames on or off for the frame list guests see.',
+    { id: 'frames-visibility', tab: 'builtin', title: 'Frame designs in the editor', description: '',
       keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...POOL.map((f) => f.name.toLowerCase())],
       render: (c) => <Frames {...c} /> },
     customFramesCard

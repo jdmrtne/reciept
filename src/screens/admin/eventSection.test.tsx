@@ -129,11 +129,11 @@ describe('event list', () => {
   });
   it('says DUPLICATE copies the text only (layouts are not copied) and that CREATE makes an inactive event with just a name', () => {
     const h = decode(card('events-list', two()));
-    expect(h).toContain('DUPLICATE copies the event text only. The layouts are not copied');
-    expect(h).toContain('CREATE makes a new event with just a name. It is not active.');
+    expect(h).toContain('DUPLICATE copies the text only, not the layouts');
+    expect(h).toContain('CREATE adds an event with just a name.');
   });
   it('explains that MAKE ACTIVE applies to the next customer only', () => {
-    expect(decode(card('events-list', two()))).toContain('NEXT customer');
+    expect(decode(card('events-list', two()))).toContain('next customer');
   });
 });
 
@@ -209,9 +209,9 @@ describe('edit form', () => {
     expect(h).toMatch(/placeholder="Printed by Memorys"[^>]*disabled/);
   });
   it('tells the owner when they are editing the active event', () => {
-    expect(decode(card('events-edit', two()))).toContain('This is the active event');
+    expect(decode(card('events-edit', two()))).toContain('Active event.');
     eventEditorStore.select('event-2');
-    expect(decode(card('events-edit', two()))).not.toContain('This is the active event');
+    expect(decode(card('events-edit', two()))).not.toContain('Active event.');
   });
   it('Save and Cancel sit at the top of the form, above every field, so the on-screen keyboard cannot cover them', () => {
     const h = card('events-edit', two());
@@ -225,7 +225,7 @@ describe('preview card', () => {
     const h = decode(card('events-preview', two()));
     expect(h).toContain('PREVIEW FRAME');
     expect(h).toContain('<select');
-    expect(h).toContain('Nothing is printed, saved or sent');
+    expect(h).toContain('Nothing is printed or sent');
     expect(h).toContain('DRAWING PREVIEW'); // first paint, before the effect has drawn it
   });
 });

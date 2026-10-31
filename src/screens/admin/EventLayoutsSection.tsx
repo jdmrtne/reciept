@@ -260,7 +260,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
 
   return (
     <>
-      <Hint>Every picture you add here becomes a layout of the event picked in the list above. Tap a layout to open its settings: QR spot, rename, replace picture, move and delete. Each picture needs see through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself and counts them: that is the number of photos the layout takes.</Hint>
+      <Hint>Each picture you add becomes a layout of the event picked above. Tap a layout to open its settings. Pictures need see-through holes where the guests{'\u2019'} photos go; the app finds and counts them.</Hint>
       {notes.length > 0 && <ul className="cf-warn" aria-label="Notes about the picture">{notes.map((m, i) => <li key={i}>{m}</li>)}</ul>}
       <div className="lv-group" data-event-layouts={eventId}>
         <div className="lv-head">
@@ -294,17 +294,16 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
             </label>
             <small className="ef-file">{file ? `PICTURE CHOSEN${(file as File).name ? `: ${(file as File).name}` : ''}` : 'NO PICTURE CHOSEN YET. YOU CAN ALSO DROP A FILE HERE'}</small>
           </div>
-          <Hint>PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Make 1 to {LIMITS.maxWindows} holes, one for each photo. Each hole must be a plain rectangle, fully transparent, with a little picture all around it. A hole that touches the edge of the picture is ignored.</Hint>
+          <Hint>PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. 1 to {LIMITS.maxWindows} plain, fully transparent rectangular holes, one per photo, with a little picture around each. Holes touching the edge are ignored.</Hint>
           {errors.length > 0 && <ul className="cf-err" role="alert">{errors.map((m, i) => <li key={i}>{m}</li>)}</ul>}
           <div className="test-actions">
             <button type="button" className="btn" disabled={busy || !cleanName(name) || !file} onClick={() => void save()}>{busy ? 'CHECKING' : 'SAVE LAYOUT'}</button>
             <button type="button" className="btn ghost" disabled={busy} onClick={closeAdd}>CANCEL</button>
           </div>
-          <Hint>The layout is added only if the picture passes the check.</Hint>
         </div>
       )}
 
-      <Hint>A layout is offered to guests when it is SHOWN and its event is the ACTIVE one. Make another event active and its layouts replace these. A layout is only ever used with its own picture.</Hint>
+      <Hint>Guests see a layout when it is SHOWN and its event is ACTIVE.</Hint>
 
       {oldFrames.length > 0 && (
         <div className="lv-group" data-old-event-frames="true">

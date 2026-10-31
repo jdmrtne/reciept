@@ -119,7 +119,7 @@ function EventList(c: AdminCtx) {
     if (apply(c, resetEventProfile(s, id))) { eventEditorStore.cancel(); notify('success', 'EVENT TEXT RESET TO THE DEFAULTS'); }
   });
 
-  const why = dirty ? 'SAVE OR CANCEL YOUR CHANGES FIRST' : !del.ok ? (del.reason === 'active' ? 'THE ACTIVE EVENT CANNOT BE DELETED \u2014 MAKE ANOTHER EVENT ACTIVE FIRST' : del.reason === 'last' ? 'THE BOOTH NEEDS AT LEAST ONE EVENT' : '') : '';
+  const why = dirty ? 'SAVE OR CANCEL YOUR CHANGES FIRST' : !del.ok ? (del.reason === 'active' ? 'THE ACTIVE EVENT CANNOT BE DELETED' : del.reason === 'last' ? 'THE BOOTH NEEDS AT LEAST ONE EVENT' : '') : '';
 
   return (
     <>
@@ -158,9 +158,8 @@ function EventList(c: AdminCtx) {
       {dirty && c.goTab && <div className="test-actions"><button type="button" className="btn ghost" onClick={() => c.goTab?.('details')}>GO TO EVENT DETAILS TO SAVE OR CANCEL</button></div>}
       {full && <Hint important>{`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS REACHED.`}</Hint>}
       <Hint>
-        <span className="help-p">CREATE makes a new event with just a name. It is not active. Add its layouts in the Uploads & Media tab, and its text in Event Details.</span>
-        <span className="help-p">MAKE ACTIVE decides what the NEXT customer gets: the event text and the event layouts. Only the active event's layouts show on the layout screen. A customer who already started keeps the event text they started with.</span>
-        <span className="help-p">DUPLICATE copies the event text only. The layouts are not copied, so add them again in the copy.</span>
+        <span className="help-p">CREATE adds an event with just a name. Add its layouts in Uploads & Media and its text in Event Details.</span>
+        <span className="help-p">MAKE ACTIVE sets what the next customer gets: the event text and layouts. DUPLICATE copies the text only, not the layouts.</span>
       </Hint>
 
       {ask?.kind === 'switch' && (
@@ -206,7 +205,7 @@ function EventForm(c: AdminCtx) {
         <button type="button" className="btn" disabled={!dirty || bad || busy} onClick={save}><Icon name="check" />SAVE</button>
       </div>
       <p className="ev-edit-of">EDITING: <b>{nameOf(profile.name)}</b>{isActive && <span className="ev-tag">ACTIVE</span>}<i className="ev-id">#{profile.id}</i></p>
-      {isActive && <Hint>This is the active event. Nothing changes for customers until you press SAVE.</Hint>}
+      {isActive && <Hint>Active event. Customers see changes only after SAVE.</Hint>}
 
       <TextField label="EVENT NAME" hint="Required. Printed first, large, unless the chosen frame already shows it." value={draft.name} placeholder="MARIA & JOSE" counter={counter(draft.name)} error={errors.name}
         onChange={(v) => edit({ name: v })} />
@@ -222,7 +221,7 @@ function EventForm(c: AdminCtx) {
       <SwitchRow label="SHOW BRANDING" hint="A small line at the bottom of the receipt" checked={draft.brandingEnabled} onChange={(v) => edit({ brandingEnabled: v })} />
       <TextField label="BRANDING TEXT" hint={`Leave blank to print "${DEFAULT_BRANDING_TEXT}".`} value={draft.brandingText} placeholder={DEFAULT_BRANDING_TEXT} disabled={!draft.brandingEnabled}
         counter={counter(draft.brandingText)} error={errors.brandingText} onChange={(v) => edit({ brandingText: v })} />
-      <Hint>{`Each line holds up to ${EVENT_LIMITS.lineMax} characters. Letters, numbers, accents and common punctuation print; emoji and other scripts do not. Nothing is cut off while you type: a line that is too long is marked and cannot be saved.`}</Hint>
+      <Hint>{`Up to ${EVENT_LIMITS.lineMax} characters per line. Letters, numbers, accents and common punctuation print; emoji and other scripts do not.`}</Hint>
     </>
   );
 }
@@ -288,7 +287,7 @@ function EventPreview(c: AdminCtx) {
       <div className="ev-prev">
         {url ? <img className="ev-prev-img" src={url} alt="Sample receipt showing this event's text" /> : <p className="loading">{failed ? 'PREVIEW UNAVAILABLE' : 'DRAWING PREVIEW'}</p>}
       </div>
-      <Hint>Sample photo, date and time. Shows your unsaved text. Nothing is printed, saved or sent, and the QR code is not drawn here.</Hint>
+      <Hint>Shows your unsaved text with a sample photo. Nothing is printed or sent.</Hint>
     </>
   );
 }
@@ -303,6 +302,6 @@ export const eventsSection: SectionDef = {
     { id: 'events-list', tab: 'list', title: 'Events', description: 'Type a name to create an event, pick one to edit, make one active, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'create', 'create event', 'event name', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
     eventLayoutsCard, // the event layouts of the event picked in the list above (EL-4)
     { id: 'events-edit', tab: 'details', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
-    { id: 'events-preview', tab: 'details', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
+    { id: 'events-preview', tab: 'details', title: 'Receipt preview', description: '', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
   ]
 };

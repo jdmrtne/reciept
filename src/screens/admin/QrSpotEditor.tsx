@@ -168,7 +168,7 @@ export function QrSpotEditor({ art, spotKey, src, meta, modules, inset = 0, shar
         {spotBusy && <p className="hint" role="status">CHECKING THE PICTURE</p>}
         {sp && sp.errors.length > 0 && <ul className="cf-err" role="alert">{sp.errors.map((m, i) => <li key={i}>{m}</li>)}</ul>}
         {sp?.ok && <p className="hint" role="status">THIS SPOT WORKS. PRESS SAVE QR SPOT TO USE IT.</p>}
-        <Hint>Optional. Without a spot the QR prints on a plain strip under the {noun}. To put it inside the picture, press DRAW SPOT and drag a rectangle over plain empty space, or press FIND EMPTY SPACE. The spot must be one flat colour, away from the photo windows, and at least {requiredSpotPercent(modules, inset)} percent of the paper width on each side. {inset ? 'The saved spot is made a little smaller than the rectangle you draw, so the QR code always has clear paper around it. ' : ''}{shareEnabled ? '' : 'QR codes only print when SHARE QR is on under Sharing.'}</Hint>
+        <Hint>Optional. Without a spot the QR prints on a plain strip under the {noun}. To place it inside the picture, press DRAW SPOT and drag over plain empty space, or press FIND EMPTY SPACE. The spot must be one flat colour, away from the photo windows, and at least {requiredSpotPercent(modules, inset)} percent of the paper width on each side. {shareEnabled ? '' : 'QR codes only print when SHARE QR is on under Sharing.'}</Hint>
       </div>
       <div className="cf-prev-grid">
         <ArtPreview src={src} meta={meta} qr={art.qr ?? null} draft={sp?.draft ?? null} drawing={!!sp?.draw} onSpot={onDraw} />

@@ -20,12 +20,12 @@ export function Help({ children, className, label = 'Show help' }: { children: R
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
-    const w = Math.min(300, window.innerWidth - 24);
+    const w = Math.min(440, window.innerWidth - 24);
     const left = Math.max(12, Math.min(r.left + r.width / 2 - 24, window.innerWidth - w - 12));
     const h = pop.current?.offsetHeight ?? 120;
     const below = r.bottom + 10;
     const top = below + h > window.innerHeight - 12 ? Math.max(12, r.top - 10 - h) : below;
-    setPos({ position: 'fixed', top, left, width: w });
+    setPos({ position: 'fixed', top, left });
   }, [open]);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export function Help({ children, className, label = 'Show help' }: { children: R
   return (
     <>
       <button ref={btn} type="button" className="help-btn" aria-label={label} aria-expanded={open} aria-controls={id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}>?</button>
-      <small ref={pop} id={id} role={open ? 'dialog' : undefined} style={open ? pos : undefined} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>
+      <small ref={pop} id={id} role={open ? 'dialog' : undefined} style={open ? { ...pos, width: Math.min(440, window.innerWidth - 24) } : undefined} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>
         {children}
       </small>
     </>

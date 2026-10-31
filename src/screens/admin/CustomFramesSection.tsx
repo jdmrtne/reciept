@@ -28,8 +28,7 @@ export function SpecHints() {
   return (
     <>
       <Hint>
-        PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Each hole must be a plain rectangle and fully see-through, with a little picture all around it.
-        A layout needs one hole per photo.
+        PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. One plain, fully see-through rectangular hole per photo, with a little picture around it.
       </Hint>
       {isPersistent() === false && <Hint important>This browser has not promised to keep these files. If the tablet runs very low on space it may clear them, so keep the original pictures somewhere safe.</Hint>}
     </>
@@ -215,7 +214,7 @@ export function FrameEditor({ frameId, s, notify, onBack, onDeleted, onBusyChang
               );
             })}
           </ul>
-          <Hint>You can also drop a file onto a row. Use the switch above to turn the frame on or off for guests without losing its pictures.</Hint>
+          <Hint>You can also drop a file onto a row.</Hint>
 
           {previewAsset && previewLayout && (
             <figure className="cf-prev" data-preview={previewLayout}>
@@ -274,7 +273,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
 
   return (
     <>
-      <Hint>Add your own frame designs. For each layout you want to offer, upload one picture with see-through (transparent) holes where the guests{'\u2019'} photos go. The app finds the holes by itself.</Hint>
+      <Hint>Upload one picture per layout, with see-through holes where the guests{'\u2019'} photos go. The app finds the holes itself.</Hint>
       <SpecHints />
 
       <div className="seg cf-frames" role="radiogroup" aria-label="Your frames">

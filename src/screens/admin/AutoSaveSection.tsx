@@ -47,7 +47,7 @@ function Folder({ s, notify }: AdminCtx) {
           {st?.s === 'permission' && <button type="button" className="btn ghost" onClick={() => void regrant()}>RE-GRANT ACCESS</button>}
         </div>
       </Row>
-      <Row label="STATUS" hint="Current folder and permission" stack><p role={bad ? 'alert' : 'status'} style={bad ? { fontWeight: 700 } : undefined}>{text(st)}</p></Row>
+      <Row label="STATUS" stack><p role={bad ? 'alert' : 'status'} style={bad ? { fontWeight: 700 } : undefined}>{text(st)}</p></Row>
       {st?.s === 'none' && anyOn && <Hint important>Auto-save is ON but no folder is chosen, so nothing is being saved.</Hint>}
       {last && <Row label="LAST SAVE" stack><p role="status">{`${KIND[last.kind]} ${last.ok ? 'SAVED' : 'NOT SAVED'}: ${last.detail}`}</p></Row>}
     </>
@@ -62,6 +62,6 @@ export const autoSaveSection: SectionDef = {
   tabs: [{ id: 'options', label: 'Save Options' }, { id: 'storage', label: 'Storage Location' }],
   cards: [
     { id: 'autosave-toggles', tab: 'options', title: 'What to save', keywords: ['auto-save', 'autosave', 'images', 'gifs', 'gif', 'videos', 'video', 'mp4', 'photos', 'save', 'automatic', 'backup'], render: (c) => <Toggles {...c} /> },
-    { id: 'autosave-folder', tab: 'storage', title: 'Save folder', description: 'Where the files go.', keywords: ['folder', 'directory', 'choose save folder', 'permission', 'location', 'path', 'save', 'storage', 'memorys'], render: (c) => <Folder {...c} /> }
+    { id: 'autosave-folder', tab: 'storage', title: 'Save folder', description: '', keywords: ['folder', 'directory', 'choose save folder', 'permission', 'location', 'path', 'save', 'storage', 'memorys'], render: (c) => <Folder {...c} /> }
   ]
 };

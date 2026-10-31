@@ -109,6 +109,6 @@ export const frameTextSection: SectionDef = {
         ...editableFrameDefs().flatMap((f) => [f.name.toLowerCase(), f.id, ...phrasesOf(f)])],
       render: (c: AdminCtx) => <FrameTextEditor c={c} />
     },
-    { id: 'frametext-preview', tab: 'editor', title: 'Frame preview', description: 'How the chosen frame looks with your text.', aside: true, keywords: ['preview', 'frame preview', 'sample', 'look'], render: (c: AdminCtx) => <FrameTextPreview c={c} /> }
+    { id: 'frametext-preview', tab: 'editor', title: 'Frame preview', description: '', aside: true, keywords: ['preview', 'frame preview', 'sample', 'look'], render: (c: AdminCtx) => <FrameTextPreview c={c} /> }
   ]
 };
