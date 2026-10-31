@@ -289,5 +289,7 @@ button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2p
 /* Event layouts: one layout's settings page (QR view first, buttons below) */
 .el-detail { display: flex; flex-direction: column; gap: 12px; }
 .el-detail .lv-head { align-items: center; }
-.el-below { margin-top: 4px; padding-top: 12px; border-top: 1.5px dashed var(--hairline); }
+.el-side { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1.5px dashed var(--hairline); }
+.el-side .el-acts { flex-direction: column; align-items: stretch; gap: 8px; }
+.el-side .btn { width: 100%; justify-content: center; }
 .el-tile .fg-name { font-size: .8em; }
