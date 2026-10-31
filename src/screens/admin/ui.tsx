@@ -6,7 +6,7 @@ import type { Notice } from './types';
 
 /**
  * The "?" circle. Explanations stay out of sight until the owner taps it, then open as a small popup next to the circle (it floats over the
- * page, so nothing below it moves). Tap the circle again, the X, outside it, or press Esc to close. Put it inside a `.help-host` next to the thing
+ * page, so nothing below it moves). Tap the circle again, tap outside it, or press Esc to close. Put it inside a `.help-host` next to the thing
  * it explains. The text is always in the page (just `hidden` while closed), so search and screen readers still find it. `className` styles the text.
  */
 export function Help({ children, className, label = 'Show help' }: { children: ReactNode; className?: string; label?: string }) {
@@ -43,7 +43,6 @@ export function Help({ children, className, label = 'Show help' }: { children: R
       <button ref={btn} type="button" className="help-btn" aria-label={label} aria-expanded={open} aria-controls={id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}>?</button>
       <small ref={pop} id={id} role={open ? 'dialog' : undefined} style={open ? pos : undefined} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>
         {children}
-        {open && <button type="button" className="help-x" aria-label="Close help" onClick={(e) => { e.stopPropagation(); setOpen(false); btn.current?.focus(); }}>{'\u00D7'}</button>}
       </small>
     </>
   );
