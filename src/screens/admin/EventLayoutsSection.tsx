@@ -68,8 +68,8 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
   useEffect(() => { void initEventLayouts(); }, []); // idempotent: the kiosk already started it; this only covers a screen opened first
 
   const status = getEventLayoutStatus();
-  if (status === 'unavailable') return <Hint>{MESSAGES.unavailable}</Hint>;
-  if (status === 'idle' || status === 'loading') return <Hint>Loading your layouts.</Hint>;
+  if (status === 'unavailable') return <Hint important>{MESSAGES.unavailable}</Hint>;
+  if (status === 'idle' || status === 'loading') return <Hint important>Loading your layouts.</Hint>;
 
   const defs = eventLayoutRecords();
   const tiles = tilesOfEvent(defs, eventId);
@@ -205,7 +205,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
     {editing === 'move' && (
       <div className="el-panel">
         {dests.length === 0
-          ? <Hint>There is no other event to move this layout to. Create one in the Event List first.</Hint>
+          ? <Hint important>There is no other event to move this layout to. Create one in the Event List first.</Hint>
           : <select className="adm-in" value={target} aria-label={`MOVE ${t.label} TO`} onChange={(e) => setTarget(e.target.value)}>
               <option value="">PICK AN EVENT</option>
               {dests.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
@@ -243,7 +243,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
               disabled={busy} label={t.label} noun="layout" onSave={saveSpot(t.id)} notify={notify}
               how={<><small>HOW IT PRINTS (SAMPLE QR)</small><div className="lv-thumb"><FramePreview frameId={t.id} layoutId={t.id} qr /></div>{side}</>} />
           </figure>
-        ) : <><Hint>The picture of this layout is not ready. Go back and open it again.</Hint>{side}</>}
+        ) : <><Hint important>The picture of this layout is not ready. Go back and open it again.</Hint>{side}</>}
         {problems.length > 0 && <ul className="cf-err" role="alert">{problems.map((m, i) => <li key={i}>{m}</li>)}</ul>}
       </div>
     );
@@ -270,7 +270,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
             <button type="button" className="btn ghost" disabled={busy || shown === 0} onClick={() => void setAll(false)} aria-label={`HIDE ALL LAYOUTS OF ${title}`}>HIDE ALL</button>
           </div>
         </div>
-        {tiles.length === 0 && !adding && <Hint>No layouts in this event yet. Press ADD LAYOUT.</Hint>}
+        {tiles.length === 0 && !adding && <Hint important>No layouts in this event yet. Press ADD LAYOUT.</Hint>}
         <ul className="fg-grid" aria-label={`Layouts of ${title}`}>
           {tiles.map(tile)}
           <li className="fg-tile fg-add">

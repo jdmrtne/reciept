@@ -31,7 +31,7 @@ function Layouts({ s, set }: AdminCtx) {
   return (
     <>
       <Hint>Choose which layouts guests see on CHOOSE YOUR STRIP. Hidden layouts are only removed from that screen; nothing else changes. New layouts added later appear automatically.</Hint>
-      {shownCount === 1 && <Hint>At least one layout must stay shown, so the last one cannot be switched off.</Hint>}
+      {shownCount === 1 && <Hint important>At least one layout must stay shown, so the last one cannot be switched off.</Hint>}
       <ul className="lv-list">
         {ENTRIES.map((e) => e.kind === 'layout' ? (
           <li key={e.layout.id} className="lv-row">

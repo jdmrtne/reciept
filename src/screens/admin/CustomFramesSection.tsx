@@ -31,7 +31,7 @@ export function SpecHints() {
         PNG or WebP, {LIMITS.minWidth} to {LIMITS.maxWidth} pixels wide ({LIMITS.recommendedWidth} is best), up to {Math.round(LIMITS.maxFileBytes / 1048576)} MB. Each hole must be a plain rectangle and fully see-through, with a little picture all around it.
         A layout needs one hole per photo.
       </Hint>
-      {isPersistent() === false && <Hint>This browser has not promised to keep these files. If the tablet runs very low on space it may clear them, so keep the original pictures somewhere safe.</Hint>}
+      {isPersistent() === false && <Hint important>This browser has not promised to keep these files. If the tablet runs very low on space it may clear them, so keep the original pictures somewhere safe.</Hint>}
     </>
   );
 }
@@ -63,8 +63,8 @@ export function FrameEditor({ frameId, s, notify, onBack, onDeleted, onBusyChang
   useEffect(() => () => { tell.current?.(false); }, []);
 
   const status = getCustomStatus();
-  if (status === 'unavailable') return <Hint>{MESSAGES.unavailable}</Hint>;
-  if (status === 'idle' || status === 'loading') return <Hint>Loading your frames.</Hint>;
+  if (status === 'unavailable') return <Hint important>{MESSAGES.unavailable}</Hint>;
+  if (status === 'idle' || status === 'loading') return <Hint important>Loading your frames.</Hint>;
 
   const setMsg = (key: string, errs: string[], warns: string[]) => { setProblems((p) => ({ ...p, [key]: errs })); setNotes((p) => ({ ...p, [key]: warns })); };
 
@@ -255,8 +255,8 @@ function CustomFrames({ notify, s }: AdminCtx) {
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   const status = getCustomStatus();
-  if (status === 'unavailable') return <Hint>{MESSAGES.unavailable}</Hint>;
-  if (status === 'idle' || status === 'loading') return <Hint>Loading your frames.</Hint>;
+  if (status === 'unavailable') return <Hint important>{MESSAGES.unavailable}</Hint>;
+  if (status === 'idle' || status === 'loading') return <Hint important>Loading your frames.</Hint>;
   const wait = !!busy || editorBusy;
 
   const create = async () => {
@@ -284,7 +284,7 @@ function CustomFrames({ notify, s }: AdminCtx) {
         ))}
         <button type="button" className="btn ghost" disabled={wait} onClick={() => { setShowNew((v) => !v); setNameErr(''); }}><Icon name="frame" />NEW FRAME</button>
       </div>
-      {frames.length === 0 && !showNew && <Hint>You have not made a frame yet. Press NEW FRAME to start.</Hint>}
+      {frames.length === 0 && !showNew && <Hint important>You have not made a frame yet. Press NEW FRAME to start.</Hint>}
 
       {showNew && (
         <div className="cf-new">

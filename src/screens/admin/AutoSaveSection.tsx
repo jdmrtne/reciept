@@ -20,7 +20,7 @@ function Toggles({ s, set }: AdminCtx) {
       <SwitchRow label="AUTO-SAVE IMAGES" hint="Save each finished photo (frame and MEMORYS branding included) to MEMORYS/Images" checked={s.autoSave.images} onChange={(v) => set({ autoSave: { ...s.autoSave, images: v } })} />
       <SwitchRow label="AUTO-SAVE GIFS" hint="Save each finished animated GIF to MEMORYS/GIFs" checked={s.autoSave.gifs} onChange={(v) => set({ autoSave: { ...s.autoSave, gifs: v } })} />
       <SwitchRow label="AUTO-SAVE VIDEOS (MP4)" hint="Save each finished GIF as an MP4 video for social media to MEMORYS/Videos" checked={s.autoSave.videos} onChange={(v) => set({ autoSave: { ...s.autoSave, videos: v } })} />
-      {!videoSupported() && <Hint>This browser cannot make MP4 videos (needs Chrome or Edge with WebCodecs). Photos and GIFs still save; each video is reported as NOT SAVED.</Hint>}
+      {!videoSupported() && <Hint important>This browser cannot make MP4 videos (needs Chrome or Edge with WebCodecs). Photos and GIFs still save; each video is reported as NOT SAVED.</Hint>}
     </>
   );
 }
@@ -40,7 +40,7 @@ function Folder({ s, notify }: AdminCtx) {
   const bad = st && (st.s === 'unsupported' || st.s === 'permission' || st.s === 'error' || (st.s === 'none' && anyOn));
   return (
     <>
-      {!folderSupported() && <Hint>This browser cannot write to a chosen folder (needs Chrome or Edge on HTTPS, installed or not). Auto-save will NOT save anything here; use the manual download buttons or the QR page instead. Nothing is reported as saved.</Hint>}
+      {!folderSupported() && <Hint important>This browser cannot write to a chosen folder (needs Chrome or Edge on HTTPS, installed or not). Auto-save will NOT save anything here; use the manual download buttons or the QR page instead. Nothing is reported as saved.</Hint>}
       <Row label="SAVE FOLDER" hint="Pick any folder; MEMORYS/Images, MEMORYS/GIFs and MEMORYS/Videos are created inside it" stack>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" className="btn ghost" disabled={!folderSupported()} onClick={() => void pick()}>CHOOSE SAVE FOLDER</button>
@@ -48,7 +48,7 @@ function Folder({ s, notify }: AdminCtx) {
         </div>
       </Row>
       <Row label="STATUS" hint="Current folder and permission" stack><p role={bad ? 'alert' : 'status'} style={bad ? { fontWeight: 700 } : undefined}>{text(st)}</p></Row>
-      {st?.s === 'none' && anyOn && <Hint>Auto-save is ON but no folder is chosen, so nothing is being saved.</Hint>}
+      {st?.s === 'none' && anyOn && <Hint important>Auto-save is ON but no folder is chosen, so nothing is being saved.</Hint>}
       {last && <Row label="LAST SAVE" stack><p role="status">{`${KIND[last.kind]} ${last.ok ? 'SAVED' : 'NOT SAVED'}: ${last.detail}`}</p></Row>}
     </>
   );

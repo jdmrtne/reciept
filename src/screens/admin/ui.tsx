@@ -1,8 +1,24 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../components/Icon';
 import type { Notice } from './types';
 
 /* Small presentational pieces shared by every settings card. No settings logic lives here. */
+
+/**
+ * The "?" circle. Explanations are kept out of sight until the owner taps it, so ADMIN only shows what matters. Put it inside a `.help-host`
+ * (a wrapping flex row) next to the thing it explains: the text opens on its own line under it. The text is always in the page (just `hidden`
+ * while closed), so search and screen readers still find it. `className` styles the text (e.g. a card description).
+ */
+export function Help({ children, className, label = 'Show help' }: { children: ReactNode; className?: string; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <>
+      <button type="button" className="help-btn" aria-label={label} aria-expanded={open} aria-controls={id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}>?</button>
+      <small id={id} className={className ? `help-t ${className}` : 'help-t'} hidden={!open}>{children}</small>
+    </>
+  );
+}
 
 export function SettingsCard({ title, description, tag, aside, open, children }: { title: string; description?: string; tag?: string; aside?: boolean; /** Search results: jump to the tab this card lives in. */ open?: { label: string; onOpen: () => void }; children: ReactNode }) {
   const id = useId();
@@ -10,8 +26,7 @@ export function SettingsCard({ title, description, tag, aside, open, children }:
     <section className={aside ? 'card card-aside' : 'card'} aria-labelledby={id}>
       <header className="card-h">
         {tag && <span className="card-tag">{tag}</span>}
-        <h4 id={id} className="card-t">{title}</h4>
-        {description && <p className="card-d">{description}</p>}
+        <div className="help-host"><h4 id={id} className="card-t">{title}</h4>{description && <Help className="card-d">{description}</Help>}</div>
         {open && <button type="button" className="btn ghost adm-open" onClick={open.onOpen}>{open.label}</button>}
       </header>
       <div className="card-b">{children}</div>
@@ -23,7 +38,7 @@ export function SettingsCard({ title, description, tag, aside, open, children }:
 export function Row({ label, hint, stack, children }: { label: string; hint?: string; stack?: boolean; children: ReactNode }) {
   return (
     <div className={stack ? 'row stack' : 'row'}>
-      <div className="row-l"><span>{label}</span>{hint && <small>{hint}</small>}</div>
+      <div className="row-l"><div className="help-host"><span>{label}</span>{hint && <Help>{hint}</Help>}</div></div>
       <div className="row-c">{children}</div>
     </div>
   );
@@ -86,8 +101,7 @@ export function TextField({ label, hint, value, onChange, placeholder, inputMode
   const errId = useId();
   return (
     <label className={error ? 'field has-err' : 'field'}>
-      <span className="field-top"><span className="field-l">{label}</span>{counter && <span className={error ? 'field-n bad' : 'field-n'}>{counter}</span>}</span>
-      {hint && <small className="field-h">{hint}</small>}
+      <span className="field-top"><span className="help-host"><span className="field-l">{label}</span>{hint && <Help className="field-h">{hint}</Help>}</span>{counter && <span className={error ? 'field-n bad' : 'field-n'}>{counter}</span>}</span>
       <input className="adm-in" value={value} placeholder={placeholder} inputMode={inputMode} disabled={disabled} aria-invalid={error ? true : undefined} aria-describedby={error ? errId : undefined}
         onChange={(e) => onChange(e.target.value)} onFocus={(e) => e.currentTarget.scrollIntoView?.({ block: 'center', behavior: 'smooth' })} />
       {error && <small id={errId} className="field-err" role="alert">{error}</small>}
@@ -95,8 +109,10 @@ export function TextField({ label, hint, value, onChange, placeholder, inputMode
   );
 }
 
-export function Hint({ children }: { children: ReactNode }) {
-  return <p className="hint">{children}</p>;
+/** Explanatory text, hidden behind a "?" circle. `important` keeps it on screen: use it only for a state the owner must see right now (a warning, an empty list, a limit reached). */
+export function Hint({ children, important }: { children: ReactNode; important?: boolean }) {
+  if (important) return <p className="hint">{children}</p>;
+  return <div className="help-host hint-host"><Help>{children}</Help></div>;
 }
 
 export type SaveState = 'idle' | 'saved' | 'error';

@@ -154,12 +154,14 @@ function EventList(c: AdminCtx) {
         <button type="button" className="btn ghost" disabled={locked} onClick={() => setAsk({ kind: 'reset', id: profile.id })}><Icon name="reset" />RESET TEXT</button>
         <button type="button" className="btn ghost" disabled={locked || !del.ok} onClick={() => setAsk({ kind: 'delete', id: profile.id })}><Icon name="trash" />DELETE</button>
       </div>
-      {why && <Hint>{why}</Hint>}
+      {why && <Hint important>{why}</Hint>}
       {dirty && c.goTab && <div className="test-actions"><button type="button" className="btn ghost" onClick={() => c.goTab?.('details')}>GO TO EVENT DETAILS TO SAVE OR CANCEL</button></div>}
-      {full && <Hint>{`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS REACHED.`}</Hint>}
-      <Hint>CREATE makes a new event with just a name. It is not active. Add its layouts in the Uploads & Media tab, and its text in Event Details.</Hint>
-      <Hint>MAKE ACTIVE decides what the NEXT customer gets: the event text and the event layouts. Only the active event's layouts show on the layout screen. A customer who already started keeps the event text they started with.</Hint>
-      <Hint>DUPLICATE copies the event text only. The layouts are not copied, so add them again in the copy.</Hint>
+      {full && <Hint important>{`LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS REACHED.`}</Hint>}
+      <Hint>
+        <span className="help-p">CREATE makes a new event with just a name. It is not active. Add its layouts in the Uploads & Media tab, and its text in Event Details.</span>
+        <span className="help-p">MAKE ACTIVE decides what the NEXT customer gets: the event text and the event layouts. Only the active event's layouts show on the layout screen. A customer who already started keeps the event text they started with.</span>
+        <span className="help-p">DUPLICATE copies the event text only. The layouts are not copied, so add them again in the copy.</span>
+      </Hint>
 
       {ask?.kind === 'switch' && (
         <ConfirmDialog title="UNSAVED CHANGES" body="You changed this event but did not save. Switching to another event throws those changes away." confirmLabel="DISCARD AND SWITCH" cancelLabel="KEEP EDITING"

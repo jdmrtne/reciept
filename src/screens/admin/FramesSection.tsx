@@ -23,7 +23,7 @@ function Frames({ s, set }: AdminCtx) {
   return (
     <>
       <Hint>Tap a frame's switch to show or hide it. Choose which frame designs guests can pick in the editor. Hidden frames are only removed from that list; a guest who already has one keeps it. New frames added later appear automatically.</Hint>
-      {shownCount === 1 && <Hint>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
+      {shownCount === 1 && <Hint important>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
       {GROUPS.map((g) => {
         const ids = g.frames.map((f) => f.id);
         const anyHidden = ids.some((i) => hidden.includes(i));

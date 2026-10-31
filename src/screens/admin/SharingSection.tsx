@@ -7,14 +7,14 @@ function Toggle({ s, set }: AdminCtx) {
 }
 
 function Links({ s, set, busy, actions }: AdminCtx) {
-  if (!s.share.enabled) return <Hint>Turn on SHARE QR to set where the QR code points.</Hint>;
+  if (!s.share.enabled) return <Hint important>Turn on SHARE QR to set where the QR code points.</Hint>;
   const cloud = !!getShareStore();
   const bridgeOnPrinter = s.printer === 'network' || s.printer === 'windows';
   return (
     <>
       {cloud ? (
         <>
-          <Hint>STORAGE: SUPABASE (photobooth-media)</Hint>
+          <Hint important>STORAGE: SUPABASE (photobooth-media)</Hint>
           <TextField label="SITE URL (WHAT THE QR OPENS; BLANK = THIS SITE)" inputMode="url" value={s.share.publicBaseUrl} placeholder="https://booth.example.com" disabled={busy}
             onChange={(v) => set({ share: { ...s.share, publicBaseUrl: v } })} />
         </>

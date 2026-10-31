@@ -40,7 +40,6 @@
 .adm-tab-dot { display: inline-block; width: .6em; height: .6em; margin-left: .6em; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px var(--surface); } /* unsaved text in this tab */
 .adm-tab.on .adm-tab-dot { box-shadow: 0 0 0 2px var(--ink); }
 .adm-open { align-self: flex-start; min-height: 44px; margin-top: 4px; }
-@media (min-width: 860px) and (max-height: 760px) { .adm-sub { display: none; } } /* short screens: the heading and tabs keep their room for the settings */
 .adm-pane-head { width: 100%; max-width: var(--w); display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
 .adm-h { margin: 0; display: flex; align-items: center; gap: .55em; font-size: 1.2em; letter-spacing: .16em; text-transform: uppercase; color: var(--ink); }
 .adm-h .ic { width: 1.2em; height: 1.2em; }
@@ -176,7 +175,7 @@ select.adm-in { text-transform: uppercase; }
 .ev-state .ic { width: 1.2em; height: 1.2em; flex: none; }
 .ev-edit-of { margin: 0; display: flex; flex-wrap: wrap; align-items: center; letter-spacing: .08em; overflow-wrap: anywhere; }
 .ev-edit-of b { margin-left: .4em; }
-.field-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.field-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .field-n { flex: none; color: var(--muted); font-size: .8em; letter-spacing: .06em; }
 .field-n.bad { color: var(--ink); font-weight: 700; text-decoration: underline; }
 .field-err { color: var(--ink); font-weight: 700; letter-spacing: .04em; line-height: 1.4; padding-left: .7em; border-left: 4px double var(--edge); }
@@ -293,3 +292,15 @@ button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2p
 .el-side .el-acts { flex-direction: column; align-items: stretch; gap: 8px; }
 .el-side .btn { width: 100%; justify-content: center; }
 .el-tile .fg-name { font-size: .8em; }
+
+/* "?" help circles: explanations stay hidden until tapped (ui.tsx Help / Hint) */
+.help-host { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.help-btn { position: relative; flex: none; width: 22px; height: 22px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--surface); color: var(--ink); font: 700 .72rem/1 inherit; cursor: pointer; }
+.help-btn::after { content: ''; position: absolute; inset: -11px; } /* a finger-sized tap area around the small circle */
+.help-btn[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
+.help-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.help-t { flex: 1 1 100%; margin: 0; color: var(--muted); font-size: .88em; line-height: 1.5; letter-spacing: .03em; font-weight: 400; text-transform: none; }
+.help-t[hidden] { display: none; }
+.hint-host { justify-content: flex-start; }
+.help-p { display: block; }
+.help-p + .help-p { margin-top: 6px; }

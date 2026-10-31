@@ -13,7 +13,7 @@ import { Icon } from '../../components/Icon';
 import '../../styles/admin.css';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
-import { ConfirmDialog, SaveStatus, SettingsCard, Toast, type SaveState } from './ui';
+import { ConfirmDialog, Help, SaveStatus, SettingsCard, Toast, type SaveState } from './ui';
 import { eventEditorStore, isDirty } from './eventEditor';
 import { frameTextEditorStore, isFrameTextDirty } from './frameTextEditor';
 import { ThemeToggle } from './ThemeToggle';
@@ -197,8 +197,8 @@ export function AdminPanel({ onChangePin, initialSection = 'printer', initialTab
         <div className={hasAside ? 'adm-pane wide' : 'adm-pane'} ref={paneRef}>
           <div className="adm-pane-head">
             <div>
-              <h3 className="adm-h"><Icon name={searching ? 'search' : section.icon} />{searching ? 'SEARCH RESULTS' : section.label}</h3>
-              <p className="adm-sub">{searching ? `${hits.length} ${hits.length === 1 ? 'section' : 'sections'} match \u201C${query.trim()}\u201D` : section.description}</p>
+              <div className="help-host"><h3 className="adm-h"><Icon name={searching ? 'search' : section.icon} />{searching ? 'SEARCH RESULTS' : section.label}</h3>{!searching && <Help className="adm-sub">{section.description}</Help>}</div>
+              {searching && <p className="adm-sub">{`${hits.length} ${hits.length === 1 ? 'section' : 'sections'} match \u201C${query.trim()}\u201D`}</p>}
             </div>
             <SaveStatus state={save.status} />
           </div>
