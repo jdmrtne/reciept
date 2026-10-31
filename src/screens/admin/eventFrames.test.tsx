@@ -160,5 +160,9 @@ describe('delete question', () => {
     expect(deleteBody('GALA', 0)).toBe('"GALA" and its receipt text will be removed. This cannot be undone.');
     expect(deleteBody('GALA', 1)).toContain('This event has 1 frame. It will be deleted with it.');
     expect(deleteBody('GALA', 3)).toContain('This event has 3 frames. They will be deleted with it.');
+    expect(deleteBody('GALA', 0, 1)).toBe('"GALA" and its receipt text will be removed. Its 1 event layout is kept and moves to the unassigned layouts. This cannot be undone.');
+    expect(deleteBody('GALA', 2, 3)).toContain('Its 3 event layouts are kept and move to the unassigned layouts.');
+    expect(deleteBody('GALA', 2, 3)).toContain('They will be deleted with it.');
+    expect(/[\u2013\u2014]/.test(deleteBody('GALA', 2, 3))).toBe(false);
   });
 });

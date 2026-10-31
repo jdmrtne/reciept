@@ -280,3 +280,8 @@ button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2p
 .ev-new { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
 .ev-new .field { flex: 1 1 220px; min-width: 0; }
 .ev-new .btn { min-height: 48px; }
+/* Event layouts (EventLayoutsSection.tsx): reuses .fg-* and .cf-*; only these small additions are new */
+.el-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.el-panel { display: flex; flex-direction: column; gap: 8px; }
+.el-tile .ef-file { text-align: center; }
+.btn.cf-up.disabled { opacity: .5; pointer-events: none; }

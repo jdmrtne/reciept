@@ -1,4 +1,6 @@
 import type { LayoutDef } from './types';
+import { eventLayoutById, eventLayoutRecords } from '../frames/custom/eventRuntime';
+import { EVENT_NO_GROUP_ID, isEventLayoutId, toLayoutDef } from '../frames/custom/eventLayouts';
 
 const base = { padding: 24, gap: 16, border: 0, headerHeight: 0, footerHeight: 0, background: '#fff' as const };
 const strip = (n: number, id: string, name: string): LayoutDef =>
@@ -18,4 +20,22 @@ export const LAYOUTS: LayoutDef[] = [
 /** The layouts every ordinary frame works with. (Kept as its own name: the custom-frame validator and the generic suites use it.) */
 export const STANDARD_LAYOUTS: LayoutDef[] = LAYOUTS;
 
-export const getLayout = (id: string | null): LayoutDef => LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+/** An event layout id (evl-...) is looked up in the event runtime first; everything else (and an event layout that no longer exists) is exactly as before: the built-in layout, else LAYOUTS[0]. */
+export const getLayout = (id: string | null): LayoutDef => {
+  if (isEventLayoutId(id)) { const d = eventLayoutById(id); if (d) return toLayoutDef(d, ''); }
+  return LAYOUTS.find((l) => l.id === id) ?? LAYOUTS[0];
+};
+
+/**
+ * Built-in layouts first, then every stored event layout as a LayoutDef whose `group` is its event (layouts/groups.ts turns that into one EVENT SPECIAL card).
+ * `groupName` gives the text under the badge (the caller reads settings; this module must not). With `eventIds` (the ids of the events that still exist),
+ * layouts of a deleted or missing event are merged into ONE nameless group instead of one indistinguishable card per deleted event. With no event layouts stored the result equals LAYOUTS.
+ */
+export function allLayouts(groupName?: (eventId: string) => string, eventIds?: readonly string[]): LayoutDef[] {
+  const known = eventIds ? new Set(eventIds) : null;
+  const events = eventLayoutRecords().map((d) => {
+    const l = toLayoutDef(d, groupName?.(d.eventId) ?? '');
+    return known && (!d.eventId || !known.has(d.eventId)) ? { ...l, group: { id: EVENT_NO_GROUP_ID, name: '' } } : l;
+  });
+  return [...LAYOUTS, ...events];
+}

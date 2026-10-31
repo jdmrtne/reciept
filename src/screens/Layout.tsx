@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { loadSettings } from '../config/settings';
-import { visibleLayouts } from '../layouts/visibility';
-import { LAYOUTS } from '../layouts/registry';
+import { guestLayouts } from '../layouts/visibility';
+import { allLayouts } from '../layouts/registry';
+import { eventGroupName } from '../frames/custom/eventLayouts';
+import { eventLayoutVersion, subscribeEventLayouts } from '../frames/custom/eventRuntime';
 import { pickerEntries, photoCount, photoCountLabel, type LayoutGroup } from '../layouts/groups';
 import { frameForLayoutVisible } from '../frames/visibility';
 import { FramePreview } from '../frames/FrameLayer';
@@ -9,8 +11,15 @@ import { sessionStore, useSession } from '../state/session';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
 
-/** Layouts sharing a `group` become ONE featured card + modal, listed FIRST; ordinary layouts follow as cards. Layouts the owner hid in ADMIN are filtered out BEFORE grouping, so a group with nothing left disappears. */
-const entriesFor = (hidden: readonly string[]) => pickerEntries(visibleLayouts(LAYOUTS, hidden));
+/**
+ * Layouts sharing a `group` become ONE featured card + modal, listed FIRST; ordinary layouts follow as cards. Layouts the owner hid in ADMIN, and event layouts switched off
+ * (their own flag), are filtered out BEFORE grouping, so a group with nothing left disappears. Group = event; its name is the event's name (empty when the event was deleted).
+ */
+const entriesFor = (hidden: readonly string[], events: readonly { id: string; name: string }[]) =>
+  pickerEntries(guestLayouts(allLayouts((id) => eventGroupName(id, events), events.map((e) => e.id)), hidden));
+
+/** Under the EVENT SPECIAL badge when the group has no event name (its event was deleted). */
+const GROUP_FALLBACK = 'SPECIAL LAYOUTS';
 
 const choose = (layoutId: string, hiddenFrames: readonly string[]) =>
   sessionStore.update({ layoutId, frameId: frameForLayoutVisible(layoutId, sessionStore.get().frameId, hiddenFrames), screen: 'camera' });
@@ -18,7 +27,10 @@ const choose = (layoutId: string, hiddenFrames: readonly string[]) =>
 export function Layout() {
   const { layoutId } = useSession();
   // Read once per mount: the picker is mounted each time a guest reaches it, so ADMIN changes apply without a reload.
-  const [{ ENTRIES, hiddenFrames }] = useState(() => { const st = loadSettings(); return { ENTRIES: entriesFor(st.layoutVisibility.hidden), hiddenFrames: st.frameVisibility.hidden }; });
+  const [{ hiddenLayouts, hiddenFrames, events }] = useState(() => { const st = loadSettings(); return { hiddenLayouts: st.layoutVisibility.hidden, hiddenFrames: st.frameVisibility.hidden, events: st.events }; });
+  // Event layouts load in the background after start: the cards follow the runtime, so a guest never sees a picker that is missing them for good.
+  const evVersion = useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion);
+  const ENTRIES = useMemo(() => entriesFor(hiddenLayouts, events), [hiddenLayouts, events, evVersion]);
   // Thumbnails show the frame the guest would actually get (the first visible one when the default frame is hidden).
   const previewFrame = (id: string) => frameForLayoutVisible(id, null, hiddenFrames);
   // Local state on purpose: a session wipe remounts this screen (App key={session id}), which closes the modal with it.
@@ -50,7 +62,7 @@ export function Layout() {
                 <FramePreview frameId={previewFrame(e.group.layouts[0].id)} layoutId={e.group.layouts[0].id} qr />
               </div>
             </div>
-            <span>{e.group.name}</span>
+            <span>{e.group.name || GROUP_FALLBACK}</span>
             <small className="lay-sub">{e.group.layouts.length} LAYOUTS · TAP TO OPEN</small>
           </button>
         ))}
@@ -58,7 +70,7 @@ export function Layout() {
       <button className="btn ghost" onClick={() => sessionStore.reset()}><Icon name="close" />CANCEL</button>
 
       {openGroup && (
-        <Modal label={openGroup.name} onClose={close} returnFocusRef={opener}>
+        <Modal label={openGroup.name || GROUP_FALLBACK} onClose={close} returnFocusRef={opener}>
           <div className="modal-grid">
             {openGroup.layouts.map((l) => (
               <button key={l.id} className={`lay-card${l.id === layoutId ? ' on' : ''}`} aria-current={l.id === layoutId || undefined} onClick={() => { choose(l.id, hiddenFrames); close(); }}>

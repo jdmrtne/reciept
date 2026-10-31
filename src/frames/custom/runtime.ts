@@ -2,6 +2,8 @@ import type { FrameDef } from '../types';
 import { CUSTOM_FRAME_PREFIX, type CustomArtMeta, type CustomFrameDef, type CustomLayoutArt, type CustomLayoutId, type CustomQrArea } from './types';
 import * as store from './store';
 import type { StoreResult } from './store';
+import { eventLayoutReady } from './eventRuntime';
+import { isEventLayoutId } from './eventLayouts';
 
 /**
  * Runtime registry of custom frames: loaded from IndexedDB at app start, kept in memory, read SYNCHRONOUSLY by frames/registry.ts
@@ -35,9 +37,10 @@ function warmUp(url: string): void {
 }
 /** Resolves when the artwork for this frame (all layouts, or one) is decoded. Resolves at once for built-in frames and unknown ids. */
 export function customReady(frameId?: string | null, layoutId?: string): Promise<void> {
+  if (isEventLayoutId(frameId)) return eventLayoutReady(frameId); // an event layout's frame id is its layout id
   const e = frameId ? entries.get(frameId) : undefined;
   const urls = e ? (Object.entries(e.urls) as [string, string][]).filter(([k]) => !layoutId || k === layoutId).map(([, u]) => u) : [];
-  return Promise.all(urls.map((u) => warm.get(u) ?? Promise.resolve())).then(() => undefined);
+  return Promise.all([...urls.map((u) => warm.get(u) ?? Promise.resolve()), ...(frameId ? [] : [eventLayoutReady()])]).then(() => undefined); // no frame given = everything, event layouts included
 }
 
 const revoke = (e: Entry | undefined, only?: CustomLayoutId) => {

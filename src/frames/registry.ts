@@ -2,6 +2,8 @@ import type { Bands, FrameDef, TextLine } from './types';
 import { resolveLayout } from '../layouts/engine';
 import { getLayout } from '../layouts/registry';
 import { customAsset, customFrameById, customFrameDefs, customHasLayout, isCustomFrameId } from './custom/runtime';
+import { eventFrameById, eventFrameDefs, eventLayoutById } from './custom/eventRuntime';
+import { isEventLayoutId } from './custom/eventLayouts';
 
 const T = (text: string, size: number, y: number, o: Partial<TextLine> = {}): TextLine => ({ text, size, y, weight: 400, ls: 2, align: 'center', ...o });
 const B = (text: string, size: number, y: number, o: Partial<TextLine> = {}) => T(text, size, y, { weight: 700, ...o });
@@ -85,18 +87,20 @@ export const STANDARD_FRAMES: FrameDef[] = FRAMES.filter((f) => !f.onlyLayouts);
 
 export const DEFAULT_FRAME = 'classic-receipt';
 /** Built-in frames first, then owner-uploaded custom frames (frames/custom/runtime.ts, empty unless some are stored); unknown ids fall back to the default. */
-export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id === id) ?? customFrameById(id) ?? FRAMES[0];
+export const getFrame = (id: string | null): FrameDef => FRAMES.find((f) => f.id === id) ?? customFrameById(id) ?? eventFrameById(id) ?? FRAMES[0];
 export const isImageFrame = (f: FrameDef) => f.type === 'image' && !!f.image;
 
 /** A layout that belongs to a frame-locked family is only valid with that frame; every other pair is unchanged. */
-const lockOf = (layoutId: string) => FRAMES.find((f) => f.onlyLayouts?.includes(layoutId));
+/** An event layout is locked to its own art (eventRuntime.toEventFrameDef): the lock is that synthetic frame. */
+const lockOf = (layoutId: string): FrameDef | undefined => FRAMES.find((f) => f.onlyLayouts?.includes(layoutId)) ?? (isEventLayoutId(layoutId) ? eventFrameById(layoutId) : undefined);
 export const isFrameAllowed = (frameId: string | null, layoutId: string): boolean => {
   const lock = lockOf(layoutId), f = getFrame(frameId);
+  if (isEventLayoutId(frameId) && !eventFrameById(frameId)) return false; // art of a deleted event layout is never allowed
   if (isCustomFrameId(frameId) && !customFrameById(frameId)) return false; // a deleted custom frame is never allowed, so frameForLayout falls back to the default
   if (isCustomFrameId(f.id)) return !lock && customHasLayout(f.id, layoutId); // a custom frame is offered only on the layouts it has art for
   return lock ? lock.id === f.id : !f.onlyLayouts;
 };
-export const framesForLayout = (layoutId: string): FrameDef[] => [...FRAMES, ...customFrameDefs()].filter((f) => isFrameAllowed(f.id, layoutId));
+export const framesForLayout = (layoutId: string): FrameDef[] => [...FRAMES, ...customFrameDefs(), ...eventFrameDefs()].filter((f) => isFrameAllowed(f.id, layoutId));
 /** The frame to use when a layout is chosen: the current one if it is allowed there, else the layout's own frame, else the default. */
 export const frameForLayout = (layoutId: string, current: string | null): string =>
   current && isFrameAllowed(current, layoutId) ? current : lockOf(layoutId)?.id ?? DEFAULT_FRAME;
@@ -110,6 +114,8 @@ export const vectorFrameOf = (f: FrameDef): FrameDef => (isImageFrame(f) ? FRAME
 
 /** Layout geometry with the frame's header/footer bands applied. Use this everywhere (editor, renderer). */
 export function resolveFramed(layoutId: string, frameId: string | null, width = 384) {
+  // An event layout IS its art: the photo windows come from its manual arrangement (getLayout), with no bands, padding or border, whatever frame id was passed (the frame lock keeps it the right one).
+  if (eventLayoutById(layoutId)) return resolveLayout(getLayout(layoutId), width, { headerHeight: 0, footerHeight: 0, padding: 0 });
   const f = getFrame(frameId), custom = isCustomFrameId(f.id) ? customAsset(f.id, layoutId) : null;
   // A custom frame's art dictates its own photo slots (detected transparent windows), exactly like the NCL pass layouts: a manual arrangement
   // (fractions of the art width, heightRatio = art height / width). The art IS the whole design, so no padding, border or bands.

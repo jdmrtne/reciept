@@ -34,7 +34,7 @@ describe('ADMIN > Events > Event frames and ADMIN > Frames > Your own frames', (
   it('both sections have an upload card: Event frames right under the event list on Events, own frames after the built-in card on Frames', () => {
     const frames = SECTIONS.find((s) => s.id === 'frames')!, events = SECTIONS.find((s) => s.id === 'events')!;
     expect(frames.cards.map((c) => c.id)).toEqual(['frames-visibility', 'frames-custom']);
-    expect(events.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-edit', 'events-preview']);
+    expect(events.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-layouts', 'events-edit', 'events-preview']);
     expect(events.cards.map((c) => c.id)).not.toContain('events-special-frames'); // the old flat list card is gone
     expect(eventFramesCard.title).toBe('Event frames');
     expect(customFramesCard.title).toBe('Your own frames');

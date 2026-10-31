@@ -25,7 +25,17 @@ export type Rect = { x: number; y: number; w: number; h: number };
 /** Smallest side of a QR spot in layout units (384 across): the scannable QR plus the margin on both sides. */
 export const requiredSpotSide = (modules: number): number => qrMinSide(modules) + 2 * DEFAULT_QR_OPTIONS.margin;
 /** The same as a whole percent of the paper width, for messages. */
-export const requiredSpotPercent = (modules: number): number => Math.ceil((requiredSpotSide(modules) / REF_UNITS) * 100);
+export const requiredSpotPercent = (modules: number, inset = 0): number => Math.ceil(((requiredSpotSide(modules) + (inset ? 2 * inset + INSET_SLACK : 0)) / REF_UNITS) * 100);
+
+/**
+ * EL-5, event layouts. The QR sits flush in the bottom right corner of the saved spot and the renderer wants clear paper around it, so a
+ * spot whose edge is exactly where the artwork changes colour fails the gate (anti aliasing). The owner draws the spot over plain paper
+ * as before (still checked flat), and an event layout saves it INSET by this many layout units on every side. The saved spot is then
+ * always surrounded by clear paper the owner has already proved flat. `qr/placement.ts` is not touched. Frames pass no inset (unchanged).
+ */
+export const EVENT_SPOT_INSET = 4;
+/** Rounding to 4 decimals can take a few hundredths of a unit off a side; this keeps the inset spot above the minimum. */
+const INSET_SLACK = 0.1;
 
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 const EPS = 1e-6;
@@ -34,12 +44,12 @@ const EPS = 1e-6;
 export const spotUnits = (m: Pick<SpotMeta, 'heightRatio'>, a: CustomQrArea): Rect => ({ x: a.x * REF_UNITS, y: a.y * REF_UNITS * m.heightRatio, w: a.w * REF_UNITS, h: a.h * REF_UNITS * m.heightRatio });
 
 /** Rules 1 to 3. Cheap (no pixels), so the screen runs it while the owner drags. Empty array = fine. */
-export function checkQrGeometry(m: SpotMeta, a: CustomQrArea, modules: number): string[] {
+export function checkQrGeometry(m: SpotMeta, a: CustomQrArea, modules: number, inset = 0): string[] {
   const nums = [a.x, a.y, a.w, a.h];
   if (!nums.every(Number.isFinite) || a.w <= 0 || a.h <= 0) return ['Draw a rectangle for the QR spot.'];
   if (a.x < -EPS || a.y < -EPS || a.x + a.w > 1 + EPS || a.y + a.h > 1 + EPS) return ['The QR spot must stay inside the picture.'];
-  const out: string[] = [], r = spotUnits(m, a), need = requiredSpotSide(modules);
-  if (Math.min(r.w, r.h) < need - EPS) out.push(`The QR spot is too small for a scannable QR. Each side must be at least ${requiredSpotPercent(modules)} percent of the paper width.`);
+  const out: string[] = [], r = spotUnits(m, a), need = requiredSpotSide(modules) + (inset ? 2 * inset + INSET_SLACK : 0);
+  if (Math.min(r.w, r.h) < need - EPS) out.push(`The QR spot is too small for a scannable QR. Each side must be at least ${requiredSpotPercent(modules, inset)} percent of the paper width.`);
   m.slots.forEach((s, i) => {
     if (overlaps(r, { x: s.x * REF_UNITS, y: s.y * REF_UNITS, w: s.w * REF_UNITS, h: s.h * REF_UNITS })) out.push(`The QR spot covers photo window ${i + 1}. Move it to empty space.`);
   });
@@ -65,14 +75,25 @@ export function spotIsFlat(img: DecodedImage, a: CustomQrArea, tol = FLAT_TOLERA
   return true;
 }
 
-/** All four rules. Fractions are rounded to 4 decimals first, and the rounded value is what is checked and returned. */
-export function validateQrSpot(m: SpotMeta, img: DecodedImage, area: CustomQrArea, modules: number): Result<CustomQrArea> {
+/** The spot shrunk by `units` layout units on every side (see EVENT_SPOT_INSET). */
+export function insetSpot(m: Pick<SpotMeta, 'heightRatio'>, a: CustomQrArea, units: number): CustomQrArea {
+  const dx = units / REF_UNITS, dy = units / (REF_UNITS * m.heightRatio);
+  return { x: round4(a.x + dx), y: round4(a.y + dy), w: round4(a.w - 2 * dx), h: round4(a.h - 2 * dy) };
+}
+
+/**
+ * All four rules. Fractions are rounded to 4 decimals first, and the rounded value is what is checked. With `inset` the drawn rectangle
+ * must be flat and `2 x inset` larger than the minimum, and the value returned (the one to save) is the rectangle shrunk by `inset`.
+ */
+export function validateQrSpot(m: SpotMeta, img: DecodedImage, area: CustomQrArea, modules: number, inset = 0): Result<CustomQrArea> {
   const a: CustomQrArea = { x: round4(area.x), y: round4(area.y), w: round4(area.w), h: round4(area.h) };
-  const errors = checkQrGeometry(m, a, modules);
+  const errors = checkQrGeometry(m, a, modules, inset);
   if (errors.length) return { ok: false, errors };
   if (img.width !== m.width || img.height !== m.height) return { ok: false, errors: ['The picture could not be checked. Remove it and upload it again.'] };
   if (!spotIsFlat(img, a)) return { ok: false, errors: ['Something is drawn inside this spot. A QR code needs plain empty space, one flat colour. Move or resize the spot.'] };
-  return { ok: true, value: a, warnings: [] };
+  if (!inset) return { ok: true, value: a, warnings: [] };
+  const saved = insetSpot(m, a, inset), again = checkQrGeometry(m, saved, modules);
+  return again.length ? { ok: false, errors: again } : { ok: true, value: saved, warnings: [] };
 }
 
 interface Cell { ok: Uint8Array; gw: number; gh: number }
@@ -101,7 +122,7 @@ function bestRect(c: Cell, minW: number, minH: number): { x: number; y: number; 
  * passes `validateQrSpot`. Null when the picture has no such place (the owner then adds empty space to the design). One pass over the
  * pixels records each cell's colour range; every common flat colour is then tried against those ranges, so it stays fast on a 2304 px picture.
  */
-export function suggestQrSpot(m: SpotMeta, img: DecodedImage, modules: number): CustomQrArea | null {
+export function suggestQrSpot(m: SpotMeta, img: DecodedImage, modules: number, inset = 0): CustomQrArea | null {
   const { width: W, height: H } = img;
   if (W !== m.width || H !== m.height) return null;
   const cell = Math.max(2, Math.round(W / 144)), gw = Math.ceil(W / cell), gh = Math.ceil(H / cell), n = gw * gh;
@@ -129,7 +150,7 @@ export function suggestQrSpot(m: SpotMeta, img: DecodedImage, modules: number): 
     if (b) b.count++; else bins.set(key, { count: 1, rgb });
   }
   const refs = [...bins.values()].sort((a, b) => b.count - a.count).slice(0, 4);
-  const needCells = Math.ceil((requiredSpotSide(modules) / REF_UNITS) * (W / cell)) + 2; // + 2: one cell of clearance on each side
+  const needCells = Math.ceil(((requiredSpotSide(modules) + (inset ? 2 * inset + INSET_SLACK : 0)) / REF_UNITS) * (W / cell)) + 2; // + 2: one cell of clearance on each side
   let best: { x: number; y: number; w: number; h: number } | null = null;
   for (const ref of refs) {
     const ok = new Uint8Array(n), tol = FLAT_TOLERANCE - 10;
@@ -145,6 +166,6 @@ export function suggestQrSpot(m: SpotMeta, img: DecodedImage, modules: number): 
   // one cell of clearance inside the plain region, so anti-aliased edges of the artwork never touch the spot
   const inner = { x: best.x + 1, y: best.y + 1, w: best.w - 2, h: best.h - 2 };
   const spot: CustomQrArea = { x: (inner.x * cell) / W, y: (inner.y * cell) / H, w: Math.min(inner.w * cell, W - inner.x * cell) / W, h: Math.min(inner.h * cell, H - inner.y * cell) / H };
-  const r = validateQrSpot(m, img, spot, modules);
+  const r = validateQrSpot(m, img, spot, modules, inset);
   return r.ok ? r.value : null;
 }

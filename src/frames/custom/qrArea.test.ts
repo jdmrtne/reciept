@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeArt, STRIP, W } from './fixtures';
 import { validateArtwork } from './validate';
-import { QR_MODULE_SLACK, checkQrGeometry, requiredSpotPercent, requiredSpotSide, spotIsFlat, suggestQrSpot, validateQrSpot } from './qrArea';
+import { EVENT_SPOT_INSET, QR_MODULE_SLACK, checkQrGeometry, insetSpot, requiredSpotPercent, requiredSpotSide, spotIsFlat, suggestQrSpot, validateQrSpot } from './qrArea';
 import { placeQr } from '../../qr/placement';
 import { qrMatrix } from '../../share/qr';
 
@@ -91,5 +91,48 @@ describe('suggestQrSpot (FIND EMPTY SPACE)', () => {
     if (!s) throw new Error('no spot');
     const top = s.y * H, bottom = (s.y + s.h) * H;
     for (const w of meta.windows) expect(top >= w.y + w.h || bottom <= w.y).toBe(true);
+  });
+});
+
+describe('QR spot with inset (event layouts, EL-5)', () => {
+  const IN = EVENT_SPOT_INSET, r4 = (n: number) => Math.round(n * 10000) / 10000, ROUND = { x: r4(GOOD.x), y: r4(GOOD.y), w: r4(GOOD.w), h: r4(GOOD.h) }; // the validator rounds to 4 decimals first
+  it('without an inset nothing changes: same value, same size rule', () => {
+    const r = validateQrSpot(meta, fx, GOOD, MODULES);
+    expect(r).toEqual(validateQrSpot(meta, fx, GOOD, MODULES, 0));
+    expect(r.ok && r.value).toEqual(ROUND);
+    expect(requiredSpotPercent(MODULES, 0)).toBe(requiredSpotPercent(MODULES));
+  });
+  it('saves the drawn spot shrunk by the inset on every side, still big enough for the QR', () => {
+    const r = validateQrSpot(meta, fx, GOOD, MODULES, IN);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value).toEqual(insetSpot(meta, ROUND, IN));
+    expect(r.value.x).toBeGreaterThan(GOOD.x); expect(r.value.y).toBeGreaterThan(GOOD.y);
+    expect(r.value.x + r.value.w).toBeLessThan(GOOD.x + GOOD.w); expect(r.value.y + r.value.h).toBeLessThan(GOOD.y + GOOD.h);
+    expect(checkQrGeometry(meta, r.value, MODULES)).toEqual([]);
+    const placed = placeQr({ modules: REAL, occ: occ(meta), area: { safeArea: r.value }, paperDots: 384 });
+    expect(placed.ok && placed.mode).toBe('safe-area');
+  });
+  it('asks for a bit more room than frames do, and says the bigger percent', () => {
+    const need = requiredSpotSide(MODULES), side = (need + 2 * IN + 0.05) / 2; // between the plain minimum and the inset minimum
+    const small = { x: 0.1, y: 1200 / H, w: (need + 1) / 384, h: 520 / H };
+    expect(validateQrSpot(meta, fx, small, MODULES).ok).toBe(true);
+    const r = validateQrSpot(meta, fx, small, MODULES, IN);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors[0]).toContain(`at least ${requiredSpotPercent(MODULES, IN)} percent`);
+    expect(requiredSpotPercent(MODULES, IN)).toBeGreaterThanOrEqual(requiredSpotPercent(MODULES));
+    expect(noDash(r.errors[0])).toBe(true);
+    expect(side).toBeGreaterThan(0);
+  });
+  it('the pixel and window rules still apply to the drawn rectangle', () => {
+    expect(validateQrSpot(meta, fx, { x: 0.1, y: 900 / H, w: 0.8, h: 520 / H }, MODULES, IN).ok).toBe(false);
+    expect(checkQrGeometry(meta, { x: 0.9, y: 0.5, w: 0.3, h: 0.1 }, MODULES, IN)).toEqual(['The QR spot must stay inside the picture.']);
+  });
+  it('find empty space returns a spot that is already inset and valid', () => {
+    const plain = suggestQrSpot(meta, fx, MODULES), inset = suggestQrSpot(meta, fx, MODULES, IN);
+    expect(plain).not.toBeNull(); expect(inset).not.toBeNull();
+    expect(checkQrGeometry(meta, inset!, MODULES)).toEqual([]);
+    expect(spotIsFlat(fx, inset!)).toBe(true);
   });
 });

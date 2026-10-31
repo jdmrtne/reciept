@@ -1,5 +1,7 @@
 import type { FrameDef } from './types';
 import { customAsset, isCustomFrameId } from './custom/runtime';
+import { eventLayoutAsset } from './custom/eventRuntime';
+import { isEventLayoutId } from './custom/eventLayouts';
 
 /**
  * Image-frame artwork lookup. PURE except for the one Vite glob below, so frame resolution is shared by the editor,
@@ -37,6 +39,10 @@ export function resolveFrameAsset(index: AssetIndex, f: FrameDef, layoutId: stri
 
 /** frameId + layoutId → artwork (or null → vector fallback). `f` comes from getFrame(frameId). */
 export const getFrameAsset = (f: FrameDef, layoutId: string): FrameAsset | null => {
+  if (isEventLayoutId(f.id)) { // event layout art (frames/custom/eventRuntime.ts): the frame id IS the layout id, and the art is drawn only on its own layout
+    const e = f.id === layoutId ? eventLayoutAsset(f.id) : null;
+    return e ? { src: e.src, fit: 'stretch', layoutSpecific: true } : null;
+  }
   if (isCustomFrameId(f.id)) { // owner-uploaded art (frames/custom/runtime.ts): always layout specific, stretched like built-in layout art, never a generic default
     const c = customAsset(f.id, layoutId);
     return c ? { src: c.src, fit: 'stretch', layoutSpecific: true } : null;

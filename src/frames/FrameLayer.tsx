@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from 'react';
 import { pathD, type Prim } from './types';
+import { eventLayoutVersion, subscribeEventLayouts } from './custom/eventRuntime';
 import { getFrame, resolveFramed, vectorFrameOf } from './registry';
 import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
@@ -43,6 +45,7 @@ const getSampleQr = () => (sampleQr ??= qrMatrix('https://receipt-beta.vercel.ap
  * NCL stub, otherwise a strip below the design with a cut line). Off by default so the editor's pickers are unchanged.
  */
 export function FramePreview({ frameId, layoutId, qr = false, frameText }: { frameId: string; layoutId: string; qr?: boolean; frameText?: FrameTextOverrides }) {
+  useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion); // an event layout's windows and art appear the moment the runtime has them (loaded after start, replaced or removed in ADMIN)
   const L = resolveFramed(layoutId, frameId);
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);
   const prims = asset ? [] : framePrims(vectorFrameOf(frame), L, makeCtx('PHOTOBOOTH', new Date(), undefined, frameText));

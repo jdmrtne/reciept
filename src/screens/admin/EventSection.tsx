@@ -16,6 +16,8 @@ import { DEFAULT_THANK_YOU, finalText } from '../../config/events';
 import { FRAMES, isImageFrame } from '../../frames/registry';
 import { customRecords, customVersion, deleteCustomFrame, initCustomFrames, subscribeCustom } from '../../frames/custom/runtime';
 import { framesOfEvent } from '../../frames/custom/groups';
+import { eventLayoutRecords } from '../../frames/custom/eventRuntime';
+import { layoutsOfEvent } from '../../frames/custom/eventLayouts';
 import { makeEventCtx } from '../../frames/prims';
 import { buildSnapshot } from '../../editor/model';
 import { canvasToBlob, renderPreview } from '../../render/render';
@@ -34,6 +36,7 @@ import {
 } from './eventEditor';
 import { ConfirmDialog, Hint, SwitchRow, TextField } from './ui';
 import { eventFramesCard } from './EventFramesSection';
+import { eventLayoutsCard } from './EventLayoutsSection';
 import type { AdminCtx, SectionDef } from './types';
 
 /**
@@ -55,8 +58,8 @@ function useOnce() {
 type Ask = { kind: 'delete' | 'reset' | 'switch'; id: string };
 
 /** The question before an event is deleted. Says what happens to its frames when it has any. */
-export const deleteBody = (eventName: string, frameCount: number): string =>
-  `"${eventName}" and its receipt text will be removed.${frameCount === 0 ? '' : frameCount === 1 ? ' This event has 1 frame. It will be deleted with it.' : ` This event has ${frameCount} frames. They will be deleted with it.`} This cannot be undone.`;
+export const deleteBody = (eventName: string, frameCount: number, layoutCount = 0): string =>
+  `"${eventName}" and its receipt text will be removed.${frameCount === 0 ? '' : frameCount === 1 ? ' This event has 1 frame. It will be deleted with it.' : ` This event has ${frameCount} frames. They will be deleted with it.`}${layoutCount === 0 ? '' : layoutCount === 1 ? ' Its 1 event layout is kept and moves to the unassigned layouts.' : ` Its ${layoutCount} event layouts are kept and move to the unassigned layouts.`} This cannot be undone.`;
 
 // ------------------------------------------------------------------ list + actions
 
@@ -164,7 +167,7 @@ function EventList(c: AdminCtx) {
           danger onCancel={() => setAsk(null)} onConfirm={() => { eventEditorStore.select(ask.id); setAsk(null); }} />
       )}
       {ask?.kind === 'delete' && (
-        <ConfirmDialog title="DELETE THIS EVENT?" body={deleteBody(nameOf(s.events.find((e) => e.id === ask.id)?.name ?? ''), framesOfEvent(customRecords(), ask.id).length)} confirmLabel="DELETE" danger onCancel={() => setAsk(null)} onConfirm={() => void remove()} />
+        <ConfirmDialog title="DELETE THIS EVENT?" body={deleteBody(nameOf(s.events.find((e) => e.id === ask.id)?.name ?? ''), framesOfEvent(customRecords(), ask.id).length, layoutsOfEvent(eventLayoutRecords(), ask.id).length)} confirmLabel="DELETE" danger onCancel={() => setAsk(null)} onConfirm={() => void remove()} />
       )}
       {ask?.kind === 'reset' && (
         <ConfirmDialog title="RESET THE TEXT?" body={`Name, header, details, thank-you and branding of "${nameOf(s.events.find((e) => e.id === ask.id)?.name ?? '')}" go back to the defaults. The event keeps its place in the list.${ask.id === s.activeEventId ? ' It is the ACTIVE event, so the next customer gets the default text.' : ''}`} confirmLabel="RESET" danger onCancel={() => setAsk(null)} onConfirm={reset} />
@@ -298,6 +301,7 @@ export const eventsSection: SectionDef = {
   cards: [
     { id: 'events-list', tab: 'list', title: 'Events', description: 'Type a name to create an event, pick one to edit, make one active, copy or remove.', keywords: ['event', 'events', 'profile', 'active event', 'new event', 'create', 'create event', 'event name', 'duplicate', 'copy', 'delete', 'remove', 'reset', 'switch event', 'wedding', 'party'], render: (c) => <EventList {...c} /> },
     eventFramesCard, // the frame group of the event picked in the list above
+    eventLayoutsCard, // the event layouts of the event picked in the list above (EL-4)
     { id: 'events-edit', tab: 'details', title: 'Event text', description: 'Saved only when you press SAVE.', keywords: ['event name', 'name', 'header', 'title', 'details', 'subtitle', 'venue', 'host', 'date line', 'thank you', 'thank-you message', 'branding', 'printed by memorys', 'receipt text', 'save', 'cancel'], render: (c) => <EventForm {...c} /> },
     { id: 'events-preview', tab: 'details', title: 'Receipt preview', description: 'How the text lands on a receipt.', aside: true, keywords: ['preview', 'receipt preview', 'sample', 'look'], render: (c) => <EventPreview {...c} /> }
   ]

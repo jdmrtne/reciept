@@ -35,13 +35,13 @@ const two = (): BoothSettings => {
 
 describe('the Events section is part of the existing settings map', () => {
   it('is registered with four cards (the Event frames group card sits right under the event list), and ids stay unique across the whole map', () => {
-    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-edit', 'events-preview']);
+    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-layouts', 'events-edit', 'events-preview']);
     const all = SECTIONS.flatMap((s) => s.cards.map((c) => c.id));
     expect(new Set(all).size).toBe(all.length);
     expect(SECTIONS.map((s) => s.id)).toEqual(expect.arrayContaining(['events', 'printer', 'quality', 'sharing', 'appearance', 'security']));
   });
   it('the preview card is the wide-screen aside; the others are not', () => {
-    expect(section.cards.map((c) => !!c.aside)).toEqual([false, false, false, true]);
+    expect(section.cards.map((c) => !!c.aside)).toEqual([false, false, false, false, true]);
   });
   it('is reachable from search with the words an owner would use', () => {
     const find = (q: string) => searchSettings(SECTIONS, q).map((h) => h.card.id);

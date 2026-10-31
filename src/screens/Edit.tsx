@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { sessionStore, useSession } from '../state/session';
-import { LAYOUTS, getLayout } from '../layouts/registry';
+import { LAYOUTS, allLayouts, getLayout } from '../layouts/registry';
+import { visibleEventLayouts } from '../layouts/visibility';
+import { customReady } from '../frames/custom/runtime';
+import { eventLayoutEnabled, eventLayoutVersion, subscribeEventLayouts } from '../frames/custom/eventRuntime';
 import { getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { frameForLayoutVisible, guestFramesForLayout } from '../frames/visibility';
 import { getFrameAsset } from '../frames/assets';
@@ -43,14 +46,15 @@ export function Edit() {
   const ctx = stamp ?? fallbackCtx;
   useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
   const svg = useRef<SVGSVGElement>(null);
+  useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion); // event layout windows and art follow the runtime
   const stage = useRef<SVGGElement>(null); // the drawing group: for a sideways layout it carries the quarter turn, so ITS screen matrix maps pointers straight back to paper space
   const g = useRef<Gesture | null>(null);
 
   useEffect(() => {
     if (editor || !photos.length) return;
     const lid = layoutId ?? LAYOUTS[0].id;
-    loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0)
-      .then((p) => {
+    Promise.all([loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0), customReady(frameForLayoutVisible(lid, frameId, hiddenFrames), lid)]) // the art is decoded before the editor shows, so it never flashes empty
+      .then(([p]) => {
         const { carry } = sessionStore.get(); // stickers + filter kept across a retake
         const s = buildSnapshot(lid, p, frameForLayoutVisible(lid, frameId, hiddenFrames));
         sessionStore.update({ editor: newEditor(carry ? applyCarry(s, carry) : s), carry: null });
@@ -163,8 +167,8 @@ export function Edit() {
   const pickLayout = (id: string) => {
     setTray(null);
     if (id === editor.present.layoutId) return;
-    loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0) // sideways layouts get rotated copies of the photos
-      .then((p) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayoutVisible(id, editor.present.frameId, hiddenFrames))))))
+    Promise.all([loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0), customReady(frameForLayoutVisible(id, editor.present.frameId, hiddenFrames), id)]) // sideways layouts get rotated copies of the photos; the art is decoded first
+      .then(([p]) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayoutVisible(id, editor.present.frameId, hiddenFrames))))))
       .catch(() => setError('Could not change the layout.'));
   };
   const pickFrame = (id: string) => {
@@ -248,7 +252,7 @@ export function Edit() {
         )}
         {tray === 'layout' && (
           <div className="edit-tray">
-            {LAYOUTS.map((l) => (
+            {visibleEventLayouts(allLayouts(), eventLayoutEnabled, snap.layoutId).map((l) => ( // built-in layouts as before + event layouts that are switched on (the one being edited always stays)
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
                 <FramePreview frameId={frameForLayoutVisible(l.id, snap.frameId, hiddenFrames)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>

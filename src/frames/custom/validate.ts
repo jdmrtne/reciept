@@ -18,7 +18,9 @@ export const LIMITS = {
   /** Photos are extended this many artwork px under the opaque border so antialiased window edges never show the paper (about 1 dot @384). */
   bleedPx: 3,
   /** Minimum artwork between two windows (px), so the bleed cannot make slots overlap. */
-  minGapPx: 8
+  minGapPx: 8,
+  /** Event layouts (one uploaded picture = one layout): the most photo windows one picture may have. The only place this number lives. */
+  maxWindows: 8
 } as const;
 
 /** The layouts a custom frame can cover, in the picker order. */
@@ -82,6 +84,20 @@ export function windowToSlot(w: { x: number; y: number; w: number; h: number }, 
 
 export interface DecodedImage { width: number; height: number; data: Uint8ClampedArray | Uint8Array }
 
+/** The rectangle and spacing rules every window set must pass (standard layouts and event layouts share them): plain rectangles, and at least `minGapPx` of artwork between two windows. */
+function windowShapeErrors(windows: readonly { x: number; y: number; w: number; h: number; fill: number }[]): string[] {
+  const errors: string[] = [];
+  windows.forEach((w, i) => {
+    if (w.fill < LIMITS.minFill) errors.push(`Window ${i + 1} is not a plain rectangle (it fills ${Math.round(w.fill * 100)}% of its box). Use rectangular windows; small rounded corners are fine.`);
+  });
+  for (let i = 0; i < windows.length; i++) for (let j = i + 1; j < windows.length; j++) {
+    const a = windows[i], b = windows[j];
+    const gapX = Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w), gapY = Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h);
+    if (gapX < LIMITS.minGapPx && gapY < LIMITS.minGapPx) errors.push(`Windows ${i + 1} and ${j + 1} touch or overlap. Leave at least ${LIMITS.minGapPx} px of artwork between them.`);
+  }
+  return errors;
+}
+
 /**
  * Step 2, after decoding to RGBA: find the windows, check them against the layout, produce the slots.
  * `file` carries the mime type found by validateUpload. Messages are written for the owner (no jargon, no dashes).
@@ -99,15 +115,36 @@ export function validateArtwork(layoutId: string, img: DecodedImage, mime: Custo
     if (found.ignored.tiny + found.ignored.thin > 0) m += ` ${plural(found.ignored.tiny + found.ignored.thin, 'tiny or thin transparent area')} ignored.`;
     errors.push(m);
   }
-  found.windows.forEach((w, i) => {
-    if (w.fill < LIMITS.minFill) errors.push(`Window ${i + 1} is not a plain rectangle (it fills ${Math.round(w.fill * 100)}% of its box). Use rectangular windows; small rounded corners are fine.`);
-  });
+  errors.push(...windowShapeErrors(found.windows));
   const slots = found.windows.map((w) => windowToSlot(w, width, height));
-  for (let i = 0; i < slots.length; i++) for (let j = i + 1; j < slots.length; j++) {
-    const a = found.windows[i], b = found.windows[j];
-    const gapX = Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w), gapY = Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h);
-    if (gapX < LIMITS.minGapPx && gapY < LIMITS.minGapPx) errors.push(`Windows ${i + 1} and ${j + 1} touch or overlap. Leave at least ${LIMITS.minGapPx} px of artwork between them.`);
-  }
   if (errors.length) return fail(...errors);
+  return { ok: true, value: { mime, width, height, heightRatio: height / width, windows: found.windows.map(({ x, y, w, h }) => ({ x, y, w, h })), slots }, warnings };
+}
+
+/**
+ * Event layouts: like validateArtwork, but there is no layout to match. The picture decides its own photo count: every window found
+ * counts, from 1 to LIMITS.maxWindows. Same detection, same rectangle and spacing rules, same slots (with the bleed). Pure.
+ * This lives here (not in eventLayouts.ts) on purpose: validate.ts imports layouts/registry, and the registry will read the event
+ * runtime, so the runtime's modules must never import validate.ts (see docs/EVENT-LAYOUTS.md, import cycles).
+ */
+export function validateEventLayoutArt(img: DecodedImage, mime: CustomArtMeta['mime'] = 'image/png', opts: DetectOptions = {}): Result<CustomArtMeta> {
+  const { width, height } = img;
+  const found = detectWindows(img.data, width, height, opts);
+  const n = found.windows.length, errors: string[] = [], warnings: string[] = [];
+
+  if (n < 1) {
+    let m = 'No photo windows were found.';
+    if (found.ignored.edge === 0) m += ' The image has no see-through area. Erase the photo windows so they are fully transparent.';
+    else m += ` ${plural(found.ignored.edge, 'transparent area')} touch${found.ignored.edge === 1 ? 'es' : ''} the edge of the image and ${found.ignored.edge === 1 ? 'is' : 'are'} ignored. Keep a border of artwork around every window.`;
+    if (found.ignored.tiny + found.ignored.thin > 0) m += ` ${plural(found.ignored.tiny + found.ignored.thin, 'tiny or thin transparent area')} ignored.`;
+    errors.push(m);
+  } else if (n > LIMITS.maxWindows) {
+    errors.push(`Found ${plural(n, 'window')}. A picture can have at most ${LIMITS.maxWindows}. Fill in the extra windows or split the picture into two layouts.`);
+  } else if (found.ignored.edge > 0) {
+    warnings.push(`${plural(found.ignored.edge, 'transparent area')} touch${found.ignored.edge === 1 ? 'es' : ''} the edge of the image and ${found.ignored.edge === 1 ? 'is' : 'are'} ignored.`);
+  }
+  errors.push(...windowShapeErrors(found.windows));
+  if (errors.length) return fail(...errors);
+  const slots = found.windows.map((w) => windowToSlot(w, width, height));
   return { ok: true, value: { mime, width, height, heightRatio: height / width, windows: found.windows.map(({ x, y, w, h }) => ({ x, y, w, h })), slots }, warnings };
 }

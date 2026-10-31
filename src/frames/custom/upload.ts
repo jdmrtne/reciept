@@ -1,4 +1,4 @@
-import { isCustomLayoutId, validateArtwork, validateUpload, type DecodedImage } from './validate';
+import { isCustomLayoutId, validateArtwork, validateEventLayoutArt, validateUpload, type DecodedImage } from './validate';
 import type { CustomLayoutArt } from './types';
 
 /**
@@ -43,6 +43,24 @@ export async function prepareUpload(layoutId: string, file: Blob, decode: Decode
   const art = validateArtwork(layoutId, img, up.value.mime);
   if (!art.ok) return art;
   // The stored blob always carries the type the bytes really are (a kiosk picker may declare something else).
+  const blob = file.type === up.value.mime ? file : file.slice(0, file.size, up.value.mime);
+  return { ok: true, art: { ...art.value, blob }, warnings: [...up.warnings, ...art.warnings] };
+}
+
+/**
+ * Event layouts: the same steps as prepareUpload, but there is no standard layout to match. The windows found in the picture ARE the
+ * layout (1 to LIMITS.maxWindows), so step 2 is `validateEventLayoutArt`. Never throws; errors are plain sentences for the owner.
+ */
+export async function prepareEventLayoutUpload(file: Blob, decode: DecodeFn = browserDecode): Promise<PrepareResult> {
+  let head: Uint8Array;
+  try { head = new Uint8Array(await file.slice(0, HEAD_BYTES).arrayBuffer()); } catch { return fail('This file could not be read. Pick it again.'); }
+  const up = validateUpload(file, head);
+  if (!up.ok) return up;
+  let img: DecodedImage;
+  try { img = await decode(file); } catch { return fail('This picture could not be opened. Save it again as a PNG and try again.'); }
+  if (img.width !== up.value.width || img.height !== up.value.height || img.data.length < img.width * img.height * 4) return fail('This picture could not be read correctly. Save it again as a PNG and try again.');
+  const art = validateEventLayoutArt(img, up.value.mime);
+  if (!art.ok) return art;
   const blob = file.type === up.value.mime ? file : file.slice(0, file.size, up.value.mime);
   return { ok: true, art: { ...art.value, blob }, warnings: [...up.warnings, ...art.warnings] };
 }

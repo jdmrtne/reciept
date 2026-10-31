@@ -7,6 +7,7 @@ import { sessionStore } from './state/session';
 import { isAdminPath } from './config/route';
 import { armUpdate } from './pwa/updateGate';
 import { initCustomFrames } from './frames/custom/runtime';
+import { initEventLayouts } from './frames/custom/eventRuntime';
 
 /** The booth itself (everything that used to run at the top of main.tsx). Kept out of the phone-side result page's bundle. */
 export function bootKiosk() {
@@ -19,6 +20,8 @@ export function bootKiosk() {
   if (navigator.storage?.persist) void navigator.storage.persist().catch(() => {});
   // Owner-uploaded frames load in the background; a missing or blocked IndexedDB just leaves the built-in frames (never throws).
   void initCustomFrames();
+  // Event layouts (one picture = one layout) load the same way: in the background, and a blocked IndexedDB just leaves none.
+  void initEventLayouts();
   // Owner shortcut: opening /admin goes straight to the PIN keypad. Every other URL boots to standby as always.
   if (isAdminPath(location.pathname)) sessionStore.go('admin');
   // Kiosk hygiene: no context menu, no pinch-zoom of the page itself.

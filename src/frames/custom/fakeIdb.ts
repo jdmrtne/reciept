@@ -53,19 +53,34 @@ class FakeStore {
 class FakeTx {
   pending = 0; finished = false; error: DOMException | null = null; undo: (() => void)[] = [];
   oncomplete: Handler = null; onabort: Handler = null; onerror: Handler = null; private failed = false; private timer = false;
-  constructor(public mode: IDBTransactionMode, public db: FakeDb, private store: FakeStore | null = null) { later(() => this.poke()); }
+  private opened = new Map<string, FakeStore>();
+  constructor(public mode: IDBTransactionMode, public db: FakeDb, private storeName: string) { later(() => this.poke()); }
   canRun() { if (this.mode !== 'readwrite') return true; if (this.db.lock && this.db.lock !== this) return false; this.db.lock = this; return true; }
   private release() { if (this.db.lock === this) this.db.lock = null; }
-  objectStore() { return (this.store ??= new FakeStore(this, this.db.data, 'id', this.db)) as unknown as IDBObjectStore; }
+  objectStore(name?: string) {
+    const n = name ?? this.storeName, def = this.db.stores.get(n);
+    if (!def) throw err('NotFoundError');
+    let s = this.opened.get(n);
+    if (!s) { s = new FakeStore(this, def.data, def.keyPath, this.db); this.opened.set(n, s); }
+    return s as unknown as IDBObjectStore;
+  }
   poke() { if (this.timer) return; this.timer = true; later(() => { this.timer = false; if (!this.finished && this.pending === 0) { this.finished = true; this.release(); if (this.failed) return; this.oncomplete?.(); } }); }
   fail(e: DOMException, bubble: boolean) { this.error = e; if (bubble) this.onerror?.(); this.abort(e); }
   abort(e: DOMException = err('AbortError')) { if (this.finished) return; this.failed = true; this.finished = true; this.release(); this.error = this.error ?? e; this.undo.reverse().forEach((u) => u()); later(() => this.onabort?.()); }
 }
 class FakeDb {
-  data = new Map<string, unknown>(); objectStoreNames = { contains: (n: string) => this.stores.has(n) }; stores = new Set<string>(); onversionchange: Handler = null; closed = false; lock: FakeTx | null = null;
+  /** One data map per object store (the database has a version, like a browser). */
+  stores = new Map<string, { data: Map<string, unknown>; keyPath: string }>(); version = 0;
+  objectStoreNames = { contains: (n: string) => this.stores.has(n) }; onversionchange: Handler = null; closed = false; lock: FakeTx | null = null;
   constructor(private owner: FakeIndexedDB) {}
-  createObjectStore(name: string) { this.stores.add(name); return {} as IDBObjectStore; }
-  transaction(_name: string, mode: IDBTransactionMode = 'readonly') { if (this.closed) throw err('InvalidStateError'); return new FakeTx(mode, this) as unknown as IDBTransaction; }
+  /** The records of the `frames` store (older tests read it as `db.data`). */
+  get data(): Map<string, unknown> { return this.stores.get('frames')?.data ?? new Map(); }
+  createObjectStore(name: string, opts?: { keyPath?: string }) { if (!this.stores.has(name)) this.stores.set(name, { data: new Map(), keyPath: opts?.keyPath ?? 'id' }); return {} as IDBObjectStore; }
+  transaction(name: string, mode: IDBTransactionMode = 'readonly') {
+    if (this.closed) throw err('InvalidStateError');
+    if (!this.stores.has(name)) throw err('NotFoundError');
+    return new FakeTx(mode, this, name) as unknown as IDBTransaction;
+  }
   takeFault(op: Fault['op']) { return this.owner.takeFault(op); }
   close() { this.closed = true; }
 }
@@ -78,17 +93,29 @@ export class FakeIndexedDB {
   }
   /** Simulates another tab upgrading the database: connected clients get versionchange and must close. */
   versionChange() { this.db?.onversionchange?.(); }
-  /** Raw records, for assertions. */
-  records(): unknown[] { return this.db ? [...this.db.data.values()] : []; }
-  open(_name: string, _version?: number) {
+  /** Raw records of one object store (default `frames`), for assertions. */
+  records(storeName = 'frames'): unknown[] { return this.db ? [...(this.db.stores.get(storeName)?.data.values() ?? [])] : []; }
+  /** Puts a database that already exists at `version` on this "device", with the given records per object store (e.g. a version 1 database holding frames). The next open upgrades it if it asks for a newer version. */
+  seed(version: number, stores: Record<string, unknown[]>): void {
+    const db = new FakeDb(this); db.version = version;
+    for (const [name, rows] of Object.entries(stores)) { db.createObjectStore(name, { keyPath: 'id' }); for (const r of rows) db.stores.get(name)!.data.set(String((r as Record<string, unknown>).id), clone(r)); }
+    this.db = db;
+  }
+  /** Version of the stored database (0 = none yet). */
+  get version(): number { return this.db?.version ?? 0; }
+  /** Names of the object stores that exist now. */
+  storeNames(): string[] { return this.db ? [...this.db.stores.keys()] : []; }
+  open(_name: string, version?: number) {
     this.opens++;
     const r = new FakeRequest<FakeDb>();
     later(() => {
       if (this.blocked) { r.onblocked?.(); return; }
       if (this.takeFault('open')) { r.error = err('SecurityError'); r.onerror?.(); return; }
+      const want = version ?? 1;
+      if (this.db && want < this.db.version) { r.error = err('VersionError'); r.onerror?.(); return; } // asking for an older version than the one on disk fails, as in a browser
       const fresh = !this.db; this.db ??= new FakeDb(this); this.db.closed = false;
       const db = this.db; r.result = db;
-      if (fresh) { r.onupgradeneeded?.(); }
+      if (fresh || want > db.version) { const oldVersion = db.version; db.version = want; r.onupgradeneeded?.({ oldVersion, newVersion: want }); } // existing object stores and their records are kept
       r.onsuccess?.();
     });
     return r as unknown as IDBOpenDBRequest;
