@@ -3,7 +3,7 @@ import { sessionStore, useSession } from '../state/session';
 import { LAYOUTS, allLayouts, getLayout } from '../layouts/registry';
 import { visibleEventLayouts } from '../layouts/visibility';
 import { customReady } from '../frames/custom/runtime';
-import { eventLayoutEnabled, eventLayoutVersion, subscribeEventLayouts } from '../frames/custom/eventRuntime';
+import { eventLayoutOfferedFor, eventLayoutVersion, subscribeEventLayouts } from '../frames/custom/eventRuntime';
 import { getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { frameForLayoutVisible, guestFramesForLayout } from '../frames/visibility';
 import { getFrameAsset } from '../frames/assets';
@@ -38,6 +38,7 @@ export function Edit() {
   const [draft, setDraft] = useState<Snapshot | null>(null);
   const [tray, setTray] = useState<'layout' | 'frame' | 'filter' | 'sticker' | null>(null);
   const [hiddenFrames] = useState(() => loadSettings().frameVisibility.hidden); // read once per editor mount (ADMIN > Frames)
+  const [activeEventId] = useState(() => loadSettings().activeEventId); // event layouts of any other event are not offered
   const [swapping, setSwapping] = useState(false);
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
@@ -243,7 +244,7 @@ export function Edit() {
         {tray === 'filter' && <FilterTray src={snap.objects.find(isPhoto)?.src ?? photos[0]} active={snap.filterId} onPick={pickFilter} />}
         {tray === 'frame' && (
           <div className="edit-tray">
-            {guestFramesForLayout(snap.layoutId, hiddenFrames, snap.frameId).map((f) => (
+            {guestFramesForLayout(snap.layoutId, hiddenFrames, snap.frameId, activeEventId).map((f) => (
               <button key={f.id} className={`lay-card${f.id === snap.frameId ? ' on' : ''}`} onClick={() => pickFrame(f.id)}>
                 <FramePreview frameId={f.id} layoutId={snap.layoutId} /><span>{f.name.toUpperCase()}</span>
               </button>
@@ -252,7 +253,7 @@ export function Edit() {
         )}
         {tray === 'layout' && (
           <div className="edit-tray">
-            {visibleEventLayouts(allLayouts(), eventLayoutEnabled, snap.layoutId).map((l) => ( // built-in layouts as before + event layouts that are switched on (the one being edited always stays)
+            {visibleEventLayouts(allLayouts(), eventLayoutOfferedFor(activeEventId), snap.layoutId).map((l) => ( // built-in layouts + event layouts that are switched on AND belong to the active event (the one being edited always stays)
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
                 <FramePreview frameId={frameForLayoutVisible(l.id, snap.frameId, hiddenFrames)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>

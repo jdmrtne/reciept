@@ -66,6 +66,14 @@ export const eventLayoutRecords = (): EventLayoutDef[] => [...entries.values()].
 export const eventLayoutById = (id: string | null | undefined): EventLayoutDef | undefined => (id ? entries.get(id)?.def : undefined);
 /** SHOWN unless the owner switched it off. Unknown ids count as shown: they are never offered anyway. */
 export const eventLayoutEnabled = (id: string): boolean => entries.get(id)?.def.enabled !== false;
+/**
+ * What a guest is offered while `activeEventId` is the active event: the layout must be SHOWN *and* belong to that event.
+ * So making another event active swaps the EVENT SPECIAL layouts instead of piling them up. Layouts of no event (deleted event) are never offered.
+ */
+export const eventLayoutOfferedFor = (activeEventId: string) => (id: string): boolean => {
+  const d = entries.get(id)?.def;
+  return !!d && d.enabled !== false && !!activeEventId && d.eventId === activeEventId;
+};
 export interface EventLayoutAsset { src: string; meta: CustomArtMeta }
 /** The picture's object URL plus its metadata (no blob). null when the layout is unknown or the browser could not make a URL. */
 export function eventLayoutAsset(id: string): EventLayoutAsset | null {

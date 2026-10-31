@@ -34,14 +34,14 @@ const two = (): BoothSettings => {
 };
 
 describe('the Events section is part of the existing settings map', () => {
-  it('is registered with four cards (the Event frames group card sits right under the event list), and ids stay unique across the whole map', () => {
-    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-layouts', 'events-edit', 'events-preview']);
+  it('is registered with four cards (the Event layouts card sits right under the event list), and ids stay unique across the whole map', () => {
+    expect(section.cards.map((c) => c.id)).toEqual(['events-list', 'events-layouts', 'events-edit', 'events-preview']);
     const all = SECTIONS.flatMap((s) => s.cards.map((c) => c.id));
     expect(new Set(all).size).toBe(all.length);
     expect(SECTIONS.map((s) => s.id)).toEqual(expect.arrayContaining(['events', 'printer', 'quality', 'sharing', 'appearance', 'security']));
   });
   it('the preview card is the wide-screen aside; the others are not', () => {
-    expect(section.cards.map((c) => !!c.aside)).toEqual([false, false, false, false, true]);
+    expect(section.cards.map((c) => !!c.aside)).toEqual([false, false, false, true]);
   });
   it('is reachable from search with the words an owner would use', () => {
     const find = (q: string) => searchSettings(SECTIONS, q).map((h) => h.card.id);
@@ -127,9 +127,9 @@ describe('event list', () => {
     for (const l of ['CREATE', 'MAKE ACTIVE', 'DUPLICATE', 'RESET TEXT', 'DELETE']) expect(disabled(h, l), l).toBe(true);
     expect(h).toContain('SAVE OR CANCEL YOUR CHANGES FIRST');
   });
-  it('says DUPLICATE copies the text only (frames are not copied) and that CREATE makes an inactive event with just a name', () => {
+  it('says DUPLICATE copies the text only (layouts are not copied) and that CREATE makes an inactive event with just a name', () => {
     const h = decode(card('events-list', two()));
-    expect(h).toContain('DUPLICATE copies the event text only. The frames are not copied');
+    expect(h).toContain('DUPLICATE copies the event text only. The layouts are not copied');
     expect(h).toContain('CREATE makes a new event with just a name. It is not active.');
   });
   it('explains that MAKE ACTIVE applies to the next customer only', () => {

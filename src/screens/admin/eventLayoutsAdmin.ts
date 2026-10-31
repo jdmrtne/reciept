@@ -44,7 +44,7 @@ export const toggleNotice = (label: string, on: boolean): string => (on ? `${lab
 export const replaceNotes = (hadQrSpot: boolean, warnings: readonly string[]): string[] => (hadQrSpot ? [...warnings, QR_CLEARED] : [...warnings]);
 
 // ---- EL-6: copy old event frames into layouts (the frames stay as they are) ----
-export const OLD_FRAMES_HELP = 'These frames were made before event layouts existed. They still work for guests as before. COPY TO LAYOUTS makes one layout from each picture, hidden at first, and leaves the frame untouched. Press SHOW ALL when the copies look right, then turn the old frame off or delete it in Event frames above.';
+export const OLD_FRAMES_HELP = 'These frames were made before event layouts existed. COPY TO LAYOUTS makes one layout from each picture, hidden at first, and leaves the frame untouched. Press SHOW ALL when the copies look right, then press DELETE FRAME to remove the old one. An old frame is only offered to guests while its event is the active one.';
 export const copySummary = (total: number, done: number): string => `${total} ${total === 1 ? 'PICTURE' : 'PICTURES'}, ${done} ALREADY COPIED`;
 export function copiedNotice(created: number, skipped: number, failed: number): string {
   if (created === 0 && failed === 0) return skipped > 0 ? 'NOTHING NEW TO COPY' : 'THIS FRAME HAS NO PICTURES TO COPY';

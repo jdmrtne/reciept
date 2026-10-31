@@ -102,8 +102,8 @@ describe('Event layouts card (server render)', () => {
 });
 
 describe('Event layouts card wiring', () => {
-  it('is the third card of ADMIN > Events, on the uploads tab, and found by the words an owner would type', () => {
-    expect(eventsSection.cards.map((c) => c.id)).toEqual(['events-list', 'events-frames', 'events-layouts', 'events-edit', 'events-preview']);
+  it('is the second card of ADMIN > Events, on the uploads tab, and found by the words an owner would type', () => {
+    expect(eventsSection.cards.map((c) => c.id)).toEqual(['events-list', 'events-layouts', 'events-edit', 'events-preview']);
     expect(eventLayoutsCard.tab).toBe('uploads');
     const find = (q: string) => searchSettings([eventsSection], q).map((h) => h.card.id);
     for (const q of ['event layouts', 'add layout', 'replace picture', 'unassigned', 'event special']) expect(find(q), q).toContain('events-layouts');

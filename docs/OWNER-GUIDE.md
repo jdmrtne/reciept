@@ -73,8 +73,8 @@ An *event* is the text printed on every receipt: name, header, up to three detai
 - **The fields:** EVENT NAME (required), HEADER / TITLE, DETAIL LINE 1 to 3 (use these for venue, host or date; blank lines are skipped), THANK-YOU MESSAGE (leave blank to print none), SHOW BRANDING and BRANDING TEXT (blank prints "Printed by Memorys"). Each line holds up to 40 characters. A line that is too long, or has emoji or other characters the receipt cannot print, is marked and cannot be saved; nothing is cut off for you.
 - **Some frames already print the name, date, time or a thank-you.** The booth never prints the same thing twice: it adds only what that frame lacks, under the picture.
 - **Leaving with unsaved changes:** switching events, changing section, searching, EXIT or closing the page asks first (KEEP EDITING / DISCARD).
-- **Create an event:** type just its name in **NEW EVENT NAME** and press **CREATE**. The event is made (not active yet) and selected, and its frame group (below) is ready and empty. **DUPLICATE** copies the selected event's text (not active); its frames are NOT copied, so add them again in the copy. **RESET TEXT** puts the selected event's text back to the defaults (asks first). **DELETE** removes an event (asks first; if it has frames, the question says how many and they are deleted with it). You cannot delete the active event (make another one active first) or the last remaining event.
-- **Event frames:** the card under the event list is the frame group of the event you picked. See "Event frame groups" below.
+- **Create an event:** type just its name in **NEW EVENT NAME** and press **CREATE**. The event is made (not active yet) and selected, and its layouts are added in Uploads & Media. **DUPLICATE** copies the selected event's text (not active); its frames are NOT copied, so add them again in the copy. **RESET TEXT** puts the selected event's text back to the defaults (asks first). **DELETE** removes an event (asks first; if it has frames, the question says how many and they are deleted with it). You cannot delete the active event (make another one active first) or the last remaining event.
+- **Event layouts:** the card under the event list holds the layouts of the event you picked. See "Event layouts" below.
 - **Two events may share a name.** They stay separate; the small `#event-2` code under each name tells them apart.
 - **Preview:** shows your unsaved text on a sample receipt (pick the frame). It uses a sample photo, date and time; nothing is printed, saved or sent, and the QR code is not drawn in it. Check the real receipt with a test strip.
 - **If the booth times out while you type,** your unsaved text is still there when you come back through the PIN, until the page is reloaded.
@@ -92,7 +92,7 @@ Open **ADMIN → Layouts** to switch layouts on or off for the **CHOOSE YOUR STR
 Open **ADMIN → Frames** to switch frame designs on or off for the frame list guests see while editing their strip.
 - Frames are split into **RECEIPT STYLES** and **DESIGNS**. Every frame has a switch and a small preview. Each group has **SHOW ALL** / **HIDE ALL**, and **SHOW ALL FRAMES** at the bottom turns everything back on.
 - At least one frame always stays on: the last one cannot be switched off, and **HIDE ALL** is unavailable when it would hide the last frames.
-- Pictures you upload are in the card below (**Your own frames**); frames made for one event are under **ADMIN → Events → Event frames**.
+- Pictures you upload are in the card below (**Your own frames**); layouts made for one event are under **ADMIN → Events → Uploads & Media**.
 - A guest who already picked a frame keeps it, even if you hide it afterwards; it just won't be offered to the next guest. If you hide the default frame (Classic Receipt), new guests start with the first frame that is still shown.
 - Changes save immediately and apply the next time a guest opens the editor (no reload). The setting is stored on this device, and new frames added in a future update appear automatically. It does not affect the frame choice in **ADMIN → Events** (that preview is for you).
 
@@ -112,15 +112,12 @@ Open **ADMIN → Frame text** to change the wording printed inside nine built-in
 - It works only in **Chrome or Edge** (needs the browser's built-in video encoder). If the browser cannot do it, **LAST SAVE** says VIDEO ENCODING NOT SUPPORTED IN THIS BROWSER and the photo and GIF still save. Use the switch independently of AUTO-SAVE GIFS; a folder chosen earlier gets its Videos folder automatically.
 - Videos are saved on this device only; they are not uploaded and are not part of the QR page.
 
-## Event frame groups (ADMIN → Events → Event frames)
-Every event has its own group of frames. Frames made for a wedding, a party or an anniversary live in that event's group, so they are easy to find and never mixed with another event's.
-1. In **Events**, type a name under **NEW EVENT NAME** and press **CREATE**. That is all an event needs. The **Event frames** card now shows **FRAME GROUP: your event name**. To work on another event's frames, tap that event in the list.
-2. Press **ADD FRAME**. Type the frame name, pick the layout the picture is for, press **CHOOSE PICTURE** (or drop a file on the panel) and press **SAVE FRAME**. The picture is checked first. If it is not good, you get a plain explanation and nothing is created. If it is good, the frame appears as a tile in the grid and its page opens so you can add pictures for the other layouts.
-3. Each tile shows the frame, its name and a **SHOWN / HIDDEN** switch, the same as in ADMIN → Frames. HIDDEN takes the frame off the list guests see; your pictures are kept. **SHOW ALL** and **HIDE ALL** change every frame of this event at once.
-4. Tap a tile to open the frame: rename it, add or replace pictures for each layout, check them with PREVIEW, set the QR spot, or DELETE FRAME. **BACK TO GRID** returns.
-5. A frame is offered to guests whenever it is SHOWN, whichever event is the ACTIVE one. If you want a frame gone for the evening, switch it to HIDDEN.
-6. **Unassigned frames:** event frames made before groups existed, or whose event was deleted, are listed at the bottom of the card. Nothing is moved for you; press **MOVE TO THIS EVENT** on each one you want in the event you are looking at.
-7. Deleting an event also deletes its frames (the question tells you how many). Copying an event does not copy its frames.
+## Event layouts (ADMIN → Events → Uploads & Media)
+Every event has its own layouts. Each picture you upload for an event becomes one layout (the app finds the photo windows by itself).
+- **Only the active event shows its layouts.** Make an event active and the layout screen shows that event's EVENT SPECIAL card; make another event active and the first one's layouts disappear. Two events never show their specials at once.
+- Each layout also has its own **SHOWN / HIDDEN** switch. A layout is offered to guests only when it is SHOWN **and** its event is the active one.
+- Layouts whose event was deleted are listed as **Unassigned layouts**. Guests do not get them until you ASSIGN each one to an event.
+- **Old event frames** (made before event layouts existed) are listed under the layouts, with **COPY TO LAYOUTS** and **DELETE FRAME**. You can no longer upload new event frames; upload layouts instead. An old frame is also only offered while its event is active.
 
 ## Your own frames
 **ADMIN → Frames → Your own frames** is for everyday frames of your own, with the same upload steps. It is a separate list from the event groups. (The built-in J146 NCL frame and the NCL Boarding Pass layouts were removed.)

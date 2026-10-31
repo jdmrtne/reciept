@@ -243,7 +243,7 @@ export function FrameEditor({ frameId, s, notify, onBack, onDeleted, onBusyChang
 
 function CustomFrames({ notify, s }: AdminCtx) {
   useSyncExternalStore(subscribeCustom, customVersion, customVersion); // re-render on every registry change
-  const frames = customFrameDefs().filter((f) => !customIsSpecial(f.id)); // normal own frames only: event frames live in their event's group (EventFramesSection)
+  const frames = customFrameDefs().filter((f) => !customIsSpecial(f.id)); // normal own frames only: event frames live in their event's group (old event frames are managed in Event layouts)
   const [selected, setSelected] = useState<string | null>(null);
   const frame = frames.find((f) => f.id === selected) ?? frames[0] ?? null;
   const [showNew, setShowNew] = useState(false);

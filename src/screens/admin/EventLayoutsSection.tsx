@@ -3,7 +3,7 @@ import { Icon } from '../../components/Icon';
 import { DEFAULT_EVENT_NAME } from '../../config/settings';
 import { finalText } from '../../config/events';
 import { FramePreview } from '../../frames/FrameLayer';
-import { customRecords, customVersion, subscribeCustom } from '../../frames/custom/runtime';
+import { customRecords, customVersion, deleteCustomFrame, subscribeCustom } from '../../frames/custom/runtime';
 import { framesOfEvent, unassignedSpecialFrames } from '../../frames/custom/groups';
 import { convertEventFrame, planConversion } from '../../frames/custom/convertEventFrame';
 import { getLayout } from '../../layouts/registry';
@@ -28,8 +28,8 @@ import type { AdminCtx, CardDef } from './types';
 
 /**
  * ADMIN > Events > Event layouts (EL-4): every picture uploaded for an event is a LAYOUT of its own (its photo windows are found
- * from the transparent holes). The grid copies ADMIN > Frames (`.fg-*`). Whether guests get a layout depends only on its own
- * SHOWN / HIDDEN switch, never on which event is active. The old event special frames stay in the card above until Phase 6.
+ * from the transparent holes). The grid copies ADMIN > Frames (`.fg-*`). A layout is offered to guests only while its event is the
+ * ACTIVE one AND its own SHOWN / HIDDEN switch is on, so two events never show their specials at once.
  */
 
 const useEditor = (): EditorState => useSyncExternalStore(eventEditorStore.subscribe, eventEditorStore.get, eventEditorStore.get);
@@ -59,6 +59,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
   const [target, setTarget] = useState('');
   const [tileErr, setTileErr] = useState<{ id: string; errors: string[] } | null>(null);
   const [ask, setAsk] = useState<LayoutTile | null>(null);
+  const [askFrame, setAskFrame] = useState<CustomFrameDef | null>(null);
   const [looseTarget, setLooseTarget] = useState<Record<string, string>>({});
   const [qrId, setQrId] = useState<string | null>(null);
   const alive = useRef(true);
@@ -156,6 +157,14 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
     const r = await convertEventFrame(frame, eventId, defs, (l) => getLayout(l).name);
     if (!alive.current) return;
     notify(r.failed.length ? 'error' : 'success', copiedNotice(r.created.length, r.skipped, r.failed.length));
+  });
+
+  /** Delete one OLD event frame (the upload card for them is gone). Its layouts copies are separate and stay. */
+  const removeFrame = (f: CustomFrameDef) => run(async () => {
+    const r = await deleteCustomFrame(f.id);
+    if (!alive.current) return;
+    setAskFrame(null);
+    notify(r.ok ? 'success' : 'error', r.ok ? `FRAME ${f.name.toUpperCase()} DELETED` : 'FRAME NOT DELETED');
   });
 
   const remove = (t: LayoutTile) => run(async () => {
@@ -272,7 +281,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
         </figure>
       )}
 
-      <Hint>A layout is offered to guests when it is SHOWN, whichever event is active. It is only ever used with its own picture.</Hint>
+      <Hint>A layout is offered to guests when it is SHOWN and its event is the ACTIVE one. Make another event active and its layouts replace these. A layout is only ever used with its own picture.</Hint>
 
       {oldFrames.length > 0 && (
         <div className="lv-group" data-old-event-frames="true">
@@ -286,6 +295,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
                   <div className="row-l"><span>{f.name.toUpperCase()}</span><small>{copySummary(plan.total, plan.done)}</small></div>
                   <div className="lv-acts cf-acts">
                     <button type="button" className="btn ghost" disabled={busy || plan.items.length === 0} aria-label={`COPY ${f.name.toUpperCase()} TO LAYOUTS`} onClick={() => void copyFrame(f)}>COPY TO LAYOUTS</button>
+                    <button type="button" className="btn ghost" disabled={busy} aria-label={`DELETE FRAME ${f.name.toUpperCase()}`} onClick={() => setAskFrame(f)}>DELETE FRAME</button>
                   </div>
                 </li>
               );
@@ -297,7 +307,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
       {loose.length > 0 && (
         <div className="lv-group" data-unassigned-layouts="true">
           <div className="lv-head"><h5 className="lv-h">UNASSIGNED LAYOUTS <small>{loose.length}</small></h5></div>
-          <Hint>These layouts belong to no event, because their event was deleted. Guests still get them while they are SHOWN. Give each one an event, or leave it here.</Hint>
+          <Hint>These layouts belong to no event, because their event was deleted. Guests do not get them until you give each one an event.</Hint>
           <ul className="lv-kids lv-flat cf-list" aria-label="Unassigned layouts">
             {loose.map((t) => {
               const dests = others(''), pick = looseTarget[t.id] ?? eventId;
@@ -318,6 +328,7 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
         </div>
       )}
 
+      {askFrame && <ConfirmDialog title="DELETE THIS OLD FRAME?" body={`${askFrame.name.toUpperCase()} and its pictures will be removed from this device. Layouts you copied from it are kept. This cannot be undone.`} confirmLabel="DELETE FRAME" cancelLabel="KEEP FRAME" danger onConfirm={() => void removeFrame(askFrame)} onCancel={() => setAskFrame(null)} />}
       {ask && <ConfirmDialog title="DELETE THIS LAYOUT?" body={deleteLayoutBody(ask.label)} confirmLabel="DELETE LAYOUT" cancelLabel="KEEP LAYOUT" danger onConfirm={() => void remove(ask)} onCancel={() => setAsk(null)} />}
     </>
   );

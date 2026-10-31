@@ -7,7 +7,7 @@ import { prepareEventLayoutUpload } from './upload';
  *   1. the picture is checked first (`prepareEventLayoutUpload`: file header, decode, windows found, 1 to LIMITS.maxWindows): a bad picture creates nothing;
  *   2. the layout and its picture are written as ONE record in ONE transaction. There is no second step to fail, so an empty
  *      "NO PICTURES" layout cannot exist and nothing has to be cleaned up.
- * Never throws. Errors are plain sentences for the owner. (The old addEventFrame stays in use by the UI until Phase 5.)
+ * Never throws. Errors are plain sentences for the owner.
  */
 /** The sentence shown when a layout has no usable name (add and rename). */
 export const NAME_REQUIRED = `Type a name for the layout, up to ${NAME_MAX} characters.`;
