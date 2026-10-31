@@ -1,4 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon';
 import type { Notice } from './types';
 
@@ -48,16 +49,31 @@ export function Help({ children, className, label = 'Show help' }: { children: R
   );
 }
 
+/**
+ * A card's explanations all live behind ONE "?" beside its title: the card description first, then every (non-important) Hint inside the card.
+ * A Hint finds the card through this context and moves its text into the card's popup (`slot`); `add` lets the card know it has hints so the "?" shows
+ * even without a description. Before the first browser paint (and in static markup) a Hint simply renders its own "?" in place.
+ */
+const CardHelp = createContext<{ slot: HTMLElement | null; add: () => () => void } | null>(null);
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 export function SettingsCard({ title, description, tag, aside, open, children }: { title: string; description?: string; tag?: string; aside?: boolean; /** Search results: jump to the tab this card lives in. */ open?: { label: string; onOpen: () => void }; children: ReactNode }) {
   const id = useId();
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [hints, setHints] = useState(0);
+  const add = useCallback(() => { setHints((n) => n + 1); return () => setHints((n) => n - 1); }, []);
+  const ctx = useMemo(() => ({ slot, add }), [slot, add]);
   return (
     <section className={aside ? 'card card-aside' : 'card'} aria-labelledby={id}>
       <header className="card-h">
         {tag && <span className="card-tag">{tag}</span>}
-        <div className="help-host"><h4 id={id} className="card-t">{title}</h4>{description && <Help className="card-d">{description}</Help>}</div>
+        <div className="help-host">
+          <h4 id={id} className="card-t">{title}</h4>
+          {(description || hints > 0) && <Help className="card-d">{description && <span className="help-p">{description}</span>}<span ref={setSlot} /></Help>}
+        </div>
         {open && <button type="button" className="btn ghost adm-open" onClick={open.onOpen}>{open.label}</button>}
       </header>
-      <div className="card-b">{children}</div>
+      <CardHelp.Provider value={ctx}><div className="card-b">{children}</div></CardHelp.Provider>
     </section>
   );
 }
@@ -139,7 +155,11 @@ export function TextField({ label, hint, value, onChange, placeholder, inputMode
 
 /** Explanatory text, hidden behind a "?" circle. `important` keeps it on screen: use it only for a state the owner must see right now (a warning, an empty list, a limit reached). */
 export function Hint({ children, important }: { children: ReactNode; important?: boolean }) {
+  const card = useContext(CardHelp);
+  const add = card?.add;
+  useIsoLayoutEffect(() => (important || !add ? undefined : add()), [important, add]);
   if (important) return <p className="hint">{children}</p>;
+  if (card?.slot) return createPortal(<span className="help-p">{children}</span>, card.slot);
   return <div className="help-host hint-host"><Help>{children}</Help></div>;
 }
 

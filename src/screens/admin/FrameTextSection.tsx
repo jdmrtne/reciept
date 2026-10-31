@@ -5,7 +5,7 @@ import { FramePreview } from '../../frames/FrameLayer';
 import type { FrameDef } from '../../frames/types';
 import { FRAME_TOKENS, defaultLineText, editableFrameDefs, finalFrameText, frameTextKeys, lineLabel } from '../../frames/frameText';
 import { currentFrameText, errorKey, frameTextEditorStore, frameTextPick, isFrameDirty, isFrameTextDirty, isHidden, textLength, validateFrameText } from './frameTextEditor';
-import { ConfirmDialog, Hint, TextField } from './ui';
+import { ConfirmDialog, Help, Hint, TextField } from './ui';
 import type { AdminCtx, SectionDef } from './types';
 
 /**
@@ -47,11 +47,10 @@ function FrameTextEditor({ c }: { c: AdminCtx }) {
         <button type="button" className="btn" disabled={!dirty || bad || busy} onClick={save}><Icon name="check" />SAVE</button>
       </div>
       <label className="field">
-        <span className="field-top"><span className="field-l">FRAME TO EDIT</span></span>
+        <span className="field-top"><span className="help-host"><span className="field-l">FRAME TO EDIT</span><Help className="field-h">Pick a frame, then change its header and footer lines. Edits to other frames are kept until you press SAVE or CANCEL.</Help></span></span>
         <select className="adm-in" value={f.id} onChange={(e) => frameTextPick.set(e.target.value)}>
           {frames.map((x) => <option key={x.id} value={x.id}>{x.name}{badIn(x.id) ? ' (FIX)' : isFrameDirty(s, d, x.id) ? ' (UNSAVED)' : ''}</option>)}
         </select>
-        <small className="field-h">Pick a frame, then change its header and footer lines. Edits to other frames are kept until you press SAVE or CANCEL.</small>
       </label>
       <p className="ev-edit-of">EDITING: <b>{f.name.toUpperCase()}</b></p>
       <div className="ft-lines">
