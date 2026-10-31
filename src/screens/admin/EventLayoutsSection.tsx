@@ -191,6 +191,44 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
     const def = openDef!, editing = mode && mode.id === t.id ? mode.kind : null;
     const dests = others(t.eventId);
     const problems = tileErr && tileErr.id === t.id ? tileErr.errors : [];
+    const side = (
+      <div className="el-side">
+    {editing === 'rename' && (
+      <div className="el-panel">
+        <input className="adm-in" value={typed} maxLength={NAME_MAX} aria-label={`NEW NAME FOR ${t.label}`} onChange={(e) => { setTyped(e.target.value); setTileErr(null); }} onKeyDown={(e) => { if (e.key === 'Enter') void rename(t); }} />
+        <div className="el-acts">
+          <button type="button" className="btn" disabled={busy || !cleanName(typed)} onClick={() => void rename(t)}>SAVE NAME</button>
+          <button type="button" className="btn ghost" disabled={busy} onClick={() => { closeMode(); setTileErr(null); }}>CANCEL</button>
+        </div>
+      </div>
+    )}
+    {editing === 'move' && (
+      <div className="el-panel">
+        {dests.length === 0
+          ? <Hint>There is no other event to move this layout to. Create one in the Event List first.</Hint>
+          : <select className="adm-in" value={target} aria-label={`MOVE ${t.label} TO`} onChange={(e) => setTarget(e.target.value)}>
+              <option value="">PICK AN EVENT</option>
+              {dests.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+            </select>}
+        <div className="el-acts">
+          <button type="button" className="btn" disabled={busy || !target} onClick={() => void move(t, target, dests.find((d) => d.id === target)?.label ?? '')}>MOVE LAYOUT</button>
+          <button type="button" className="btn ghost" disabled={busy} onClick={closeMode}>CANCEL</button>
+        </div>
+      </div>
+    )}
+    {!editing && (
+      <div className="el-acts">
+        <button type="button" className="btn ghost" disabled={busy} aria-label={`RENAME ${t.label}`} onClick={() => { setMode({ id: t.id, kind: 'rename' }); setTyped(def.name); setTileErr(null); }}>RENAME</button>
+        <label className={busy ? 'btn ghost cf-up disabled' : 'btn ghost cf-up'}>
+          <Icon name="up" />REPLACE PICTURE
+          <input type="file" className="cf-file" accept={ACCEPT} disabled={busy} aria-label={`REPLACE PICTURE OF ${t.label}`} onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) void replace(t, f); }} />
+        </label>
+        <button type="button" className="btn ghost" disabled={busy} aria-label={`MOVE ${t.label} TO ANOTHER EVENT`} onClick={() => { setMode({ id: t.id, kind: 'move' }); setTarget(''); setTileErr(null); }}>MOVE</button>
+        <button type="button" className="btn ghost" disabled={busy} aria-label={`DELETE ${t.label}`} onClick={() => setAsk(t)}>DELETE</button>
+      </div>
+    )}
+      </div>
+    );
     return (
       <div className="el-detail" data-layout-settings={t.id}>
         <div className="lv-head">
@@ -203,43 +241,9 @@ function EventLayoutsBody({ s, notify, eventId, eventName }: AdminCtx & { eventI
             <figcaption>QR SPOT: the numbered outlines show where the photos go. The colours are only placeholders. <span data-layout-qr={def.art.qr ? 'set' : 'none'}>{def.art.qr ? 'QR SPOT SET' : 'NO QR SPOT'}</span></figcaption>
             <QrSpotEditor key={t.id} art={def.art} spotKey={`${t.id}:${def.art.rev ?? ''}`} src={openAsset.src} meta={openAsset.meta} modules={modules} inset={EVENT_SPOT_INSET} shareEnabled={s.share.enabled}
               disabled={busy} label={t.label} noun="layout" onSave={saveSpot(t.id)} notify={notify}
-              how={<><small>HOW IT PRINTS (SAMPLE QR)</small><div className="lv-thumb"><FramePreview frameId={t.id} layoutId={t.id} qr /></div></>} />
+              how={<><small>HOW IT PRINTS (SAMPLE QR)</small><div className="lv-thumb"><FramePreview frameId={t.id} layoutId={t.id} qr /></div>{side}</>} />
           </figure>
-        ) : <Hint>The picture of this layout is not ready. Go back and open it again.</Hint>}
-        {editing === 'rename' && (
-          <div className="el-panel">
-            <input className="adm-in" value={typed} maxLength={NAME_MAX} aria-label={`NEW NAME FOR ${t.label}`} onChange={(e) => { setTyped(e.target.value); setTileErr(null); }} onKeyDown={(e) => { if (e.key === 'Enter') void rename(t); }} />
-            <div className="el-acts">
-              <button type="button" className="btn" disabled={busy || !cleanName(typed)} onClick={() => void rename(t)}>SAVE NAME</button>
-              <button type="button" className="btn ghost" disabled={busy} onClick={() => { closeMode(); setTileErr(null); }}>CANCEL</button>
-            </div>
-          </div>
-        )}
-        {editing === 'move' && (
-          <div className="el-panel">
-            {dests.length === 0
-              ? <Hint>There is no other event to move this layout to. Create one in the Event List first.</Hint>
-              : <select className="adm-in" value={target} aria-label={`MOVE ${t.label} TO`} onChange={(e) => setTarget(e.target.value)}>
-                  <option value="">PICK AN EVENT</option>
-                  {dests.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>}
-            <div className="el-acts">
-              <button type="button" className="btn" disabled={busy || !target} onClick={() => void move(t, target, dests.find((d) => d.id === target)?.label ?? '')}>MOVE LAYOUT</button>
-              <button type="button" className="btn ghost" disabled={busy} onClick={closeMode}>CANCEL</button>
-            </div>
-          </div>
-        )}
-        {!editing && (
-          <div className="el-acts el-below">
-            <button type="button" className="btn ghost" disabled={busy} aria-label={`RENAME ${t.label}`} onClick={() => { setMode({ id: t.id, kind: 'rename' }); setTyped(def.name); setTileErr(null); }}>RENAME</button>
-            <label className={busy ? 'btn ghost cf-up disabled' : 'btn ghost cf-up'}>
-              <Icon name="up" />REPLACE PICTURE
-              <input type="file" className="cf-file" accept={ACCEPT} disabled={busy} aria-label={`REPLACE PICTURE OF ${t.label}`} onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) void replace(t, f); }} />
-            </label>
-            <button type="button" className="btn ghost" disabled={busy} aria-label={`MOVE ${t.label} TO ANOTHER EVENT`} onClick={() => { setMode({ id: t.id, kind: 'move' }); setTarget(''); setTileErr(null); }}>MOVE</button>
-            <button type="button" className="btn ghost" disabled={busy} aria-label={`DELETE ${t.label}`} onClick={() => setAsk(t)}>DELETE</button>
-          </div>
-        )}
+        ) : <><Hint>The picture of this layout is not ready. Go back and open it again.</Hint>{side}</>}
         {problems.length > 0 && <ul className="cf-err" role="alert">{problems.map((m, i) => <li key={i}>{m}</li>)}</ul>}
       </div>
     );

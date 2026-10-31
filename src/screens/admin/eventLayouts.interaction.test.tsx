@@ -112,7 +112,7 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     await RTL.waitFor(() => expect(ev.eventLayoutRecords().every((d) => d.enabled !== false)).toBe(true));
   });
 
-  it('the grid tile has only the picture, the name and the switch; tapping it opens the QR view with the buttons below, and BACK returns to the grid', async () => {
+  it('the grid tile has only the picture, the name and the switch; tapping it opens the QR view with the buttons under the QR preview, and BACK returns to the grid', async () => {
     seed(); await mk('Dance floor', 'event-1'); mount();
     const t = tiles()[0];
     expect([...t.querySelectorAll('button:not([role="switch"])')].map((b) => b.getAttribute('aria-label') ?? label(b))).toEqual(['OPEN SETTINGS OF DANCE FLOOR', 'DANCE FLOOR']);
@@ -123,8 +123,10 @@ describe.skipIf(!available)('Events section: event layouts, real interaction', (
     expect(page).toBeTruthy();
     expect(page.querySelector('[data-qr-editor]')).toBeTruthy();          // the QR view is the default
     expect(page.textContent).toContain('HOW IT PRINTS');                   // with the QR preview
-    const qrAt = page.innerHTML.indexOf('data-qr-editor'), actsAt = page.innerHTML.indexOf('el-below');
-    expect(actsAt).toBeGreaterThan(qrAt);                                  // buttons sit below it
+    const how = page.querySelector('.cf-how')!;                            // the column beside the picture
+    expect(how.textContent).toContain('HOW IT PRINTS');
+    expect(how.querySelector('.el-side')).toBeTruthy();                    // the buttons sit in it, under the sample QR preview
+    expect(how.innerHTML.indexOf('el-side')).toBeGreaterThan(how.innerHTML.indexOf('lv-thumb'));
     for (const b of ['RENAME DANCE FLOOR', 'MOVE DANCE FLOOR TO ANOTHER EVENT', 'DELETE DANCE FLOOR']) expect(btn(b)).toBeTruthy();
     click(btn('BACK TO LAYOUTS'));
     expect(document.querySelector('[data-layout-settings]')).toBeNull();
