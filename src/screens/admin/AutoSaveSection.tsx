@@ -47,7 +47,7 @@ function Folder({ s, notify }: AdminCtx) {
           {st?.s === 'permission' && <button type="button" className="btn ghost" onClick={() => void regrant()}>RE-GRANT ACCESS</button>}
         </div>
       </Row>
-      <Row label="STATUS" stack><p role={bad ? 'alert' : 'status'} style={bad ? { fontWeight: 700 } : undefined}>{text(st)}</p></Row>
+      <Row label="STATUS" stack><p role={bad ? 'alert' : 'status'} className={bad ? 'adm-alert' : undefined}>{text(st)}</p></Row>
       {st?.s === 'none' && anyOn && <Hint important>Auto-save is ON but no folder is chosen, so nothing is being saved.</Hint>}
       {last && <Row label="LAST SAVE" stack><p role="status">{`${KIND[last.kind]} ${last.ok ? 'SAVED' : 'NOT SAVED'}: ${last.detail}`}</p></Row>}
     </>

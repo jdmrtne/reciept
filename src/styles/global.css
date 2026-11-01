@@ -111,7 +111,7 @@ h1, h2 { color: var(--ink); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); display: block; }
 .thumb span { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); color: var(--ink); border-top: var(--line-thin); font-size: .8em; padding: .45em 0; letter-spacing: .12em; font-weight: 700; }
 .thumb:active { transform: scale(.97); }
-.err { margin: 0; text-align: center; color: var(--muted); }
+.err { margin: 0; text-align: center; color: var(--alert); font-weight: 700; }
 
 /* ---------- LAYOUT SELECT ---------- */
 .lay { height: 100%; display: flex; flex-direction: column; gap: 2.5vmin; padding: 3vmin; }
@@ -129,11 +129,11 @@ h1, h2 { color: var(--ink); }
 /* group card ("JLC 20th Anniv. Special"): the first layout's thumbnail with two offset outlines behind it = a small stack */
 .lay-group.on { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 5px var(--edge); }
 /* FEATURED group card (event special): listed first, twice as wide, inked badge + dashed ring + a slow pulse so it is the first thing a customer sees */
-.lay-feature { grid-column: span 2; position: relative; outline: 3px dashed var(--ink); outline-offset: 5px; box-shadow: 6px 6px 0 var(--shadow-ink); }
+.lay-feature { grid-column: span 2; position: relative; outline: 3px dashed var(--alert); outline-offset: 5px; box-shadow: 6px 6px 0 var(--shadow-ink); }
 .lay-feature > span { font-size: 1.05em; letter-spacing: .16em; text-align: center; }
 .lay-feature .lay-stack { height: 32vmin; }
 .lay-feature .lay-stack-in > svg { max-height: 30vmin; }
-.lay-badge { font-style: normal; font-weight: 800; font-size: .78em; letter-spacing: .2em; padding: .35em 1em; border-radius: 999px; background: var(--ink); color: var(--on-ink); white-space: nowrap; }
+.lay-badge { font-style: normal; font-weight: 800; font-size: .78em; letter-spacing: .2em; padding: .35em 1em; border-radius: 999px; background: var(--alert); color: var(--on-alert); white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .lay-badge { animation: lay-pulse 2.2s var(--ease) infinite; }
   @keyframes lay-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
@@ -161,7 +161,7 @@ h1, h2 { color: var(--ink); }
 .edit-svg { max-width: 100%; max-height: 100%; height: 100%; touch-action: none; cursor: grab; filter: drop-shadow(3px 3px 0 var(--shadow-ink)); }
 .edit-top { display: flex; justify-content: space-between; align-items: center; gap: 1.6vmin; }
 .edit-top .btn { flex: none; min-width: 0; padding: 0 1em; font-size: .9em; }
-.edit-leave-msg { margin: 0 0 2vmin; letter-spacing: .06em; line-height: 1.5; }
+.edit-leave-msg { margin: 0 0 2vmin; color: var(--alert); font-weight: 700; letter-spacing: .06em; line-height: 1.5; }
 .placeholder > .edit-top { position: fixed; top: 2vmin; left: 2vmin; right: 2vmin; }
 .edit-hint { margin: 0; text-align: center; color: var(--muted); letter-spacing: .14em; font-size: .8em; }
 .edit-tray { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 1.5vmin; padding: 2vmin; overflow-x: auto; background: var(--surface); border-top: var(--line); }
@@ -272,7 +272,7 @@ h1, h2 { color: var(--ink); }
 
 /* Crash-recovery card (ErrorBoundary): plain black-on-white, no motion, no buttons. */
 .crash { display: grid; place-content: center; justify-items: center; gap: 1em; background: var(--bg); color: var(--ink); text-align: center; animation: none; }
-.crash-head { font-size: var(--fs-xl); font-weight: 700; letter-spacing: .12em; line-height: 1; }
+.crash-head { color: var(--alert); font-size: var(--fs-xl); font-weight: 700; letter-spacing: .12em; line-height: 1; }
 .crash .dash { width: min(70vmin, 420px); }
 .crash-sub { letter-spacing: .3em; }
 
@@ -285,7 +285,7 @@ h1, h2 { color: var(--ink); }
 .qr-card { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vmin; text-align: center; border: var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); padding: 2vmin; }
 .qr-box { width: min(100%, 44vmin); aspect-ratio: 1; display: grid; place-items: center; align-content: center; gap: 1.4vmin; }
 .qr { width: 100%; height: 100%; display: block; }
-.qr-fail { border: var(--line-thin); border-radius: var(--radius-s); padding: 1.4vmin; }
+.qr-fail { border: 2px solid var(--alert); border-radius: var(--radius-s); padding: 1.4vmin; }
 .qr-label { margin: 0; letter-spacing: .14em; font-size: clamp(15px, 2.4vmin, 26px); }
 .qr-hint { margin: 0; color: var(--muted); letter-spacing: .12em; font-size: .85em; }
 .qr-files { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 1vmin 2vmin; }
@@ -304,6 +304,7 @@ body.dp-body, body.dp-body #root { height: auto; min-height: 100%; }
 .dp-title { margin: 8px 0 0; text-align: center; letter-spacing: .14em; font-size: 24px; }
 .dp-state { margin: 30vh 0 0; text-align: center; letter-spacing: .2em; }
 .dp-note { margin: 0; text-align: center; color: var(--muted); line-height: 1.5; }
+.dp-note[role='alert'] { color: var(--alert); font-weight: 700; }
 .dp-card { background: var(--surface); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .dp-card h2 { margin: 0; text-align: center; letter-spacing: .14em; font-size: 16px; }
 .dp-img { display: block; width: 100%; height: auto; border-radius: var(--radius-s); background: var(--surface-2); -webkit-touch-callout: default; }

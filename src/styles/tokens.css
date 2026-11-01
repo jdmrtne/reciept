@@ -38,6 +38,8 @@
   --shadow-ink: #111;
   --on-ink: #fff;
   --hairline: #d4d4d4;     /* quiet dividers (settings rows) */
+  --alert: #c8102e;        /* RED ACCENT: warnings, errors, event specials; anything that must draw the eye */
+  --on-alert: #fff;        /* text on a red fill */
 
   --radius: 14px;
   --radius-s: 8px;
@@ -70,6 +72,8 @@
   --shadow-ink: #454d5b;
   --on-ink: #14171c;
   --hairline: #343b47;
+  --alert: #ff6b6b;        /* lighter red so it still reads on slate */
+  --on-alert: #14171c;
 }
 
 /* A patch of paper inside any theme. */
@@ -84,6 +88,8 @@
   --shadow-ink: var(--paper-ink);
   --on-ink: var(--paper);
   --hairline: #d4d4d4;
+  --alert: #c8102e;        /* paper is always white, so it always gets the deeper red */
+  --on-alert: #fff;
   --line: 2.5px solid var(--edge);
   --line-thin: 1.5px solid var(--edge);
   --shadow: var(--shadow-off) var(--shadow-off) 0 var(--shadow-ink);
