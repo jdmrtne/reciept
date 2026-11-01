@@ -157,6 +157,7 @@ docs/              architecture, printing, deployment, owner guide
 | 🏛️ [Architecture](docs/ARCHITECTURE.md) | 🖨️ [Printing](docs/PRINTING.md) | 🌉 [Bridge](docs/BRIDGE.md) |
 | 📱 [Share](docs/SHARE.md) | 🟢 [Supabase](docs/SUPABASE.md) | 🚢 [Deployment](docs/DEPLOYMENT.md) |
 | 📖 [Owner guide](docs/OWNER-GUIDE.md) | ✅ [Release checklist](docs/RELEASE-CHECKLIST.md) | 🤝 [Handoff](docs/HANDOFF.md) |
+| 🔄 [Updates](docs/UPDATES.md) | | |
 
 ## 🧰 Built with
 

@@ -21,7 +21,7 @@ describe('sub-tabs: structure', () => {
     expect(labels('security')).toEqual(['Owner PIN']);
   });
   it('keeps the sidebar categories, in the same order (Frame text now lives inside Frames)', () => {
-    expect(SECTIONS.map((s) => s.label)).toEqual(['Events', 'Layouts', 'Frames', 'Printer', 'Print quality', 'Photo sharing', 'Auto-save', 'Appearance', 'Security']);
+    expect(SECTIONS.map((s) => s.label)).toEqual(['Events', 'Layouts', 'Frames', 'Printer', 'Print quality', 'Photo sharing', 'Auto-save', 'Appearance', 'Security', 'Updates']);
   });
   it('every card belongs to a tab that exists, tab ids are unique, and no tab is empty', () => {
     for (const s of SECTIONS) {

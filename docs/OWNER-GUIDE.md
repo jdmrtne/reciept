@@ -38,7 +38,7 @@ Written for the person running the booth, not the developer. Android menu names 
 | Prints are clipped at the sides | ADMIN → PAPER width wrong (58 vs 80 mm), or raise SIDE MARGIN |
 | Prints too dark / too pale | ADMIN → BRIGHTNESS / DENSITY (small steps), TEST PRINT again |
 | Blank/garbled Bluetooth print | ADMIN → lower BT CHUNK, raise BT DELAY MS |
-| Booth shows an old design after an update | Updates apply at standby between guests; leave it idle a minute, then reload |
+| Booth shows an old design after an update | Updates apply at standby between guests; leave it idle a minute, then reload; or use ADMIN > Updates (CHECK FOR UPDATES, DOWNLOAD UPDATE, INSTALL AND RESTART). Your settings, frames and layouts are kept |
 | Forgot the owner PIN | Chrome → Site settings for the booth URL → **Clear data** (or Android Settings → Apps → Chrome/booth → Storage). This also erases printer settings and pairing, so redo step 4 |
 | Nothing loads and there is no internet | Only the first-ever visit needs internet. If the installed app was cleared, reconnect once |
 

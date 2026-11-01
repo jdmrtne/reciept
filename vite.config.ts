@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { versionDefines, versionManifestPlugin } from './scripts/version-plugin.mjs';
+
+// One timestamp shared by the compiled-in constants and dist/version.json, so the installed app and the published file agree.
+const ROOT = process.cwd();
+const BUILT_AT = new Date().toISOString();
 
 export default defineConfig({
+  // Compiled into the bundle: what ADMIN > Updates shows as "installed". The number is package.json's "version".
+  define: versionDefines(ROOT, BUILT_AT),
   plugins: [
     react(),
+    // Writes dist/version.json (version, build, file list with sizes): the file installed devices read to learn what is published.
+    versionManifestPlugin(ROOT, BUILT_AT),
     VitePWA({
       // 'prompt': a new service worker installs and WAITS instead of taking over the instant it's ready.
       // 'autoUpdate' would swap the running app out from under a guest mid-photoshoot. main.tsx (via

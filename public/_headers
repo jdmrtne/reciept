@@ -13,6 +13,11 @@
 /manifest.webmanifest
   Cache-Control: no-cache
 
+# The published version (ADMIN > Updates reads it). Never cached; readable from another site so a second deployment can point at it.
+/version.json
+  Cache-Control: no-cache
+  Access-Control-Allow-Origin: *
+
 # Hashed build output never changes for a given filename.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

@@ -6,6 +6,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { sessionStore } from './state/session';
 import { isAdminPath } from './config/route';
 import { armUpdate } from './pwa/updateGate';
+import { updater } from './pwa/updater';
 import { initCustomFrames } from './frames/custom/runtime';
 import { initEventLayouts } from './frames/custom/eventRuntime';
 
@@ -13,7 +14,13 @@ import { initEventLayouts } from './frames/custom/eventRuntime';
 export function bootKiosk() {
   // New version ready in the background → wait for standby (updateGate) before taking over. A failed background
   // fetch (offline, or the very first visit with no connectivity yet) is expected and not worth surfacing.
-  const updateSW = registerSW({ immediate: true, onNeedRefresh: () => armUpdate(() => updateSW(true)) });
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh: () => { updater.markWaiting(); armUpdate(() => updateSW(true)); },
+    // ADMIN > Updates drives the same service worker: CHECK / DOWNLOAD / INSTALL (src/pwa/updater.ts). The idle-at-standby gate above is unchanged.
+    onRegisteredSW: (_url, registration) => { if (registration) updater.attach(registration); }
+  });
+  updater.setApply(() => updateSW(true));
 
   // Best-effort: asks the browser not to evict this kiosk's offline cache/localStorage under storage pressure.
   // Safe to ignore if unsupported or denied — the app still works, it just loses "persisted" priority.

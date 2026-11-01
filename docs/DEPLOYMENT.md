@@ -50,8 +50,9 @@ The very first visit **must be online**: the service worker precaches the app on
 1. Run the gates in `RELEASE-CHECKLIST.md`.
 2. Deploy the new `dist/`.
 3. Tablets that are online download it in the background and apply it **only when the booth is idle at standby** (`src/pwa/updateGate.ts`), never mid-guest. Expect it to take effect after the next session ends, not instantly.
-4. To confirm a tablet has the new build: leave it at standby for a minute, then reload the page in Chrome (or check for the visible change you shipped).
-5. **Rollback** = redeploy the previous `dist/` (keep the last release's `dist/` or zip). Tablets pick it up the same way.
+4. To update on demand instead of waiting: **ADMIN > Updates** (CHECK FOR UPDATES, DOWNLOAD UPDATE, INSTALL AND RESTART). Bump `version` in `package.json` for every release so the check can see it. Full steps, rollback and the update source are in `UPDATES.md`.
+5. To confirm a tablet has the new build: leave it at standby for a minute, then reload the page in Chrome (or check for the visible change you shipped).
+6. **Rollback** = redeploy the previous `dist/` (keep the last release's `dist/` or zip). Tablets pick it up the same way. Publish it with a higher version number (see `UPDATES.md`) so ADMIN > Updates offers it.
 
 ## 6. Privacy notes for the owner
 - No analytics, no third-party requests in the core flow. Photos are never uploaded or saved; they are wiped on DONE, on inactivity (default 60 s), and on any crash recovery.
