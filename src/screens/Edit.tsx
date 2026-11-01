@@ -84,7 +84,7 @@ export function Edit() {
       <p className="edit-leave-msg">Your photos and edits will be discarded and {leave === 'home' ? 'the booth returns to the start screen' : 'you go back to choose a strip'}.</p>
       <div className="cam-bar">
         <button className="btn ghost" onClick={() => setLeave(null)}>STAY</button>
-        <button className="btn big" onClick={doLeave}><Icon name={leave === 'home' ? 'home' : 'back'} />{leave === 'home' ? 'GO HOME' : 'GO BACK'}</button>
+        <button className="btn big accent" onClick={doLeave}><Icon name={leave === 'home' ? 'home' : 'back'} />{leave === 'home' ? 'GO HOME' : 'GO BACK'}</button>
       </div>
     </Modal>
   );

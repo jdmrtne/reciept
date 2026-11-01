@@ -102,8 +102,8 @@ export function PrintScreen() {
       <div className="cam-bar">
         <button className="btn ghost" disabled={printing} onClick={() => sessionStore.go(prepFailed ? 'edit' : 'preview')}><Icon name="back" />BACK</button>
         {phase === 'error'
-          ? <button className="btn big" onClick={print}><Icon name="retry" />RETRY</button>
-          : <button className="btn big" disabled={phase !== 'ready'} onClick={print}><Icon name="print" />{printing ? 'PRINTING' : 'PRINT NOW'}</button>}
+          ? <button className="btn big accent" onClick={print}><Icon name="retry" />RETRY</button>
+          : <button className="btn big accent" disabled={phase !== 'ready'} onClick={print}><Icon name="print" />{printing ? 'PRINTING' : 'PRINT NOW'}</button>}
       </div>
     </main>
   );

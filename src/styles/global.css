@@ -22,6 +22,9 @@ h1, h2 { color: var(--ink); }
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), background var(--t-fast); }
 .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow-ink); background: var(--surface-2); }
 .btn.big { flex: 2; min-height: 72px; font-size: 1.25em; border-width: 3px; }
+/* Red accent button: use on a few key actions only (print, destructive). Red fill, ink outline + shadow, so it keeps the sketch look. */
+.btn.accent { background: var(--alert); color: var(--on-alert); }
+.btn.accent:active { background: var(--alert); filter: brightness(.9); }
 .btn.ghost { box-shadow: none; border-width: 2px; border-color: var(--edge); }
 .btn.ghost:active { transform: scale(.97); background: var(--surface-2); }
 .btn.ghost.on, .btn.on { background: var(--surface); box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--edge); }
@@ -111,7 +114,7 @@ h1, h2 { color: var(--ink); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); display: block; }
 .thumb span { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); color: var(--ink); border-top: var(--line-thin); font-size: .8em; padding: .45em 0; letter-spacing: .12em; font-weight: 700; }
 .thumb:active { transform: scale(.97); }
-.err { margin: 0; text-align: center; color: var(--alert); font-weight: 700; }
+.err { margin: 0; text-align: center; color: var(--ink); font-weight: 700; }
 
 /* ---------- LAYOUT SELECT ---------- */
 .lay { height: 100%; display: flex; flex-direction: column; gap: 2.5vmin; padding: 3vmin; }
@@ -161,7 +164,7 @@ h1, h2 { color: var(--ink); }
 .edit-svg { max-width: 100%; max-height: 100%; height: 100%; touch-action: none; cursor: grab; filter: drop-shadow(3px 3px 0 var(--shadow-ink)); }
 .edit-top { display: flex; justify-content: space-between; align-items: center; gap: 1.6vmin; }
 .edit-top .btn { flex: none; min-width: 0; padding: 0 1em; font-size: .9em; }
-.edit-leave-msg { margin: 0 0 2vmin; color: var(--alert); font-weight: 700; letter-spacing: .06em; line-height: 1.5; }
+.edit-leave-msg { margin: 0 0 2vmin; color: var(--ink); font-weight: 700; letter-spacing: .06em; line-height: 1.5; }
 .placeholder > .edit-top { position: fixed; top: 2vmin; left: 2vmin; right: 2vmin; }
 .edit-hint { margin: 0; text-align: center; color: var(--muted); letter-spacing: .14em; font-size: .8em; }
 .edit-tray { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 1.5vmin; padding: 2vmin; overflow-x: auto; background: var(--surface); border-top: var(--line); }
@@ -272,7 +275,7 @@ h1, h2 { color: var(--ink); }
 
 /* Crash-recovery card (ErrorBoundary): plain black-on-white, no motion, no buttons. */
 .crash { display: grid; place-content: center; justify-items: center; gap: 1em; background: var(--bg); color: var(--ink); text-align: center; animation: none; }
-.crash-head { color: var(--alert); font-size: var(--fs-xl); font-weight: 700; letter-spacing: .12em; line-height: 1; }
+.crash-head { color: var(--ink); font-size: var(--fs-xl); font-weight: 700; letter-spacing: .12em; line-height: 1; }
 .crash .dash { width: min(70vmin, 420px); }
 .crash-sub { letter-spacing: .3em; }
 

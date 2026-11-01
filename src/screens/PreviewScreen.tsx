@@ -34,7 +34,7 @@ export function PreviewScreen() {
       </div>
       <div className="cam-bar">
         <button className="btn ghost" onClick={back}><Icon name="back" />{editor ? 'BACK TO EDIT' : 'BACK'}</button>
-        <button className="btn big" disabled={!url} onClick={() => sessionStore.go('print')}><Icon name="print" />PRINT</button>
+        <button className="btn big accent" disabled={!url} onClick={() => sessionStore.go('print')}><Icon name="print" />PRINT</button>
       </div>
     </main>
   );
