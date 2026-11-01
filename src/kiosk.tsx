@@ -9,6 +9,7 @@ import { armUpdate } from './pwa/updateGate';
 import { updater } from './pwa/updater';
 import { initCustomFrames } from './frames/custom/runtime';
 import { initEventLayouts } from './frames/custom/eventRuntime';
+import { startPrinterAutoConnect } from './print/autoconnect';
 
 /** The booth itself (everything that used to run at the top of main.tsx). Kept out of the phone-side result page's bundle. */
 export function bootKiosk() {
@@ -29,6 +30,8 @@ export function bootKiosk() {
   void initCustomFrames();
   // Event layouts (one picture = one layout) load the same way: in the background, and a blocked IndexedDB just leaves none.
   void initEventLayouts();
+  // USB printer: connect at launch and again whenever it is plugged in, unplugged or the app returns to the foreground. Silent (no chooser, no tap).
+  startPrinterAutoConnect();
   // Owner shortcut: opening /admin goes straight to the PIN keypad. Every other URL boots to standby as always.
   if (isAdminPath(location.pathname)) sessionStore.go('admin');
   // Kiosk hygiene: no context menu, no pinch-zoom of the page itself.

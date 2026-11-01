@@ -474,8 +474,8 @@ class FakeUsb implements UsbLike {
   listeners: ((e: { device: UsbDeviceLike }) => void)[] = []; authorised: UsbDeviceLike[] = []; chooser: UsbDeviceLike | null = null; requests = 0;
   async getDevices() { return this.authorised; }
   async requestDevice() { this.requests++; if (!this.chooser) throw new Error('cancelled'); this.authorised.push(this.chooser); return this.chooser; }
-  addEventListener(_t: 'disconnect', l: (e: { device: UsbDeviceLike }) => void) { this.listeners.push(l); }
-  removeEventListener(_t: 'disconnect', l: (e: { device: UsbDeviceLike }) => void) { this.listeners = this.listeners.filter((x) => x !== l); }
+  addEventListener(_t: 'connect' | 'disconnect', l: (e: { device: UsbDeviceLike }) => void) { this.listeners.push(l); }
+  removeEventListener(_t: 'connect' | 'disconnect', l: (e: { device: UsbDeviceLike }) => void) { this.listeners = this.listeners.filter((x) => x !== l); }
   unplug(d: UsbDeviceLike) { this.listeners.forEach((l) => l({ device: d })); }
 }
 
@@ -532,6 +532,17 @@ describe('WebUSB transport', () => {
     await a.connect(); // re-plug → reopen works
     dev.failOut = true; await expect(a.print(createBitmap(64, 8), job)).rejects.toMatchObject({ code: 'connection-lost' });
     expect(dev.calls).toContain('release0');
+  });
+  it('replug hands out a NEW device object: the stale one is dropped and the new one is opened with no prompt', async () => {
+    const usb = new FakeUsb(), oldDev = new FakeUsbDevice(); usb.chooser = oldDev;
+    const a = new USBPrinterAdapter({}, usb); await a.pair(); await a.connect();
+    usb.unplug(oldDev); usb.authorised = []; // printer gone
+    await expect(a.connect()).rejects.toMatchObject({ code: 'disconnected' }); // nothing to open while unplugged
+    const newDev = new FakeUsbDevice(); usb.authorised = [newDev]; // printer back: Chrome returns a fresh object
+    await a.connect();
+    expect((await a.status()).state).toBe('ready');
+    expect(newDev.calls.slice(0, 3)).toEqual(['open', 'cfg1', 'claim0']);
+    expect(usb.requests).toBe(1); // the chooser was never shown again
   });
   it('claim failure (e.g. another app holds the printer) → unavailable', async () => {
     const usb = new FakeUsb(), dev = new FakeUsbDevice(); usb.chooser = dev; dev.claimInterface = async () => { throw new Error('busy'); };

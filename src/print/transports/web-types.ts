@@ -15,8 +15,8 @@ export interface UsbDeviceLike {
 export interface UsbLike {
   getDevices(): Promise<UsbDeviceLike[]>;
   requestDevice(o: { filters: object[] }): Promise<UsbDeviceLike>;
-  addEventListener(t: 'disconnect', l: (e: { device: UsbDeviceLike }) => void): void;
-  removeEventListener(t: 'disconnect', l: (e: { device: UsbDeviceLike }) => void): void;
+  addEventListener(t: 'connect' | 'disconnect', l: (e: { device: UsbDeviceLike }) => void): void;
+  removeEventListener(t: 'connect' | 'disconnect', l: (e: { device: UsbDeviceLike }) => void): void;
 }
 
 export interface BtCharacteristic {

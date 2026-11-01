@@ -12,6 +12,7 @@ export type AdapterFactory = () => PrinterAdapter;
 export class PrinterManager {
   private adapter: PrinterAdapter | null = null;
   private inflight: Promise<PrintResult> | null = null;
+  private healthJob: Promise<PrinterHealth> | null = null;
 
   constructor(private readonly factories: Partial<Record<PrinterKind, AdapterFactory>>, private kind: PrinterKind) {}
 
@@ -43,7 +44,15 @@ export class PrinterManager {
    * no tap needed; a printer that was never paired simply reads as offline). Never touches a print in flight, and
    * never opens the mock (so its simulated failures are kept for real prints).
    */
-  async health(connectTimeoutMs = 4000): Promise<PrinterHealth> {
+  health(connectTimeoutMs = 4000): Promise<PrinterHealth> {
+    // One check at a time: the Standby poll, a USB plug event and the boot check may overlap, and two opens of the same link would fight over the interface claim.
+    if (this.healthJob) return this.healthJob;
+    const job = this.checkHealth(connectTimeoutMs).finally(() => { this.healthJob = null; });
+    this.healthJob = job;
+    return job;
+  }
+
+  private async checkHealth(connectTimeoutMs: number): Promise<PrinterHealth> {
     if (this.inflight || this.kind === 'mock') return { level: 'ready' };
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {

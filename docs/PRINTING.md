@@ -45,3 +45,6 @@ Owner-configured event text printed UNDER the frame on every frame, built in `sr
 - **Date and time:** the session stamp (`session.stamp`), made once when the customer taps start and reused by Edit, Preview, Print, the colour photo and the GIF (`state/stamp.ts`). **Time zone: the booth device's own local clock**, nothing forced. A missing stamp is created once and stored. A damaged date or time value is skipped, an invalid `Date` becomes "now"; neither prints "NaN".
 - **Thermal:** black text on white, no tint, so it survives the 1-bit threshold (tests confirm ink remains and the QR still decodes from the simulated bitmap).
 - **NOT verified:** that 9 to 10 dot text is legible on the real XPT80A at 58 and 80 mm, and that the QR scans from the paper with the block above it. Do not claim either until printed and inspected (EP-6).
+
+## USB auto-connect
+`src/print/autoconnect.ts` keeps a paired USB printer connected: at launch, on WebUSB connect/disconnect, and when the app returns to the foreground. It reuses the permission from the one-time ADMIN pairing (no chooser). After an unplug the transport forgets the old device object so a replug is picked up. Details and the on-tablet check list: HANDOFF.md, "USB printer auto-connect".

@@ -30,7 +30,8 @@ export class WebUsbTransport implements ByteTransport {
   private device: UsbDeviceLike | null = null;
   private picked: Picked | null = null;
   private lost = false;
-  private readonly onDisconnect = (e: { device: UsbDeviceLike }) => { if (e.device === this.device) this.lost = true; };
+  // On unplug, forget the device object completely: after a replug Chrome hands out a NEW object via getDevices(), and the stale one can never be reopened.
+  private readonly onDisconnect = (e: { device: UsbDeviceLike }) => { if (e.device === this.device) { this.lost = true; this.device = null; this.picked = null; } };
   constructor(private readonly usb: UsbLike | undefined = (typeof navigator === 'undefined' ? undefined : (navigator as unknown as { usb?: UsbLike }).usb)) {}
 
   get isOpen() { return !!this.device?.opened && !!this.picked && !this.lost; }

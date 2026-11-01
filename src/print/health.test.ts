@@ -43,6 +43,17 @@ describe('PrinterManager.health (Standby dot)', () => {
     expect(await mgr(m, 'mock').health()).toEqual({ level: 'ready' });
     await expect(m.status()).resolves.toMatchObject({ state: 'disconnected' });
   });
+  it('overlapping checks share one connect (poll + plug event + boot must not open the link twice)', async () => {
+    let release!: () => void;
+    const a = stub({ connect: () => new Promise<void>((r) => { release = r; }) });
+    const m = mgr(a);
+    const p1 = m.health(), p2 = m.health(), p3 = m.health();
+    await new Promise((r) => setTimeout(r, 0));
+    release();
+    expect(await Promise.all([p1, p2, p3])).toEqual([{ level: 'ready' }, { level: 'ready' }, { level: 'ready' }]);
+    expect(a.connects()).toBe(1);
+    expect(await m.health()).toEqual({ level: 'ready' }); // a later check runs normally again
+  });
   it('does not touch the printer while a print is in flight', async () => {
     let release!: () => void;
     const a = stub(); a.print = () => new Promise<void>((r) => { release = r; });
