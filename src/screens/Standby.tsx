@@ -5,6 +5,7 @@ import { sessionStore } from '../state/session';
 import { loadSettings } from '../config/settings';
 import { newSessionStamp } from '../state/stamp';
 import { usePrinterHealth } from '../hooks/usePrinterHealth';
+import { canOfferReconnect, reconnectUsbPrinter } from '../print/reconnect';
 import { useStandbyPhoto } from '../hooks/useStandbyPhoto';
 import { ADMIN_TAP, useMultiTap } from '../hooks/useMultiTap';
 
@@ -16,6 +17,13 @@ export function Standby() {
   const [now, setNow] = useState(new Date());
   const { eventName, standbyPhoto } = loadSettings();
   const health = usePrinterHealth();
+  // USB printer offline (e.g. knocked loose): the dot turns into a one-tap button that opens Chrome's USB chooser again, no ADMIN needed.
+  const [recon, setRecon] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const reconnect = async () => {
+    setRecon('busy');
+    const r = await reconnectUsbPrinter();
+    setRecon(r.ok || r.reason === 'cancelled' ? 'idle' : 'failed');
+  };
   const photoUrl = useStandbyPhoto(standbyPhoto.enabled, standbyPhoto.version);
   const [broken, setBroken] = useState(false); // a photo that fails to display falls back to the normal standby look
   const photo = photoUrl && !broken ? photoUrl : null;
@@ -53,7 +61,9 @@ export function Standby() {
       ) : <p className="tap-pill">TAP TO START</p>}
     </button>
     <div className="admin-zone" aria-hidden="true" {...adminTap} />
-    {health && <p className={`pdot ${health.level}${photo ? ' on-photo' : ''}`} role="status"><i aria-hidden="true" />{HEALTH_LABEL[health.level]}</p>}
+    {health && (canOfferReconnect(loadSettings().printer, health.level)
+      ? <button type="button" className="pdot offline action" disabled={recon === 'busy'} onClick={() => void reconnect()}><i aria-hidden="true" />{recon === 'busy' ? 'CONNECTING\u2026' : recon === 'failed' ? 'COULD NOT CONNECT \u2014 TAP TO TRY AGAIN' : 'PRINTER OFFLINE \u2014 TAP TO RECONNECT'}</button>
+      : <p className={`pdot ${health.level}${photo ? ' on-photo' : ''}`} role="status"><i aria-hidden="true" />{HEALTH_LABEL[health.level]}</p>)}
     </>
   );
 }

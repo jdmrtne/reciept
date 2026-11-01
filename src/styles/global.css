@@ -248,6 +248,9 @@ h1, h2 { color: var(--ink); }
 .pdot.offline i { background: var(--bg); border-style: dashed; }
 .pdot.offline { color: var(--muted); }
 /* readable on any owner photo */
+/* USB printer offline: the dot becomes a real, finger-sized button */
+.pdot.action { pointer-events: auto; cursor: pointer; min-height: 44px; padding: .6em 1.1em; font: inherit; font-size: .72em; letter-spacing: .16em; font-weight: 700; color: var(--ink); background: var(--surface); border: var(--line-thin); border-radius: 999px; }
+.pdot.action:disabled { opacity: .6; cursor: default; }
 .pdot.on-photo { padding: .45em .8em; background: var(--surface); border: var(--line-thin); border-radius: 999px; }
 
 /* ---------- success screen polish ---------- */

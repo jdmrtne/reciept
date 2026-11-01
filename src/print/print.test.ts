@@ -544,6 +544,14 @@ describe('WebUSB transport', () => {
     expect(newDev.calls.slice(0, 3)).toEqual(['open', 'cfg1', 'claim0']);
     expect(usb.requests).toBe(1); // the chooser was never shown again
   });
+  it('choosing the printer again while an old link is still open closes the old link and opens the new choice', async () => {
+    const usb = new FakeUsb(), first = new FakeUsbDevice(); usb.chooser = first;
+    const t = new WebUsbTransport(usb); await t.pair(); await t.open(); expect(t.isOpen).toBe(true);
+    const second = new FakeUsbDevice(); usb.chooser = second; // user picks again after a shake (Chrome handed out a new object)
+    await t.pair();
+    expect(first.calls).toContain('release0'); expect(first.opened).toBe(false);
+    await t.open(); expect(t.isOpen).toBe(true); expect(second.calls).toEqual(['open', 'cfg1', 'claim0']);
+  });
   it('claim failure (e.g. another app holds the printer) → unavailable', async () => {
     const usb = new FakeUsb(), dev = new FakeUsbDevice(); usb.chooser = dev; dev.claimInterface = async () => { throw new Error('busy'); };
     const t = new WebUsbTransport(usb); await t.pair();

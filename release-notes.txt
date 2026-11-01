@@ -1,1 +1,1 @@
-USB printer now reconnects by itself when the app opens and after the printer is unplugged and plugged back in. The printer status dot updates right away.
+USB printer reconnects by itself when the app opens and after it is unplugged and replugged. If it is still offline, tap the printer status on the start screen (or RECONNECT PRINTER on a failed print) to choose the printer again, no ADMIN needed.

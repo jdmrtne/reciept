@@ -8,6 +8,7 @@ import { PAPER_DOTS } from '../layouts/engine';
 import { getPrinterManager, PRINTER_MESSAGES, toPrinterError, toThermalBitmap, type PrinterErrorCode, type RGBAImage } from '../print';
 import { bitmapToCanvas, canvasToRGBA } from '../print/browser';
 import { autoSaveSession } from '../autosave/autosave';
+import { canOfferReconnectAfterError, reconnectUsbPrinter } from '../print/reconnect';
 import { Icon } from '../components/Icon';
 import { frameQrForSession, qrErrorText } from '../qr/sessionQr';
 
@@ -23,6 +24,7 @@ export function PrintScreen() {
   const [url, setUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [code, setCode] = useState<PrinterErrorCode | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const [prepFailed, setPrepFailed] = useState(false);
   const [prepMsg, setPrepMsg] = useState<string | null>(null);
   const image = useRef<RGBAImage | null>(null);
@@ -66,6 +68,15 @@ export function PrintScreen() {
     }
   };
 
+  // Printer knocked loose mid-session: one tap picks the USB printer again and, once it is back, prints the same receipt (no ADMIN, no lost session).
+  const reconnect = async () => {
+    setReconnecting(true);
+    const r = await reconnectUsbPrinter();
+    if (!alive.current) return;
+    setReconnecting(false);
+    if (r.ok) void print();
+  };
+
   // The person already tapped PRINT on the preview screen: start printing as soon as the bitmap is ready (once only,
   // so a failed job waits for RETRY instead of looping).
   useEffect(() => {
@@ -100,8 +111,13 @@ export function PrintScreen() {
         </div>
       )}
       <div className="cam-bar">
-        <button className="btn ghost" disabled={printing} onClick={() => sessionStore.go(prepFailed ? 'edit' : 'preview')}><Icon name="back" />BACK</button>
-        {phase === 'error'
+        <button className="btn ghost" disabled={printing || reconnecting} onClick={() => sessionStore.go(prepFailed ? 'edit' : 'preview')}><Icon name="back" />BACK</button>
+        {phase === 'error' && canOfferReconnectAfterError(loadSettings().printer, code)
+          ? <>
+              <button className="btn big accent" disabled={reconnecting} onClick={() => void reconnect()}><Icon name="print" />{reconnecting ? 'CONNECTING' : 'RECONNECT PRINTER'}</button>
+              <button className="btn ghost" disabled={reconnecting} onClick={print}><Icon name="retry" />RETRY</button>
+            </>
+          : phase === 'error'
           ? <button className="btn big accent" onClick={print}><Icon name="retry" />RETRY</button>
           : <button className="btn big accent" disabled={phase !== 'ready'} onClick={print}><Icon name="print" />{printing ? 'PRINTING' : 'PRINT NOW'}</button>}
       </div>

@@ -42,8 +42,11 @@ export class WebUsbTransport implements ByteTransport {
   }
 
   async pair(): Promise<void> {
-    try { this.device = await this.api().requestDevice({ filters: [] }); this.lost = false; }
+    let chosen: UsbDeviceLike;
+    try { chosen = await this.api().requestDevice({ filters: [] }); }
     catch (e) { throw e instanceof PrinterError ? e : new PrinterError('disconnected', 'no printer chosen', e); }
+    if (this.picked) await this.close(); // a stale link from before the shake must not survive a fresh choice
+    this.device = chosen; this.lost = false;
   }
 
   async open(): Promise<void> {
