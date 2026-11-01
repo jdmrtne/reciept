@@ -1,5 +1,6 @@
 import { DEFAULT_FRAME, FRAMES, frameForLayout, framesForLayout, isFrameAllowed } from './registry';
 import type { FrameDef } from './types';
+import { applyOrder } from '../config/order';
 import { customEnabled, customRecords, isCustomFrameId } from './custom/runtime';
 
 /**
@@ -35,8 +36,8 @@ export function setHidden(hidden: readonly string[], ids: readonly string[], sho
  * The frame tray a guest sees for a layout: framesForLayout minus hidden frames, order kept, BUT the frame the guest currently holds always stays
  * (it never vanishes from under them mid-session). An event special (custom) frame the owner switched OFF is left out the same way. A frame-locked layout has only its own frame.
  */
-export const guestFramesForLayout = (layoutId: string, hidden: readonly string[], currentFrameId: string | null, activeEventId?: string): FrameDef[] =>
-  framesForLayout(layoutId).filter((f) => f.onlyLayouts || f.id === currentFrameId || (!hidden.includes(f.id) && (!isCustomFrameId(f.id) || (customEnabled(f.id) && specialFrameOfferedFor(f.id, activeEventId)))));
+export const guestFramesForLayout = (layoutId: string, hidden: readonly string[], currentFrameId: string | null, activeEventId?: string, order: readonly string[] = []): FrameDef[] =>
+  applyOrder(framesForLayout(layoutId), order).filter((f) => f.onlyLayouts || f.id === currentFrameId || (!hidden.includes(f.id) && (!isCustomFrameId(f.id) || (customEnabled(f.id) && specialFrameOfferedFor(f.id, activeEventId)))));
 
 /** An old event special frame is offered only while ITS event is the active one (like event layouts). Own frames, and calls that pass no active event, are unaffected. */
 function specialFrameOfferedFor(frameId: string, activeEventId?: string): boolean {
@@ -50,9 +51,9 @@ function specialFrameOfferedFor(frameId: string, activeEventId?: string): boolea
  * that already chose it is never changed); otherwise a locked layout gets its own frame, and everyone else gets DEFAULT_FRAME, or the first
  * visible allowed frame when the default is hidden.
  */
-export function frameForLayoutVisible(layoutId: string, current: string | null, hidden: readonly string[], activeEventId?: string): string {
+export function frameForLayoutVisible(layoutId: string, current: string | null, hidden: readonly string[], activeEventId?: string, order: readonly string[] = []): string {
   const base = frameForLayout(layoutId, current);
   if (hidden.length === 0 || base !== DEFAULT_FRAME || !hidden.includes(DEFAULT_FRAME)) return base;
   if (current && isFrameAllowed(current, layoutId) && current === DEFAULT_FRAME) return base; // the guest already holds it
-  return guestFramesForLayout(layoutId, hidden, null, activeEventId)[0]?.id ?? base;
+  return guestFramesForLayout(layoutId, hidden, null, activeEventId, order)[0]?.id ?? base;
 }

@@ -4,6 +4,7 @@ import type { PrinterErrorCode } from '../print/errors';
 import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type PrinterKind, type ThermalSettings } from '../print/types';
 import { normalizeThermal } from '../print/pipeline';
 import { normalizeFrameText, type FrameTextOverrides } from '../frames/frameText';
+import { normalizeOrder } from './order';
 import {
   DEFAULT_EVENT_NAME,
   DEFAULT_EVENT_PROFILE,
@@ -85,6 +86,10 @@ export interface BoothSettings {
   layoutVisibility: LayoutVisibility;
   /** Which frame designs the guest's frame tray hides. Default: none. Repaired by mergeSettings; a frame-locked frame is never hideable and at least one other frame always stays visible (frames/visibility.ts). */
   frameVisibility: FrameVisibility;
+  /** Owner order of the guest layout picker (ADMIN > Layouts, drag to rearrange): layout ids, first = first card. Unlisted layouts follow in their normal order; event specials stay first. Default: [] (built-in order). Repaired by mergeSettings (config/order.ts). */
+  layoutOrder: string[];
+  /** Owner order of the frame tray (ADMIN > Frames, drag to rearrange): frame ids, first = first tile. Unlisted frames follow in their normal order. Default: [] (built-in order). Repaired by mergeSettings (config/order.ts). */
+  frameOrder: string[];
   /** Admin auto-save of finished outputs into the chosen folder (autosave/). Independent switches (photo, GIF, MP4 video), all OFF by default; the folder handle lives in IndexedDB, not here. */
   autoSave: { images: boolean; gifs: boolean; videos: boolean };
   /** Custom standby screen photo (metadata only; see StandbyPhotoSettings). */
@@ -110,6 +115,8 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   share: { enabled: false, publicBaseUrl: '' },
   layoutVisibility: { hidden: [] },
   frameVisibility: { hidden: [] },
+  layoutOrder: [],
+  frameOrder: [],
   autoSave: { images: false, gifs: false, videos: false },
   standbyPhoto: DEFAULT_STANDBY_PHOTO,
   frameText: {}
@@ -170,6 +177,8 @@ export function mergeSettings(raw: unknown): BoothSettings {
     },
     layoutVisibility: { hidden: normalizeHidden((r.layoutVisibility as { hidden?: unknown } | undefined)?.hidden) },
     frameVisibility: { hidden: normalizeHiddenFrames((r.frameVisibility as { hidden?: unknown } | undefined)?.hidden) },
+    layoutOrder: normalizeOrder(r.layoutOrder),
+    frameOrder: normalizeOrder(r.frameOrder),
     autoSave: { images: (r.autoSave as { images?: unknown } | undefined)?.images === true, gifs: (r.autoSave as { gifs?: unknown } | undefined)?.gifs === true, videos: (r.autoSave as { videos?: unknown } | undefined)?.videos === true },
     standbyPhoto: normalizeStandbyPhoto(r.standbyPhoto),
     frameText: normalizeFrameText(r.frameText)

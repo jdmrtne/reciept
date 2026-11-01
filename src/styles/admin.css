@@ -309,3 +309,15 @@ button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2p
 .hint-host { justify-content: flex-start; }
 .help-p { display: block; }
 .help-p + .help-p { margin-top: 6px; }
+
+/* Drag-to-rearrange (Sortable.tsx): a dotted grip on each layout row / frame tile. touch-action none so a finger drags the item instead of scrolling the page. */
+.drag-grip { flex: none; display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; background: var(--surface); color: var(--ink); border: var(--line-thin); border-radius: var(--radius-s); cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+.drag-grip .ic { width: 22px; height: 22px; }
+.drag-grip:active { cursor: grabbing; background: var(--surface-2); }
+.drag-grip:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.lv-sort { grid-template-columns: 44px clamp(64px, 14vw, 120px) minmax(0, 1fr) auto; }
+@media (max-width: 560px) { .lv-sort { grid-template-columns: 44px 56px minmax(0, 1fr) auto; } }
+.fg-tile { position: relative; }
+.fg-tile > .drag-grip { position: absolute; top: 14px; left: 14px; z-index: 2; width: 40px; min-height: 40px; }
+.is-dragging { outline: 3px dashed var(--ink); outline-offset: 2px; background: var(--surface-2); box-shadow: var(--shadow); position: relative; z-index: 3; }
+.lv-sort.is-dragging { border-radius: var(--radius-s); }

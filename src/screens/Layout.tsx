@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { loadSettings } from '../config/settings';
+import { applyOrder } from '../config/order';
 import { guestLayouts } from '../layouts/visibility';
 import { allLayouts } from '../layouts/registry';
 import { eventGroupName } from '../frames/custom/eventLayouts';
@@ -16,24 +17,24 @@ import { Modal } from '../components/Modal';
  * (their own flag) and event layouts of any event that is NOT the active one are filtered out BEFORE grouping, so a group with nothing left disappears.
  * Group = event; its name is the event's name.
  */
-const entriesFor = (hidden: readonly string[], events: readonly { id: string; name: string }[], activeEventId: string) =>
-  pickerEntries(guestLayouts(allLayouts((id) => eventGroupName(id, events), events.map((e) => e.id)), hidden, eventLayoutOfferedFor(activeEventId)));
+const entriesFor = (hidden: readonly string[], events: readonly { id: string; name: string }[], activeEventId: string, order: readonly string[]) =>
+  pickerEntries(guestLayouts(applyOrder(allLayouts((id) => eventGroupName(id, events), events.map((e) => e.id)), order), hidden, eventLayoutOfferedFor(activeEventId)));
 
 /** Under the EVENT SPECIAL badge when the group has no event name (its event was deleted). */
 const GROUP_FALLBACK = 'SPECIAL LAYOUTS';
 
-const choose = (layoutId: string, hiddenFrames: readonly string[]) =>
-  sessionStore.update({ layoutId, frameId: frameForLayoutVisible(layoutId, sessionStore.get().frameId, hiddenFrames), screen: 'camera' });
+const choose = (layoutId: string, hiddenFrames: readonly string[], frameOrder: readonly string[]) =>
+  sessionStore.update({ layoutId, frameId: frameForLayoutVisible(layoutId, sessionStore.get().frameId, hiddenFrames, undefined, frameOrder), screen: 'camera' });
 
 export function Layout() {
   const { layoutId } = useSession();
   // Read once per mount: the picker is mounted each time a guest reaches it, so ADMIN changes apply without a reload.
-  const [{ hiddenLayouts, hiddenFrames, events, activeEventId }] = useState(() => { const st = loadSettings(); return { hiddenLayouts: st.layoutVisibility.hidden, hiddenFrames: st.frameVisibility.hidden, events: st.events, activeEventId: st.activeEventId }; });
+  const [{ hiddenLayouts, hiddenFrames, layoutOrder, frameOrder, events, activeEventId }] = useState(() => { const st = loadSettings(); return { hiddenLayouts: st.layoutVisibility.hidden, hiddenFrames: st.frameVisibility.hidden, layoutOrder: st.layoutOrder, frameOrder: st.frameOrder, events: st.events, activeEventId: st.activeEventId }; });
   // Event layouts load in the background after start: the cards follow the runtime, so a guest never sees a picker that is missing them for good.
   const evVersion = useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion);
-  const ENTRIES = useMemo(() => entriesFor(hiddenLayouts, events, activeEventId), [hiddenLayouts, events, activeEventId, evVersion]);
+  const ENTRIES = useMemo(() => entriesFor(hiddenLayouts, events, activeEventId, layoutOrder), [hiddenLayouts, events, activeEventId, layoutOrder, evVersion]);
   // Thumbnails show the frame the guest would actually get (the first visible one when the default frame is hidden).
-  const previewFrame = (id: string) => frameForLayoutVisible(id, null, hiddenFrames);
+  const previewFrame = (id: string) => frameForLayoutVisible(id, null, hiddenFrames, undefined, frameOrder);
   // Local state on purpose: a session wipe remounts this screen (App key={session id}), which closes the modal with it.
   const [openGroup, setOpenGroup] = useState<LayoutGroup | null>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -44,7 +45,7 @@ export function Layout() {
       <h2>CHOOSE YOUR STRIP</h2>
       <div className="lay-grid">
         {ENTRIES.map((e) => e.kind === 'layout' ? (
-          <button key={e.layout.id} className="lay-card" onClick={() => choose(e.layout.id, hiddenFrames)}>
+          <button key={e.layout.id} className="lay-card" onClick={() => choose(e.layout.id, hiddenFrames, frameOrder)}>
             <FramePreview frameId={previewFrame(e.layout.id)} layoutId={e.layout.id} qr />
             <span>{e.layout.name.toUpperCase()}</span>
           </button>
@@ -74,7 +75,7 @@ export function Layout() {
         <Modal label={openGroup.name || GROUP_FALLBACK} onClose={close} returnFocusRef={opener}>
           <div className="modal-grid">
             {openGroup.layouts.map((l) => (
-              <button key={l.id} className={`lay-card${l.id === layoutId ? ' on' : ''}`} aria-current={l.id === layoutId || undefined} onClick={() => { choose(l.id, hiddenFrames); close(); }}>
+              <button key={l.id} className={`lay-card${l.id === layoutId ? ' on' : ''}`} aria-current={l.id === layoutId || undefined} onClick={() => { choose(l.id, hiddenFrames, frameOrder); close(); }}>
                 <FramePreview frameId={previewFrame(l.id)} layoutId={l.id} qr />
                 <span>{l.name.toUpperCase()}</span>
                 <small className="lay-sub">{photoCountLabel(photoCount(l))}</small>

@@ -175,3 +175,47 @@ describe('standby photo card', () => {
     expect(h).toContain('CONTAIN');
   });
 });
+
+describe('drag to rearrange (layouts + frames)', () => {
+  const layoutCard = SECTIONS.find((s) => s.id === 'layouts')!.cards[0];
+  const frameCard = SECTIONS.find((s) => s.id === 'frames')!.cards[0];
+  const renderLayouts = (layoutOrder: string[]) => decode(renderToStaticMarkup(<>{layoutCard.render(ctxFor(mergeSettings({ layoutOrder })))}</>));
+  const renderFrames = (frameOrder: string[]) => decode(renderToStaticMarkup(<>{frameCard.render(ctxFor(mergeSettings({ frameOrder })))}</>));
+  const positions = (h: string, ids: string[], attr: string) => ids.map((id) => h.indexOf(`${attr}="${id}"`));
+
+  it('gives every layout row and frame tile a grip', () => {
+    const l = renderLayouts([]);
+    expect((l.match(/data-drag-handle/g) ?? []).length).toBe(6);
+    expect(l).toContain('aria-label="MOVE SINGLE (DRAG, OR USE THE ARROW KEYS)"');
+    const f = renderFrames([]);
+    expect((f.match(/data-drag-handle/g) ?? []).length).toBe(FRAMES.filter((x) => !x.onlyLayouts).length);
+  });
+
+  it('lists the layouts in the saved order, the rest after them in the normal order', () => {
+    const def = positions(renderLayouts([]), ['single', 'strip-2', 'classic'], 'data-layout-id');
+    expect(def[0]).toBeLessThan(def[1]);
+    expect(def[1]).toBeLessThan(def[2]);
+    const p = positions(renderLayouts(['classic', 'grid-2x2']), ['classic', 'grid-2x2', 'single', 'strip-2'], 'data-layout-id');
+    for (let i = 1; i < p.length; i++) expect(p[i - 1], `row ${i}`).toBeLessThan(p[i]);
+    expect(renderLayouts(['classic']).match(/data-layout-id/g)).toHaveLength(6); // nothing dropped
+  });
+
+  it('lists the frames in the saved order', () => {
+    const [a, b] = FRAMES.filter((x) => !x.onlyLayouts).slice(0, 2);
+    const before = positions(renderFrames([]), [a.id, b.id], 'data-frame-id');
+    expect(before[0]).toBeLessThan(before[1]);
+    const after = positions(renderFrames([b.id, a.id]), [a.id, b.id], 'data-frame-id');
+    expect(after[1]).toBeLessThan(after[0]);
+  });
+
+  it('offers RESET ORDER only when an order is saved, and the new words are searchable', () => {
+    expect(renderLayouts([])).toMatch(/<button[^>]*disabled=""[^>]*>RESET ORDER/);
+    expect(renderLayouts(['classic'])).not.toMatch(/<button[^>]*disabled=""[^>]*>RESET ORDER/);
+    expect(renderFrames(['classic-receipt'])).not.toMatch(/<button[^>]*disabled=""[^>]*>RESET ORDER/);
+    for (const q of ['rearrange', 'drag', 'reorder']) {
+      const hits = searchSettings(SECTIONS, q).map((h) => h.card.id);
+      expect(hits, q).toContain('layouts-visibility');
+      expect(hits, q).toContain('frames-visibility');
+    }
+  });
+});

@@ -14,6 +14,7 @@ import { StickerGlyph, StickerTray } from '../stickers/StickerTray';
 import { FilterDefs, filterAttr } from '../filters/FilterLayer';
 import { FilterTray } from '../filters/FilterTray';
 import { loadSettings } from '../config/settings';
+import { applyOrder } from '../config/order';
 import {
   addSticker, applyCarry, buildSnapshot, clampCrop, commit, deleteObject, duplicateObject, hitSticker, keepStickers,
   loadPhotoSrcs, moveLayer, newEditor, photoRect, redo, resetEditor, stickerCorner, stickerWidthRange, swapPhotos, undo, withFilter, withFrame
@@ -40,6 +41,8 @@ export function Edit() {
   const [draft, setDraft] = useState<Snapshot | null>(null);
   const [tray, setTray] = useState<'layout' | 'frame' | 'filter' | 'sticker' | null>(null);
   const [hiddenFrames] = useState(() => loadSettings().frameVisibility.hidden); // read once per editor mount (ADMIN > Frames)
+  const [frameOrder] = useState(() => loadSettings().frameOrder); // owner order of the frame tray (ADMIN > Frames, drag to rearrange)
+  const [layoutOrder] = useState(() => loadSettings().layoutOrder); // owner order of the layout tray (ADMIN > Layouts, drag to rearrange)
   const [activeEventId] = useState(() => loadSettings().activeEventId); // event layouts of any other event are not offered
   const [swapping, setSwapping] = useState(false);
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
@@ -57,10 +60,10 @@ export function Edit() {
   useEffect(() => {
     if (editor || !photos.length) return;
     const lid = layoutId ?? LAYOUTS[0].id;
-    Promise.all([loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0), customReady(frameForLayoutVisible(lid, frameId, hiddenFrames), lid)]) // the art is decoded before the editor shows, so it never flashes empty
+    Promise.all([loadPhotoSrcs(photos, getLayout(lid).photoRotation ?? 0), customReady(frameForLayoutVisible(lid, frameId, hiddenFrames, undefined, frameOrder), lid)]) // the art is decoded before the editor shows, so it never flashes empty
       .then(([p]) => {
         const { carry } = sessionStore.get(); // stickers + filter kept across a retake
-        const s = buildSnapshot(lid, p, frameForLayoutVisible(lid, frameId, hiddenFrames));
+        const s = buildSnapshot(lid, p, frameForLayoutVisible(lid, frameId, hiddenFrames, undefined, frameOrder));
         sessionStore.update({ editor: newEditor(carry ? applyCarry(s, carry) : s), carry: null });
       })
       .catch(() => setError('Something went wrong loading your photos. Please retake them.'));
@@ -196,8 +199,8 @@ export function Edit() {
   const pickLayout = (id: string) => {
     setTray(null);
     if (id === editor.present.layoutId) return;
-    Promise.all([loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0), customReady(frameForLayoutVisible(id, editor.present.frameId, hiddenFrames), id)]) // sideways layouts get rotated copies of the photos; the art is decoded first
-      .then(([p]) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayoutVisible(id, editor.present.frameId, hiddenFrames))))))
+    Promise.all([loadPhotoSrcs(photos, getLayout(id).photoRotation ?? 0), customReady(frameForLayoutVisible(id, editor.present.frameId, hiddenFrames, undefined, frameOrder), id)]) // sideways layouts get rotated copies of the photos; the art is decoded first
+      .then(([p]) => set(commit(editor, keepStickers(editor.present, buildSnapshot(id, p, frameForLayoutVisible(id, editor.present.frameId, hiddenFrames, undefined, frameOrder))))))
       .catch(() => setError('Could not change the layout.'));
   };
   const pickFrame = (id: string) => {
@@ -273,7 +276,7 @@ export function Edit() {
         {tray === 'filter' && <FilterTray src={snap.objects.find(isPhoto)?.src ?? photos[0]} active={snap.filterId} onPick={pickFilter} />}
         {tray === 'frame' && (
           <div className="edit-tray">
-            {guestFramesForLayout(snap.layoutId, hiddenFrames, snap.frameId, activeEventId).map((f) => (
+            {guestFramesForLayout(snap.layoutId, hiddenFrames, snap.frameId, activeEventId, frameOrder).map((f) => (
               <button key={f.id} className={`lay-card${f.id === snap.frameId ? ' on' : ''}`} onClick={() => pickFrame(f.id)}>
                 <FramePreview frameId={f.id} layoutId={snap.layoutId} /><span>{f.name.toUpperCase()}</span>
               </button>
@@ -282,9 +285,9 @@ export function Edit() {
         )}
         {tray === 'layout' && (
           <div className="edit-tray">
-            {visibleEventLayouts(allLayouts(), eventLayoutOfferedFor(activeEventId), snap.layoutId).map((l) => ( // built-in layouts + event layouts that are switched on AND belong to the active event (the one being edited always stays)
+            {visibleEventLayouts(applyOrder(allLayouts(), layoutOrder), eventLayoutOfferedFor(activeEventId), snap.layoutId).map((l) => ( // built-in layouts + event layouts that are switched on AND belong to the active event (the one being edited always stays)
               <button key={l.id} className={`lay-card${l.id === snap.layoutId ? ' on' : ''}`} onClick={() => pickLayout(l.id)}>
-                <FramePreview frameId={frameForLayoutVisible(l.id, snap.frameId, hiddenFrames)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
+                <FramePreview frameId={frameForLayoutVisible(l.id, snap.frameId, hiddenFrames, undefined, frameOrder)} layoutId={l.id} /><span>{l.name.toUpperCase()}</span>
               </button>
             ))}
           </div>
