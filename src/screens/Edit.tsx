@@ -20,6 +20,8 @@ import {
 } from '../editor/model';
 import { isPhoto, isSticker, type EditorObject, type EditorState, type PhotoObject, type Snapshot, type StickerObject } from '../editor/types';
 import { Icon } from '../components/Icon';
+import { Modal } from '../components/Modal';
+import { releaseRotated } from '../editor/rotate';
 import { isSideways, readingMatrix, stickerTurn } from '../render/orient';
 
 type Pt = { x: number; y: number };
@@ -43,6 +45,7 @@ export function Edit() {
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [leave, setLeave] = useState<'back' | 'home' | null>(null); // which exit the guest asked for; the confirm modal is open while this is set
   const fallbackCtx = useMemo(() => newSessionStamp(), []);
   const ctx = stamp ?? fallbackCtx;
   useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
@@ -63,13 +66,38 @@ export function Edit() {
       .catch(() => setError('Something went wrong loading your photos. Please retake them.'));
   }, [editor, photos, layoutId, frameId]);
 
+  // Top bar + confirm: the editor's only way out besides PREVIEW / RETAKE. Both exits drop the guest's photos and edits, so each one asks first.
+  const doLeave = () => {
+    if (leave === 'home') return sessionStore.reset(); // same full wipe as the idle timer
+    sessionStore.get().photos.forEach((u) => u.startsWith('blob:') && URL.revokeObjectURL(u));
+    releaseRotated();
+    sessionStore.update({ photos: [], footage: [], editor: null, carry: null, screen: 'layout' }); // same as the camera's BACK: pick a strip again
+  };
+  const topBar = (
+    <div className="edit-top">
+      <button className="btn ghost" onClick={() => setLeave('back')}><Icon name="back" />BACK</button>
+      <button className="btn ghost" onClick={() => setLeave('home')}><Icon name="home" />HOME</button>
+    </div>
+  );
+  const leaveModal = leave && (
+    <Modal label="LEAVE EDITOR?" onClose={() => setLeave(null)} closeLabel="STAY">
+      <p className="edit-leave-msg">Your photos and edits will be discarded and {leave === 'home' ? 'the booth returns to the start screen' : 'you go back to choose a strip'}.</p>
+      <div className="cam-bar">
+        <button className="btn ghost" onClick={() => setLeave(null)}>STAY</button>
+        <button className="btn big" onClick={doLeave}><Icon name={leave === 'home' ? 'home' : 'back'} />{leave === 'home' ? 'GO HOME' : 'GO BACK'}</button>
+      </div>
+    </Modal>
+  );
+
   if (error || !photos.length) return (
     <main className="placeholder">
+      {topBar}
       <p>{error || 'No photos yet.'}</p>
       <button className="btn" onClick={() => sessionStore.update({ screen: 'camera' })}>TAKE PHOTOS</button>
+      {leaveModal}
     </main>
   );
-  if (!editor) return <main className="placeholder"><p className="loading">LOADING YOUR PHOTOS</p></main>;
+  if (!editor) return <main className="placeholder">{topBar}<p className="loading">LOADING YOUR PHOTOS</p>{leaveModal}</main>;
 
   const set = (e: EditorState) => sessionStore.update({ editor: e, layoutId: e.present.layoutId, frameId: e.present.frameId });
   const snap = draft ?? editor.present;
@@ -194,6 +222,7 @@ export function Edit() {
 
   return (
     <main className="edit">
+      {topBar}
       <div className="edit-stage">
         <svg ref={svg} viewBox={turn ? `0 0 ${L.height} ${L.width}` : `0 0 ${L.width} ${L.height}`} className="edit-svg"
           onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
@@ -297,6 +326,7 @@ export function Edit() {
           </div>
         </>
       )}
+      {leaveModal}
     </main>
   );
 }
