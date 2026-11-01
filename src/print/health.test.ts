@@ -54,6 +54,26 @@ describe('PrinterManager.health (Standby dot)', () => {
     expect(a.connects()).toBe(1);
     expect(await m.health()).toEqual({ level: 'ready' }); // a later check runs normally again
   });
+  it('reports every result to onHealth (a throwing listener never breaks the check)', async () => {
+    const m = mgr(stub()), seen: string[] = [];
+    m.onHealth = (h) => { seen.push(h.level); throw new Error('listener bug'); };
+    expect(await m.health()).toEqual({ level: 'ready' });
+    expect(seen).toEqual(['ready']);
+  });
+  it('a print waits for a status check that is already running (no interleaved status reads on one link)', async () => {
+    let release!: () => void; const order: string[] = [];
+    const a = stub({ connect: () => new Promise<void>((r) => { release = r; }) });
+    const origStatus = a.status.bind(a); let statusCalls = 0;
+    a.status = async () => { statusCalls++; order.push('status'); return origStatus(); };
+    a.print = async () => { order.push('print'); };
+    const m = mgr(a), img: RGBAImage = { width: 8, height: 8, data: new Uint8ClampedArray(8 * 8 * 4).fill(255) };
+    const h = m.health(); await new Promise((r) => setTimeout(r, 0));
+    const job = m.print(img, { thermal: DEFAULT_THERMAL, paperDots: 8 });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(order).toEqual(['status']); // health's first status read only; the print is still waiting
+    release(); await h; await job;
+    expect(order[order.length - 1]).toBe('print'); expect(statusCalls).toBeGreaterThanOrEqual(2);
+  });
   it('does not touch the printer while a print is in flight', async () => {
     let release!: () => void;
     const a = stub(); a.print = () => new Promise<void>((r) => { release = r; });

@@ -14,6 +14,7 @@ import { sessionStore, useSession } from './state/session';
 import { useInactivity } from './hooks/useInactivity';
 import { useWakeLock } from './hooks/useWakeLock';
 import { loadSettings } from './config/settings';
+import { PrinterLostPrompt } from './screens/PrinterLostPrompt';
 
 export default function App() {
   const { screen, id } = useSession();
@@ -29,10 +30,13 @@ export default function App() {
 
   // key={id}: a new session remounts every screen, so no UI state can leak between customers.
   return (
+    <>
     <div className="app" key={id}>
       <div className="screen" key={screen}>
         {screen === 'standby' ? <Standby /> : screen === 'layout' ? <Layout /> : screen === 'edit' ? <Edit /> : screen === 'camera' ? <Camera /> : screen === 'preview' ? <PreviewScreen /> : screen === 'print' ? <PrintScreen /> : screen === 'share' ? <ShareScreen /> : screen === 'success' ? <SuccessScreen /> : screen === 'admin' ? <AdminScreen /> : <Placeholder title={screen.toUpperCase()} />}
       </div>
     </div>
+    <PrinterLostPrompt screen={screen} />
+    </>
   );
 }

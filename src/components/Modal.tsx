@@ -12,6 +12,8 @@ interface ModalProps {
   /** Focus goes back here when the modal unmounts (the control that opened it), if it is still on the page. */
   returnFocusRef?: RefObject<HTMLElement | null>;
   closeLabel?: string;
+  /** Extra class on the backdrop (e.g. `compact` for a small card). */
+  className?: string;
   children: ReactNode;
 }
 
@@ -22,7 +24,7 @@ interface ModalProps {
  * a session wipe (App remounts every screen on a new session id) therefore closes it, and the scroll lock is released on unmount.
  * Clicks and key presses are not stopped, so the inactivity timer (hooks/useInactivity.ts) still sees a customer who is busy in here.
  */
-export function Modal({ label, onClose, returnFocusRef, closeLabel = 'CLOSE', children }: ModalProps) {
+export function Modal({ label, onClose, returnFocusRef, closeLabel = 'CLOSE', className, children }: ModalProps) {
   const dlg = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
@@ -63,7 +65,7 @@ export function Modal({ label, onClose, returnFocusRef, closeLabel = 'CLOSE', ch
 
   return (
     <div
-      className="modal-back"
+      className={className ? `modal-back ${className}` : 'modal-back'}
       // Close only when the press AND the release are on the backdrop, so dragging out of the card never closes it.
       onPointerDown={(e) => { downOnBackdrop.current = e.target === e.currentTarget; }}
       onClick={(e) => {

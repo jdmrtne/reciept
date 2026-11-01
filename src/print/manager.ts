@@ -13,6 +13,8 @@ export class PrinterManager {
   private adapter: PrinterAdapter | null = null;
   private inflight: Promise<PrintResult> | null = null;
   private healthJob: Promise<PrinterHealth> | null = null;
+  /** Told about every health result (the app uses it to show the "printer disconnected" popup). */
+  onHealth?: (h: PrinterHealth) => void;
 
   constructor(private readonly factories: Partial<Record<PrinterKind, AdapterFactory>>, private kind: PrinterKind) {}
 
@@ -47,7 +49,7 @@ export class PrinterManager {
   health(connectTimeoutMs = 4000): Promise<PrinterHealth> {
     // One check at a time: the Standby poll, a USB plug event and the boot check may overlap, and two opens of the same link would fight over the interface claim.
     if (this.healthJob) return this.healthJob;
-    const job = this.checkHealth(connectTimeoutMs).finally(() => { this.healthJob = null; });
+    const job = this.checkHealth(connectTimeoutMs).then((h) => { try { this.onHealth?.(h); } catch { /* a listener must never break the check */ } return h; }).finally(() => { this.healthJob = null; });
     this.healthJob = job;
     return job;
   }
@@ -90,6 +92,7 @@ export class PrinterManager {
     catch (e) { throw new PrinterError('failed', 'could not prepare image', e); }
 
     const send = async () => {
+      if (this.healthJob) await this.healthJob.catch(() => {}); // never interleave a status check with the job's own status read on the same link
       const a = this.current();
       const st = await a.status();
       if (st.state !== 'ready') await a.connect();

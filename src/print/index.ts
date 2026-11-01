@@ -6,6 +6,7 @@ import { BluetoothPrinterAdapter } from './adapters/bluetooth';
 import { SystemPrinterAdapter } from './adapters/system';
 import { WindowsPrinterAdapter } from './adapters/windows';
 import { PrinterManager } from './manager';
+import { reportHealth } from './lostStore';
 
 export * from './types';
 export * from './errors';
@@ -26,6 +27,7 @@ export function getPrinterManager(): PrinterManager {
       system: () => new SystemPrinterAdapter(() => loadSettings().paperWidthMm),
       network: () => new NetworkPrinterAdapter(() => loadSettings().network)
     }, s.printer);
+    manager.onHealth = reportHealth;
   }
   return manager;
 }
