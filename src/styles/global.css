@@ -131,10 +131,12 @@ h1, h2 { color: var(--ink); }
 .lay-sub { font-size: .72em; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
 /* group card ("JLC 20th Anniv. Special"): the first layout's thumbnail with two offset outlines behind it = a small stack */
 .lay-group.on { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 5px var(--edge); }
-/* FEATURED group card (event special): listed first, SAME size as every other layout card; set apart by the dashed ring, the stack of outlines behind the thumbnail and a badge that sits on the top edge (absolute, so it adds no height) */
-.lay-feature { position: relative; outline: 3px dashed var(--alert); outline-offset: 5px; box-shadow: 6px 6px 0 var(--shadow-ink); }
-.lay-feature > span { text-align: center; }
-.lay-badge { position: absolute; top: -.85em; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 3; font-style: normal; font-weight: 800; font-size: .7em; letter-spacing: .16em; padding: .35em .9em; border-radius: 999px; background: var(--alert); color: var(--on-alert); white-space: nowrap; }
+/* FEATURED group card (event special): listed first, twice as wide, inked badge + dashed ring + a slow pulse so it is the first thing a customer sees */
+.lay-feature { grid-column: span 2; position: relative; outline: 3px dashed var(--alert); outline-offset: 5px; box-shadow: 6px 6px 0 var(--shadow-ink); }
+.lay-feature > span { font-size: 1.05em; letter-spacing: .16em; text-align: center; }
+.lay-feature .lay-stack { height: 32vmin; }
+.lay-feature .lay-stack-in > svg { max-height: 30vmin; }
+.lay-badge { font-style: normal; font-weight: 800; font-size: .78em; letter-spacing: .2em; padding: .35em 1em; border-radius: 999px; background: var(--alert); color: var(--on-alert); white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .lay-badge { animation: lay-pulse 2.2s var(--ease) infinite; }
   @keyframes lay-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
@@ -153,8 +155,8 @@ h1, h2 { color: var(--ink); }
 .modal-title { margin: 0; letter-spacing: .2em; font-size: 1.15em; overflow-wrap: anywhere; }
 .modal-close { flex: none; }
 .modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2.5vmin; }
-.modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2vmin; }
-.modal .lay-svg { height: auto; width: 100%; max-width: 100%; }
+/* Layout cards in the event-special modal are sized exactly like the ones on the picker page: same column math, same .lay-svg height (no override). */
+.modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(20vmin, 42vw), 1fr)); gap: 2vmin; padding: 6px; }
 
 /* ---------- EDITOR ---------- */
 .edit { height: 100%; display: flex; flex-direction: column; gap: 1.5vmin; padding: 2vmin; }
@@ -225,7 +227,7 @@ h1, h2 { color: var(--ink); }
   .edit .cam-bar > .btn.big { flex: 1 1 40%; }
   .edit-tray .lay-card { flex-basis: 108px; }
   .lay-svg { height: 22vh; }
-  .lay-grid { grid-template-columns: repeat(2, 1fr); align-content: start; }
+  .lay-grid, .modal-grid { grid-template-columns: repeat(2, 1fr); align-content: start; }
   .edit-tray .lay-svg { height: 90px; }
   .receipt { width: 90vw; padding: 5vmin 4vmin 7vmin; }
 }
