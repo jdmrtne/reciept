@@ -4,75 +4,95 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mergeSettings, type BoothSettings } from '../../config/settings';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
-import { frameTextEditorStore, frameTextPick, isFrameDirty, isFrameTextDirty, validateFrameText, editLine } from './frameTextEditor';
+import { FrameTextPanel } from './FrameTextPanel';
+import { frameTextEditorStore, frameTextPanel, frameTextPick, isFrameDirty, isFrameTextDirty, validateFrameText, editLine } from './frameTextEditor';
 import { EDITABLE_TEXT_FRAMES, frameTextKeys } from '../../frames/frameText';
 import { FRAMES } from '../../frames/registry';
 import type { AdminCtx } from './types';
 
-const reset = () => { frameTextEditorStore.reset(); frameTextPick.set(EDITABLE_TEXT_FRAMES[0]); };
+const reset = () => { frameTextEditorStore.reset(); frameTextPanel.close(); frameTextPick.set(EDITABLE_TEXT_FRAMES[0]); };
 beforeEach(reset);
 afterEach(reset);
 const noop = () => {};
 const ctxFor = (s: BoothSettings): AdminCtx => ({ s, set: () => true, tune: noop, busy: false, testUrl: null, notify: noop, clearNotice: noop, actions: { pair: noop, testPrint: noop, testShare: noop, changePin: noop } });
-const section = SECTIONS.find((x) => x.id === 'frameText')!;
-const card = (cid: string, s: BoothSettings) => renderToStaticMarkup(<>{section.cards.find((c) => c.id === cid)!.render(ctxFor(s))}</>);
-/** The editor + preview cards as shown with `id` picked in the dropdown. */
-const html = (id: string, s = mergeSettings({})) => { frameTextPick.set(id); return card('frametext-edit', s) + card('frametext-preview', s); };
-const ids = (q: string) => searchSettings(SECTIONS, q).map((h) => h.card.id).filter((i) => i.startsWith('frametext-'));
+const framesCard = SECTIONS.find((x) => x.id === 'frames')!.cards.find((c) => c.id === 'frames-visibility')!;
+const panel = (id: string, s: BoothSettings = mergeSettings({})) => renderToStaticMarkup(<FrameTextPanel c={ctxFor(s)} frame={FRAMES.find((f) => f.id === id)!} />);
+const framesHtml = (s: BoothSettings = mergeSettings({})) => renderToStaticMarkup(<>{framesCard.render(ctxFor(s))}</>);
+const ids = (q: string) => searchSettings(SECTIONS, q).map((h) => h.card.id);
 const names = FRAMES.filter((f) => (EDITABLE_TEXT_FRAMES as readonly string[]).includes(f.id)).map((f) => f.name);
 
-describe('ADMIN > Frame text', () => {
-  it('sits right after Frames, as one editor card plus a preview card (not one card per frame)', () => {
-    const order = SECTIONS.map((x) => x.id);
-    expect(order[order.indexOf('frames') + 1]).toBe('frameText');
-    expect(section.cards.map((c) => c.id)).toEqual(['frametext-edit', 'frametext-preview']);
-    expect(section.cards.find((c) => c.id === 'frametext-preview')!.aside).toBe(true);
+describe('ADMIN > Frames: frame text', () => {
+  it('is no longer its own category: the text editor lives inside Frames', () => {
+    expect(SECTIONS.map((x) => x.id)).not.toContain('frameText');
+    expect(SECTIONS.flatMap((x) => x.cards.map((c) => c.id)).some((i) => i.startsWith('frametext-'))).toBe(false);
     const all = SECTIONS.flatMap((x) => x.cards.map((c) => c.id));
     expect(new Set(all).size).toBe(all.length);
   });
-  it('has a dropdown with every editable frame, selected by default on the first one', () => {
-    const h = card('frametext-edit', mergeSettings({}));
-    expect(h).toContain('FRAME TO EDIT');
-    expect((h.match(/<option /g) ?? []).length).toBe(EDITABLE_TEXT_FRAMES.length);
-    for (const n of names) expect(h).toContain(`>${n}<`);
-    expect((h.match(/data-line=/g) ?? []).length).toBe(frameTextKeys(EDITABLE_TEXT_FRAMES[0]).length);
+  it('shows no editor until a frame is tapped; then only that frame\'s editor appears under its group', () => {
+    expect(framesHtml()).not.toContain('data-ft-panel');
+    frameTextPanel.toggle('birthday');
+    const h = framesHtml();
+    expect((h.match(/data-ft-panel=/g) ?? []).length).toBe(1);
+    expect(h).toContain('data-ft-panel="birthday"');
+    expect(h).toContain('data-selected="true"');
+    expect((h.match(/data-selected="true"/g) ?? []).length).toBe(1);
+    expect(h.indexOf('data-frame-group="receipt"')).toBeLessThan(h.indexOf('data-ft-panel="birthday"'));
+    expect(h.indexOf('data-ft-panel="birthday"')).toBeLessThan(h.indexOf('data-frame-group="designs"'));
+    frameTextPanel.toggle('birthday'); // tapping the open frame again closes it
+    expect(framesHtml()).not.toContain('data-ft-panel');
   });
-  it('shows only the chosen frame\'s lines and a live preview of it, one field per line with placeholder + counter, hide and reset', () => {
+  it('only the nine editable frames can be tapped; picture frames and Wanted frames cannot', () => {
+    const h = framesHtml();
+    expect((h.match(/aria-label="EDIT TEXT OF /g) ?? []).length).toBe(EDITABLE_TEXT_FRAMES.length);
+    for (const n of names) expect(h).toContain(`aria-label="EDIT TEXT OF ${n.toUpperCase()}"`);
+    frameTextPanel.toggle('kawaii'); frameTextPanel.toggle('wanted-bounty');
+    expect(frameTextPanel.get()).toBeNull();
+    frameTextPanel.toggle('not-a-frame');
+    expect(frameTextPanel.get()).toBeNull();
+  });
+  it('the editor has no frame dropdown: one field per line of the tapped frame, with placeholder, counter, hide and reset, and one live preview', () => {
     for (const id of EDITABLE_TEXT_FRAMES) {
-      const h = html(id);
+      const h = panel(id);
+      expect(h).not.toContain('<select');
+      expect(h).not.toContain('FRAME TO EDIT');
       expect((h.match(/data-line=/g) ?? []).length, id).toBe(frameTextKeys(id).length);
       expect((h.match(/<input /g) ?? []).length, id).toBe(frameTextKeys(id).length);
       expect((h.match(/>HIDE LINE</g) ?? []).length, id).toBe(frameTextKeys(id).length);
       expect(h).toContain('0/40');
-      expect(h).toContain('<svg');
-      expect((h.match(/<svg/g) ?? []).length, id).toBe(1);
+      expect((h.match(/class="ft-prev"/g) ?? []).length, id).toBe(1);
       expect(h).toContain('RESET THIS FRAME');
       expect(h).toContain('{EVENT} {DATE} {TIME} {YEAR} {SERIAL} {THANKS}');
+      expect(h).toContain('>SAVE<');
+      expect(h).toContain('CLOSE');
     }
-    const b = html('birthday');
+    const b = panel('birthday');
     expect(b).toContain('placeholder="BIRTHDAY"');
     expect(b).toContain('placeholder="MAKE A WISH"');
-    expect(b).toMatch(/BIRTHDAY<\/span>|HEADER LINE 2/);
-    expect(html('graduation')).not.toContain('placeholder="MAKE A WISH"');
+    expect(panel('graduation')).not.toContain('placeholder="MAKE A WISH"');
   });
   it('shows saved text, a hidden line, and enables RESET only when the frame has saved text', () => {
     const s = mergeSettings({ frameText: { birthday: { 'footer.0': 'GOOD LUCK', 'header.0': '' } } });
-    const h = html('birthday', s);
+    const h = panel('birthday', s);
     expect(h).toContain('value="GOOD LUCK"');
-    expect(html('graduation', s)).not.toContain('GOOD LUCK');
+    expect(panel('graduation', s)).not.toContain('GOOD LUCK');
     expect(h).toContain('placeholder="(HIDDEN)"');
     expect(h).toContain('>SHOW LINE<');
     const reset = (x: string) => /<button\b[^>]*>(?:(?!<\/button>)[\s\S])*RESET THIS FRAME/.exec(x)![0];
     expect(reset(h)).not.toMatch(/\sdisabled/);
-    expect(reset(html('birthday'))).toMatch(/\sdisabled/);
+    expect(reset(panel('birthday'))).toMatch(/\sdisabled/);
   });
-  it('is searchable by the words an owner would use, and never lists non-editable frames', () => {
-    expect(ids('birthday')).toEqual(['frametext-edit']);
-    for (const q of ['footer', 'wording', 'header', 'caption', 'title', 'frame text']) expect(ids(q), q).toEqual(['frametext-edit']);
-    expect(ids('make a wish')).toEqual(['frametext-edit']);
-    expect(ids('class of')).toEqual(['frametext-edit']);
-    expect(ids('preview')).toContain('frametext-preview');
-    for (const q of ['wanted', 'bounty', 'straw hat', 'kawaii', 'boarding pass', 'manga']) expect(ids(q), q).toEqual([]);
+  it('marks a tile whose text has unsaved edits (or errors)', () => {
+    const s = mergeSettings({});
+    expect(framesHtml(s)).not.toContain('UNSAVED TEXT');
+    frameTextEditorStore.edit(s, 'couple', 'header.0', 'C');
+    expect(framesHtml(s)).toContain('UNSAVED TEXT');
+    frameTextEditorStore.edit(s, 'couple', 'header.0', 'x'.repeat(41));
+    expect(framesHtml(s)).toContain('FIX TEXT');
+  });
+  it('the Frames tab carries the unsaved-text marker, and search finds the text editor through the Frames card', () => {
+    expect(SECTIONS.find((x) => x.id === 'frames')!.tabs.find((t) => t.id === 'builtin')!.draft).toBe('frameText');
+    for (const q of ['birthday', 'footer', 'wording', 'header', 'caption', 'frame text', 'make a wish', 'class of']) expect(ids(q), q).toContain('frames-visibility');
+    for (const q of ['wanted', 'bounty', 'straw hat', 'boarding pass']) expect(ids(q).filter((i) => i.startsWith('frametext')), q).toEqual([]);
   });
 });
 
@@ -104,7 +124,7 @@ describe('frame text draft', () => {
     frameTextEditorStore.edit(s, 'event', 'header.0', 'HI \u{1F600}');
     expect(frameTextEditorStore.commit(s, () => true)).toBe('invalid');
   });
-  it('switching frames in the dropdown keeps every frame\'s unsaved lines, and marks the frames that have some', () => {
+  it('opening another frame keeps every frame\'s unsaved lines, and marks the frames that have some', () => {
     frameTextEditorStore.edit(s, 'couple', 'header.0', 'C');
     frameTextPick.set('event');
     frameTextEditorStore.edit(s, 'event', 'footer.0', 'E');
@@ -113,7 +133,7 @@ describe('frame text draft', () => {
     const d = frameTextEditorStore.get();
     expect(isFrameDirty(s, d, 'couple')).toBe(true);
     expect(isFrameDirty(s, d, 'birthday')).toBe(false);
-    expect(card('frametext-edit', s)).toContain('(UNSAVED)');
+    expect(framesHtml(s)).toContain('UNSAVED TEXT');
     frameTextPick.set('not-a-frame');
     expect(frameTextPick.get()).toBe('event');
   });

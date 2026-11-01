@@ -21,7 +21,7 @@ export interface AdminCtx {
   goTab?: (tab: string) => void;
 }
 
-export type SectionId = 'events' | 'layouts' | 'frames' | 'frameText' | 'printer' | 'quality' | 'sharing' | 'autosave' | 'appearance' | 'security';
+export type SectionId = 'events' | 'layouts' | 'frames' | 'printer' | 'quality' | 'sharing' | 'autosave' | 'appearance' | 'security';
 
 /** One horizontal sub-tab of a category. A category with a single tab shows no tab bar. */
 export interface TabDef {

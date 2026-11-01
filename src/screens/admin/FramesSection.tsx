@@ -5,6 +5,9 @@ import type { FrameDef } from '../../frames/types';
 import { applyOrder, mergeGroupOrder } from '../../config/order';
 import { Hint, Switch } from './ui';
 import { DragHandle, useSortable } from './Sortable';
+import { FRAME_TEXT_KEYWORDS, FrameTextPanel, isTextEditable, useFrameTextDraft, useOpenFrame } from './FrameTextPanel';
+import { errorKey, frameTextPanel, isFrameDirty, validateFrameText, currentFrameText } from './frameTextEditor';
+import { frameTextKeys } from '../../frames/frameText';
 import { customFramesCard } from './CustomFramesSection';
 import type { AdminCtx, SectionDef } from './types';
 
@@ -25,6 +28,9 @@ interface TilesProps {
 function FrameTiles({ title, frames, s, set, hidden, locked, apply }: TilesProps) {
   const fullIds = applyOrder(POOL, s.frameOrder).map((f) => f.id);
   const mine = new Set(frames.map((f) => f.id));
+  const openId = useOpenFrame(), draft = useFrameTextDraft();
+  const errs = validateFrameText(currentFrameText(s, draft));
+  const badIn = (id: string) => frameTextKeys(id).some((k) => errs[errorKey(id, k)]);
   const sort = useSortable(fullIds.filter((id) => mine.has(id)), (next) => set({ frameOrder: mergeGroupOrder(fullIds, next) }));
   return (
     <ul className="fg-grid" aria-label={title}>
@@ -32,11 +38,22 @@ function FrameTiles({ title, frames, s, set, hidden, locked, apply }: TilesProps
         const f = frames.find((x) => x.id === id);
         if (!f) return null;
         const shown = !hidden.includes(f.id);
+        const editable = isTextEditable(f.id), open = openId === f.id;
+        const flag = !editable ? null : badIn(f.id) ? 'FIX TEXT' : isFrameDirty(s, draft, f.id) ? 'UNSAVED TEXT' : null;
         return (
-          <li key={f.id} ref={sort.itemRef(f.id)} className={`fg-tile${sort.draggingId === f.id ? ' is-dragging' : ''}`} data-shown={shown ? 'true' : 'false'} data-frame-id={f.id}>
+          <li key={f.id} ref={sort.itemRef(f.id)} className={`fg-tile${sort.draggingId === f.id ? ' is-dragging' : ''}`} data-shown={shown ? 'true' : 'false'} data-frame-id={f.id} data-selected={open ? 'true' : undefined}>
             <DragHandle {...sort.handle(f.id, f.name.toUpperCase())} />
-            <div className="fg-thumb"><FramePreview frameId={f.id} layoutId={PREVIEW_LAYOUT} /></div>
-            <span className="fg-name">{f.name.toUpperCase()}</span>
+            {editable ? (
+              <>
+                <button type="button" className="fg-thumb fg-open" aria-expanded={open} aria-label={`EDIT TEXT OF ${f.name.toUpperCase()}`} onClick={() => frameTextPanel.toggle(f.id)}><FramePreview frameId={f.id} layoutId={PREVIEW_LAYOUT} /></button>
+                <button type="button" className="fg-name fg-open" aria-expanded={open} onClick={() => frameTextPanel.toggle(f.id)}>{f.name.toUpperCase()}<small className={`fg-flag${flag ? ' on' : ''}`}>{flag ?? (open ? 'EDITING TEXT' : 'TAP TO EDIT TEXT')}</small></button>
+              </>
+            ) : (
+              <>
+                <div className="fg-thumb"><FramePreview frameId={f.id} layoutId={PREVIEW_LAYOUT} /></div>
+                <span className="fg-name">{f.name.toUpperCase()}</span>
+              </>
+            )}
             <Switch label={`SHOW FRAME ${f.name.toUpperCase()}`} checked={shown} disabled={locked(f.id)} onChange={(v) => apply([f.id], v)} />
           </li>
         );
@@ -45,7 +62,9 @@ function FrameTiles({ title, frames, s, set, hidden, locked, apply }: TilesProps
   );
 }
 
-function Frames({ s, set }: AdminCtx) {
+function Frames(c: AdminCtx) {
+  const { s, set } = c;
+  const openId = useOpenFrame();
   const hidden = s.frameVisibility.hidden;
   const shownCount = POOL.filter((f) => !hidden.includes(f.id)).length;
   const apply = (ids: string[], show: boolean) => set({ frameVisibility: { hidden: setHidden(hidden, ids, show) } });
@@ -53,7 +72,7 @@ function Frames({ s, set }: AdminCtx) {
   const locked = (id: string) => shownCount === 1 && !hidden.includes(id);
   return (
     <>
-      <Hint>Switch a frame off to hide it from guests. A guest who already picked it keeps it. Hold the dotted grip on a tile and drag it to change where it appears in the frame tray (or focus the grip and use the arrow keys).</Hint>
+      <Hint>Switch a frame off to hide it from guests. A guest who already picked it keeps it. Tap a receipt-style frame to edit the wording printed inside it. Hold the dotted grip on a tile and drag it to change where it appears in the frame tray (or focus the grip and use the arrow keys).</Hint>
       {shownCount === 1 && <Hint important>At least one frame must stay shown, so the last one cannot be switched off.</Hint>}
       {GROUPS.map((g) => {
         const ids = g.frames.map((f) => f.id);
@@ -70,6 +89,7 @@ function Frames({ s, set }: AdminCtx) {
               </div>
             </div>
             <FrameTiles title={g.title} frames={g.frames} s={s} set={set} hidden={hidden} locked={locked} apply={apply} />
+            {g.frames.filter((x) => x.id === openId && isTextEditable(x.id)).map((x) => <FrameTextPanel key={x.id} c={c} frame={x} />)}
           </div>
         );
       })}
@@ -85,11 +105,11 @@ export const framesSection: SectionDef = {
   id: 'frames',
   label: 'Frames',
   icon: 'frame',
-  description: 'Choose which frame designs customers can pick, and add your own. Event frames are in ADMIN \u203A Events.',
-  tabs: [{ id: 'builtin', label: 'Built-in Frames' }, { id: 'custom', label: 'Custom Frames' }],
+  description: 'Choose which frame designs customers can pick, change the wording inside the receipt frames, and add your own. Event frames are in ADMIN \u203A Events.',
+  tabs: [{ id: 'builtin', label: 'Built-in Frames', draft: 'frameText' }, { id: 'custom', label: 'Custom Frames' }],
   cards: [
     { id: 'frames-visibility', tab: 'builtin', title: 'Frame designs in the editor', description: '',
-      keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', 'order', 'arrange', 'rearrange', 'drag', 'move', 'position', 'sort', 'reorder', 'reset order', ...POOL.map((f) => f.name.toLowerCase())],
+      keywords: ['frame', 'frames', 'design', 'designs', 'border', 'template', 'hide', 'show', 'visible', 'choices', 'options', 'receipt styles', 'show all', ...FRAME_TEXT_KEYWORDS, 'order', 'arrange', 'rearrange', 'drag', 'move', 'position', 'sort', 'reorder', 'reset order', ...POOL.map((f) => f.name.toLowerCase())],
       render: (c) => <Frames {...c} /> },
     customFramesCard
   ]

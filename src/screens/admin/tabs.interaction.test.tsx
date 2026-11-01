@@ -102,7 +102,7 @@ describe.skipIf(!available)('Sub-tabs: real interaction', () => {
 
   it('single-tab categories (Layouts, Frame text, Security) show no tab bar', () => {
     seed();
-    for (const s of ['layouts', 'frameText', 'security']) { mount(s); expect(tabs(), s).toHaveLength(0); RTL.cleanup(); }
+    for (const s of ['layouts', 'security']) { mount(s); expect(tabs(), s).toHaveLength(0); RTL.cleanup(); }
   });
 
   it('each category remembers its own tab when you come back', () => {

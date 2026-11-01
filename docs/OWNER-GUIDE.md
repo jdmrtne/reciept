@@ -96,16 +96,16 @@ Open **ADMIN → Frames** to switch frame designs on or off for the frame list g
 - A guest who already picked a frame keeps it, even if you hide it afterwards; it just won't be offered to the next guest. If you hide the default frame (Classic Receipt), new guests start with the first frame that is still shown.
 - Changes save immediately and apply the next time a guest opens the editor (no reload). The setting is stored on this device, and new frames added in a future update appear automatically. It does not affect the frame choice in **ADMIN → Events** (that preview is for you).
 
-## Editing the text inside frames (ADMIN → Frame text)
-Open **ADMIN → Frame text** to change the wording printed inside nine built-in frames: Classic Receipt, Minimal Receipt, Retro Receipt, Ticket / Stub, Birthday, Graduation, Friends, Couple and Event. Wanted / Bounty, Straw Hat Wanted, the picture frames and the NCL Boarding Pass cannot be edited here.
-- Pick the frame in the **FRAME TO EDIT** dropdown. Only that frame's header and footer lines are shown (one field per line), and a live preview of it sits beside the fields (under them on a small screen). The grey text in a field is the built-in wording. **Leave a field empty to keep the built-in wording.**
-- Switching frames in the dropdown keeps your unsaved lines for every frame; one **SAVE** saves them all. A frame with unsaved lines shows (UNSAVED) in the dropdown, and one with a problem shows (FIX).
+## Editing the text inside frames (ADMIN → Frames)
+The text editor is part of **ADMIN → Frames**. Under **RECEIPT STYLES**, tap one of the frames that says **TAP TO EDIT TEXT**: its editor opens right under that group. You can change the wording printed inside nine built-in frames: Classic Receipt, Minimal Receipt, Retro Receipt, Ticket / Stub, Birthday, Graduation, Friends, Couple and Event. Wanted / Bounty, Straw Hat Wanted, the picture frames and the NCL Boarding Pass cannot be edited here (those tiles are not tappable). Tap the frame again, or press **CLOSE**, to put the editor away.
+- Only the tapped frame's header and footer lines are shown (one field per line), and a live preview of it sits beside the fields (above them on a small screen). The grey text in a field is the built-in wording. **Leave a field empty to keep the built-in wording.**
+- Opening another frame keeps your unsaved lines for every frame; one **SAVE** saves them all. A frame with unsaved lines shows UNSAVED TEXT under its name, one with a problem shows FIX TEXT, and the **Built-in Frames** tab is marked while anything is unsaved.
 - Type your own text (up to 40 characters; no emoji). Long text shrinks to fit the paper, down to the smallest readable size, then is shortened with "...".
 - **Tokens** are filled in for every customer: `{EVENT}` `{DATE}` `{TIME}` `{YEAR}` `{SERIAL}` `{THANKS}`. Any other word in braces is not printed.
 - **HIDE LINE** prints nothing on that line. **A saved empty line means hidden**, and the space for it stays reserved, so the frame keeps its size. **SHOW LINE** brings the built-in wording back.
 - Press **SAVE** to keep your changes (the same SAVE / CANCEL bar as Events; leaving with unsaved changes asks first). **RESET THIS FRAME** (asks first) puts that frame back to the built-in wording and saves right away.
 - **Edits apply to the next customer only.** A customer who already started keeps the text they started with.
-- You can edit a frame here even if you hid it under ADMIN → Frames; that only controls which frames guests can pick.
+- You can edit a frame's text even if you switched it off in the same list; the switch only controls which frames guests can pick.
 
 ## Saving videos (ADMIN → Auto-save)
 - **AUTO-SAVE VIDEOS (MP4)** (off by default) saves each finished GIF as an MP4 video for social media into **MEMORYS/Videos**, next to the photo (MEMORYS/Images) and the GIF (MEMORYS/GIFs). One customer's three files share the same name, e.g. `MEMORYS-20261026-153012-abc.jpg / .gif / .mp4`. The video has the GIF's exact shape and repeats the animation for at least 6 seconds.

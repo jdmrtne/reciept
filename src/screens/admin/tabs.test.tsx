@@ -13,7 +13,6 @@ describe('sub-tabs: structure', () => {
     expect(labels('events')).toEqual(['Event List', 'Event Details', 'Uploads & Media']);
     expect(labels('layouts')).toEqual(['Layout Options']);
     expect(labels('frames')).toEqual(['Built-in Frames', 'Custom Frames']);
-    expect(labels('frameText')).toEqual(['Text Editor']); // editor and live preview stay together
     expect(labels('printer')).toEqual(['Printer Setup', 'Connection', 'Testing']);
     expect(labels('quality')).toEqual(['Photo Quality', 'Paper & Cutting', 'Test Print']);
     expect(labels('sharing')).toEqual(['QR Sharing', 'Photo Links']);
@@ -21,8 +20,8 @@ describe('sub-tabs: structure', () => {
     expect(labels('appearance')).toEqual(['Theme', 'Standby Screen']);
     expect(labels('security')).toEqual(['Owner PIN']);
   });
-  it('keeps all ten sidebar categories, in the same order', () => {
-    expect(SECTIONS.map((s) => s.label)).toEqual(['Events', 'Layouts', 'Frames', 'Frame text', 'Printer', 'Print quality', 'Photo sharing', 'Auto-save', 'Appearance', 'Security']);
+  it('keeps the sidebar categories, in the same order (Frame text now lives inside Frames)', () => {
+    expect(SECTIONS.map((s) => s.label)).toEqual(['Events', 'Layouts', 'Frames', 'Printer', 'Print quality', 'Photo sharing', 'Auto-save', 'Appearance', 'Security']);
   });
   it('every card belongs to a tab that exists, tab ids are unique, and no tab is empty', () => {
     for (const s of SECTIONS) {
@@ -34,7 +33,7 @@ describe('sub-tabs: structure', () => {
   });
   it('the unsaved-text drafts are flagged on the tab that holds them', () => {
     expect(SECTIONS.find((s) => s.id === 'events')!.tabs.find((t) => t.id === 'details')!.draft).toBe('event');
-    expect(SECTIONS.find((s) => s.id === 'frameText')!.tabs[0].draft).toBe('frameText');
+    expect(SECTIONS.find((s) => s.id === 'frames')!.tabs.find((t) => t.id === 'builtin')!.draft).toBe('frameText');
   });
 });
 
@@ -59,10 +58,10 @@ describe('sub-tabs: the panel', () => {
   it('an unknown remembered tab falls back to the first one', () => {
     expect(html('printer', 'nope')).toContain('Printer type');
   });
-  it('the Frame text editor and its preview are on the same screen', () => {
-    const h = html('frameText');
-    expect(h).toContain('Frame preview');
-    expect(h).toContain('card-aside');
+  it('Frames shows the text editor only after a frame is tapped, right beside its live preview', () => {
+    const h = html('frames');
+    expect(h).toContain('TAP TO EDIT TEXT');
+    expect(h).not.toContain('data-ft-panel');
   });
 });
 

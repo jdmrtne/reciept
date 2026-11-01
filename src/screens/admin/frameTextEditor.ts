@@ -106,3 +106,22 @@ export const frameTextPick = {
     picked = id; pickListeners.forEach((l) => l());
   }
 };
+
+let opened: string | null = null;
+const openListeners = new Set<() => void>();
+const setOpened = (id: string | null) => { if (id !== opened) { opened = id; openListeners.forEach((l) => l()); } };
+/**
+ * Which frame's text editor is open under the tiles in ADMIN > Frames (null = none). Module-level like the draft, so the editor is still
+ * there after the panel re-mounts (inactivity reset). Opening also points `frameTextPick` at that frame. Closing never touches the draft.
+ */
+export const frameTextPanel = {
+  get: () => opened,
+  subscribe(l: () => void) { openListeners.add(l); return () => { openListeners.delete(l); }; },
+  /** Only frames whose text can be edited open; tapping the open frame again closes it. */
+  toggle(id: string) {
+    if (!(EDITABLE_TEXT_FRAMES as readonly string[]).includes(id)) return;
+    if (opened === id) { setOpened(null); return; }
+    frameTextPick.set(id); setOpened(id);
+  },
+  close: () => setOpened(null)
+};

@@ -321,3 +321,13 @@ button.fg-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 2p
 .fg-tile > .drag-grip { position: absolute; top: 14px; left: 14px; z-index: 2; width: 40px; min-height: 40px; }
 .is-dragging { outline: 3px dashed var(--ink); outline-offset: 2px; background: var(--surface-2); box-shadow: var(--shadow); position: relative; z-index: 3; }
 .lv-sort.is-dragging { border-radius: var(--radius-s); }
+
+/* Frame text editor inside ADMIN > Frames (FrameTextPanel.tsx): opens under the tiles when a receipt-style frame is tapped. Reuses .ev-bar and .ft-*. */
+.fg-tile[data-selected='true'] { border: 4px double var(--edge); }
+.fg-flag { display: block; margin-top: 2px; font-size: .75em; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.fg-flag.on { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.ft-panel { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; padding: 12px; background: var(--surface); border: var(--line); border-radius: var(--radius-s); box-shadow: var(--shadow); }
+.ft-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ft-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.ft-side, .ft-main { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 760px) { .ft-body { grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); align-items: start; } .ft-side { position: sticky; top: 64px; } }
