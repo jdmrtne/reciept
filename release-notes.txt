@@ -1,0 +1,1 @@
+USB printer now reconnects by itself when the app opens and after the printer is unplugged and plugged back in. The printer status dot updates right away.

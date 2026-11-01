@@ -16,7 +16,7 @@ What now works: type an event name, press CREATE (event made, not active, select
 **NOT verified:** a real browser or tablet (layout of the new tiles and ADD FRAME panel, touch sizes, drag and drop, real PNG decoding in the panel; the click tests stub `prepareUpload`, the real validation is tested in `addEventFrame.test.ts` with real fixtures), real IndexedDB (tests use the fake), the guest frame tray on a device, printing and QR (untouched, not re-run). The 9 baseline failures were not investigated (not related).
 **Optional next idea:** show frames only while their event is active (deliberately NOT done, decision D1).
 
-## USB printer auto-connect (2026-11-01)
+## USB printer auto-connect (2026-11-01, released as version 0.1.1)
 Owner hardware: Android tablet, Chrome, printer on a direct USB (OTG) port. Goal: the printer is found again on every app open and after every replug, with no tap.
 - New `src/print/autoconnect.ts` (`startPrinterAutoConnect`, called from `bootKiosk`): silent connect at launch, on WebUSB `connect` / `disconnect` events (600 ms settle, up to 3 retries 2 s apart while offline) and when the app returns to the foreground. Only acts when PRINTER = USB. Reuses the printer paired once in ADMIN via `getDevices()`: it never opens the chooser.
 - `WebUsbTransport`: on `disconnect` the stale device object is now dropped, so after a replug `open()` asks `getDevices()` for the new one (before, it kept retrying the dead object until the page was reloaded).
@@ -24,6 +24,7 @@ Owner hardware: Android tablet, Chrome, printer on a direct USB (OTG) port. Goal
 - `usePrinterHealth` refreshes the Standby dot immediately on `booth:printer-changed` instead of waiting for the 15 s poll.
 - Tests: `autoconnect.test.ts` (9), a replug test in `print.test.ts` (fails without the transport fix), a shared-check test in `health.test.ts`. `src/print`: 120 pass. Full suite: 4 failures, the same four as the baseline listed under Session 17 (autosave video, frameText snapshot, standbyPhoto, digital). Typecheck: only the known `upload.test.ts(7,67)` error. `npm run build` succeeds.
 - NOT verified on the real tablet and printer. Check: pair once in ADMIN, tick "use by default" in Android's USB permission dialog if it appears, close and reopen the app (dot goes READY without a tap), unplug and replug the printer (dot goes OFFLINE then READY within a few seconds). If the printer has no USB serial number, Chrome may treat a different port as a different device: replug into the same port.
+- Version bumped 0.1.0 -> 0.1.1 (package.json, package-lock.json) and `release-notes.txt` added: ADMIN > Updates only reports an update when the published version is higher than the installed one (docs/UPDATES.md), so every release needs a bump.
 - Folder auto-save is NOT part of this change: Android Chrome has no folder picker, so ADMIN > Auto-save reads NOT AVAILABLE on the tablet. Decision pending: automatic downloads into Downloads, or private storage with an ADMIN export.
 
 ## Session 17: MP4 video in admin auto-save (code written, NOT run)
