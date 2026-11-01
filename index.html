@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Applies the saved theme before first paint so a dark booth never flashes white. Key + colours must match src/theme/theme.ts (theme.test.ts checks). -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('booth.theme.v1');
+          var dark = p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', dark ? '#14171c' : '#ffffff');
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="description" content="Self-service receipt photobooth" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Photobooth" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Receipt Photobooth" />
+    <meta property="og:description" content="Self-service receipt photobooth" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>Receipt Photobooth</title>
+  </head>
+  <body>
+    <div id="root"><div class="boot">PHOTOBOOTH</div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
