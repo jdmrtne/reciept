@@ -1,1 +1,1 @@
-ADMIN > Frames > Custom Frames now works like Event layouts: your frames show as a grid, tap a frame to open it, ADD FRAME saves a new frame with its first picture, and each frame has a SHOWN switch. Printer reconnect from the earlier updates is included.
+Fixed: a new event no longer brings back the layouts of a deleted event. Deleting an event now deletes its layouts too, and new events always get a fresh id. Leftover layouts from events deleted earlier stay under UNASSIGNED LAYOUTS until you delete them.

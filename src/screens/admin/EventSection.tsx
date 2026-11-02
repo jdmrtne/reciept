@@ -14,9 +14,11 @@ import {
 } from '../../config/settings';
 import { DEFAULT_THANK_YOU, finalText } from '../../config/events';
 import { FRAMES, isImageFrame } from '../../frames/registry';
-import { customRecords, customVersion, deleteCustomFrame, initCustomFrames, subscribeCustom } from '../../frames/custom/runtime';
+import { customRecords, customVersion, getCustomStatus, initCustomFrames, subscribeCustom } from '../../frames/custom/runtime';
 import { framesOfEvent } from '../../frames/custom/groups';
-import { eventLayoutRecords } from '../../frames/custom/eventRuntime';
+import { deleteEventLayoutRecord, eventLayoutRecords, getEventLayoutStatus, initEventLayouts } from '../../frames/custom/eventRuntime';
+import { eventIdsInUse } from '../../frames/custom/eventIds';
+import { deleteEventContents } from '../../frames/custom/deleteEventContents';
 import { layoutsOfEvent } from '../../frames/custom/eventLayouts';
 import { makeEventCtx } from '../../frames/prims';
 import { buildSnapshot } from '../../editor/model';
@@ -56,9 +58,9 @@ function useOnce() {
 
 type Ask = { kind: 'delete' | 'reset' | 'switch'; id: string };
 
-/** The question before an event is deleted. Says what happens to its frames when it has any. */
+/** The question before an event is deleted. Says what happens to its frames and layouts when it has any: they go with the event. */
 export const deleteBody = (eventName: string, frameCount: number, layoutCount = 0): string =>
-  `"${eventName}" and its receipt text will be removed.${frameCount === 0 ? '' : frameCount === 1 ? ' This event has 1 frame. It will be deleted with it.' : ` This event has ${frameCount} frames. They will be deleted with it.`}${layoutCount === 0 ? '' : layoutCount === 1 ? ' Its 1 event layout is kept and moves to the unassigned layouts.' : ` Its ${layoutCount} event layouts are kept and move to the unassigned layouts.`} This cannot be undone.`;
+  `"${eventName}" and its receipt text will be removed.${frameCount === 0 ? '' : frameCount === 1 ? ' This event has 1 frame. It will be deleted with it.' : ` This event has ${frameCount} frames. They will be deleted with it.`}${layoutCount === 0 ? '' : layoutCount === 1 ? ' Its 1 event layout will be deleted with it.' : ` Its ${layoutCount} event layouts will be deleted with it.`} This cannot be undone.`;
 
 // ------------------------------------------------------------------ list + actions
 
@@ -71,6 +73,13 @@ function EventList(c: AdminCtx) {
   const [newErr, setNewErr] = useState('');
   const [deleting, setDeleting] = useState(false);
   useEffect(() => { eventEditorStore.reconcile(s); }, [s.events]); // a profile that no longer exists cannot stay selected
+  useEffect(() => { void initCustomFrames(); void initEventLayouts(); }, []); // idempotent: the kiosk starts both at boot; this only covers a screen opened first
+  /** Event ids that stored layouts or frames still point at. A new event must not take one, or those pictures would reappear in it. null = the lists are still loading. */
+  const usedIds = (): string[] | null => {
+    const busyLoading = (x: string) => x === 'idle' || x === 'loading';
+    if (busyLoading(getCustomStatus()) || busyLoading(getEventLayoutStatus())) return null;
+    return eventIdsInUse(customRecords(), eventLayoutRecords());
+  };
   const profile = selectedProfile(s, st), dirty = isDirty(s, st);
   const isActive = profile.id === s.activeEventId, del = canDeleteEvent(s, profile.id);
   const full = s.events.length >= EVENT_LIMITS.maxEvents;
@@ -81,13 +90,17 @@ function EventList(c: AdminCtx) {
   const create = () => once(() => {
     const problem = !newName.trim() ? 'TYPE A NAME FOR THE EVENT' : checkLine(newName);
     if (problem) { setNewErr(problem); return; }
-    const next = addEventProfile(s, { name: finalText(newName) }, false);
+    const used = usedIds();
+    if (!used) { notify('error', 'STILL LOADING YOUR LAYOUTS. TRY AGAIN IN A MOMENT'); return; }
+    const next = addEventProfile(s, { name: finalText(newName) }, false, used);
     const made = next.events.find((e) => !s.events.some((o) => o.id === e.id));
     if (!made) { notify('error', `THE LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS IS REACHED \u2014 DELETE ONE FIRST`); return; }
     if (apply(c, next)) { eventEditorStore.select(made.id); setNewName(''); setNewErr(''); notify('success', `EVENT ${nameOf(made.name)} CREATED. ADD ITS LAYOUTS IN UPLOADS & MEDIA. IT IS NOT ACTIVE YET`); }
   });
   const duplicate = () => once(() => {
-    const next = duplicateEventProfile(s, profile.id);
+    const used = usedIds();
+    if (!used) { notify('error', 'STILL LOADING YOUR LAYOUTS. TRY AGAIN IN A MOMENT'); return; }
+    const next = duplicateEventProfile(s, profile.id, used);
     const made = next.events.find((e) => !s.events.some((o) => o.id === e.id));
     if (!made) { notify('error', `THE LIMIT OF ${EVENT_LIMITS.maxEvents} EVENTS IS REACHED \u2014 DELETE ONE FIRST`); return; }
     if (apply(c, next)) { eventEditorStore.select(made.id); notify('success', 'EVENT COPIED \u2014 THE COPY IS NOT ACTIVE'); }
@@ -97,7 +110,7 @@ function EventList(c: AdminCtx) {
     if (next.activeEventId !== profile.id) { notify('error', 'THAT EVENT NO LONGER EXISTS'); return; }
     if (apply(c, next)) notify('success', `ACTIVE EVENT: ${nameOf(profile.name)}. THE NEXT CUSTOMER USES IT`);
   });
-  // Frames first, then the event. If any frame refuses to go, nothing more is deleted and the event stays (its remaining frames are still its own).
+  // Frames and layouts first, then the event. If any of them refuses to go, nothing more is deleted and the event stays (what is left is still its own).
   const remove = async () => {
     if (deleting) return;
     const id = ask?.id ?? profile.id;
@@ -106,10 +119,8 @@ function EventList(c: AdminCtx) {
     if (next === s) { notify('error', 'THIS EVENT CANNOT BE DELETED'); return; }
     setDeleting(true);
     try {
-      await initCustomFrames(); // no-op once loaded; makes sure the frame list is complete before it is used
-      for (const f of framesOfEvent(customRecords(), id)) {
-        if (!(await deleteCustomFrame(f.id)).ok) { notify('error', 'A FRAME COULD NOT BE DELETED, SO THE EVENT WAS KEPT. TRY AGAIN'); return; }
-      }
+      const gone = await deleteEventContents(id);
+      if (!gone.ok) { notify('error', gone.failed === 'frame' ? 'A FRAME COULD NOT BE DELETED, SO THE EVENT WAS KEPT. TRY AGAIN' : 'A LAYOUT COULD NOT BE DELETED, SO THE EVENT WAS KEPT. TRY AGAIN'); return; }
       if (apply(c, next)) { eventEditorStore.select(next.activeEventId); notify('success', 'EVENT DELETED'); }
     } finally { setDeleting(false); }
   };

@@ -149,15 +149,20 @@ export function finalizeEventProfile(p: EventProfile): EventProfile {
   };
 }
 
-/** Next unused `event-N` id: one more than the highest N present, so ids are never reused while a newer one exists. */
-export function nextEventId(existing: readonly { id: string }[]): string {
+/**
+ * Next unused `event-N` id: one more than the highest N present, so ids are never reused while a newer one exists.
+ * `alsoTaken` are ids that are gone from the event list but still referenced elsewhere (leftover layouts or frames of a deleted event):
+ * they count as used too, so a new event can never inherit another event's pictures.
+ */
+export function nextEventId(existing: readonly { id: string }[], alsoTaken: readonly string[] = []): string {
+  const all = [...existing.map((e) => e.id), ...alsoTaken];
   let n = 0;
-  for (const { id } of existing) {
+  for (const id of all) {
     const m = /^event-(\d+)$/.exec(id);
     if (m) n = Math.max(n, Number(m[1]));
   }
   let id = `event-${n + 1}`;
-  const taken = new Set(existing.map((e) => e.id));
+  const taken = new Set(all);
   while (taken.has(id)) id = `event-${Number(id.slice(6)) + 1}`;
   return id;
 }

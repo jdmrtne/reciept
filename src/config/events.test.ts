@@ -125,6 +125,13 @@ describe('ids', () => {
     expect(nextEventId([{ id: 'event-1' }, { id: 'event-7' }, { id: 'custom' }])).toBe('event-8');
     expect(nextEventId([{ id: 'custom' }])).toBe('event-1');
   });
+  it('nextEventId skips ids that leftovers still use, so a new event never inherits a deleted event\u2019s layouts', () => {
+    // event-1 and event-2 exist, event-3 was deleted but one of its layouts is still stored
+    expect(nextEventId([{ id: 'event-1' }, { id: 'event-2' }])).toBe('event-3'); // without the hint the id IS reused
+    expect(nextEventId([{ id: 'event-1' }, { id: 'event-2' }], ['event-3'])).toBe('event-4');
+    expect(nextEventId([{ id: 'event-1' }], ['event-2', 'event-5', 'custom'])).toBe('event-6');
+    expect(nextEventId([], ['event-1'])).toBe('event-2');
+  });
 });
 
 describe('normalizeEvents', () => {

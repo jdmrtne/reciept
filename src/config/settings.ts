@@ -230,9 +230,9 @@ export function saveSettings(s: BoothSettings): boolean {
  * Pure event-profile operations. Each returns a NEW, fully merged settings object (ready for `saveSettings`) and
  * returns the input unchanged when the request is impossible (unknown id, profile limit reached).
  */
-export function addEventProfile(s: BoothSettings, input: EventProfileInput = {}, activate = true): BoothSettings {
+export function addEventProfile(s: BoothSettings, input: EventProfileInput = {}, activate = true, usedIds: readonly string[] = []): BoothSettings {
   if (s.events.length >= EVENT_LIMITS.maxEvents) return s;
-  const id = nextEventId(s.events);
+  const id = nextEventId(s.events, usedIds); // usedIds: event ids that stored layouts/frames still point at (see frames/custom/eventIds.ts)
   const profile = normalizeEventProfile(input, id);
   return mergeSettings({ ...s, events: [...s.events, profile], activeEventId: activate ? id : s.activeEventId });
 }
@@ -273,13 +273,13 @@ export function deleteEventProfile(s: BoothSettings, id: string): BoothSettings 
  * Copies a profile into a NEW profile (new stable id, same text, name ending in " COPY", kept within the name limit). The copy is appended
  * and is NOT made active: duplicating never changes which event customers get. Unknown id or profile limit reached: unchanged.
  */
-export function duplicateEventProfile(s: BoothSettings, id: string): BoothSettings {
+export function duplicateEventProfile(s: BoothSettings, id: string, usedIds: readonly string[] = []): BoothSettings {
   const src = s.events.find((e) => e.id === id);
   if (!src || s.events.length >= EVENT_LIMITS.maxEvents) return s;
   const SUFFIX = ' COPY';
   const base = finalText(src.name) || DEFAULT_EVENT_NAME;
   const name = base.slice(0, EVENT_LIMITS.lineMax - SUFFIX.length).trimEnd() + SUFFIX;
-  return addEventProfile(s, { ...src, name, details: [...src.details] }, false);
+  return addEventProfile(s, { ...src, name, details: [...src.details] }, false, usedIds);
 }
 
 /** Puts every editable field of a profile back to the defaults. The id (and so whether it is the active one) is kept. */
