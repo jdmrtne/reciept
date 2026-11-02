@@ -6,7 +6,7 @@ import * as store from '../../frames/custom/store';
 import * as rt from '../../frames/custom/runtime';
 import type { CustomLayoutArt } from '../../frames/custom/types';
 import { DEFAULT_SETTINGS } from '../../config/settings';
-import { ArtPreview, FALLBACK_MODULES, customFramesCard, layoutLabel, qrModulesFor } from './CustomFramesSection';
+import { ArtPreview, FALLBACK_MODULES, FrameEditor, customFramesCard, layoutLabel, qrModulesFor } from './CustomFramesSection';
 import { SECTIONS } from './sections';
 import { searchSettings } from './search';
 import type { AdminCtx } from './types';
@@ -14,6 +14,8 @@ import type { AdminCtx } from './types';
 const noop = () => {};
 const ctx: AdminCtx = { s: DEFAULT_SETTINGS, set: () => true, tune: noop, busy: false, testUrl: null, notify: noop, clearNotice: noop, actions: { pair: noop, testPrint: noop, testShare: noop, changePin: noop } };
 const html = () => renderToStaticMarkup(<>{customFramesCard.render(ctx)}</>);
+/** The page that opens when a tile is tapped (the grid shows tiles only; the per-layout rows live here). */
+const editor = (frameId: string) => renderToStaticMarkup(<FrameEditor frameId={frameId} s={DEFAULT_SETTINGS} notify={noop} onBack={noop} onDeleted={noop} />);
 const art = (n = 1): CustomLayoutArt => ({
   blob: new Blob(['x'], { type: 'image/png' }), mime: 'image/png', width: 1152, height: 2000, heightRatio: 2000 / 1152,
   windows: Array.from({ length: n }, (_, i) => ({ x: 100, y: 100 + i * 500, w: 900, h: 400 })),
@@ -54,32 +56,59 @@ describe('ADMIN > Frames > Your own frames', () => {
     expect(own).toContain('OWN ONE'); expect(own).not.toContain('GALA SPECIAL');
   });
 
-  it('has an ON/OFF switch per frame; OFF is shown on the frame button, and the pictures stay', async () => {
+  it('shows every frame as a tile of the grid with a picture, its name and a SHOWN switch; OFF is the switch, and the pictures stay', async () => {
     await rt.initCustomFrames();
     const c = await rt.createCustomFrame('Gala Night');
     if (!c.ok) throw new Error('create');
     await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
     let h = html();
-    expect(h).toMatch(/role="switch"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"|aria-checked="true"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"/);
+    expect(h).toContain('class="fg-grid"');
+    expect(h).toContain(`data-own-frame="${c.value.id}"`); expect(h).toContain('data-shown="true"');
+    expect(h).toContain('aria-label="OPEN FRAME GALA NIGHT"'); // the picture is a button that opens the frame
+    expect(h).toMatch(/aria-checked="true"[^>]*aria-label="SHOW FRAME GALA NIGHT"|aria-label="SHOW FRAME GALA NIGHT"[^>]*aria-checked="true"/);
     expect(h).not.toContain('(OFF)');
     await rt.setCustomEnabled(c.value.id, false);
     h = html();
-    expect(h).toContain('GALA NIGHT (OFF)');
-    expect(h).toMatch(/aria-checked="false"[^>]*aria-label="SHOW THIS FRAME TO GUESTS"/);
-    expect(h).toContain('data-layout="single" data-state="ready"');
+    expect(h).toContain('data-shown="false"');
+    expect(h).toMatch(/aria-checked="false"[^>]*aria-label="SHOW FRAME GALA NIGHT"|aria-label="SHOW FRAME GALA NIGHT"[^>]*aria-checked="false"/);
+    expect(editor(c.value.id)).toContain('data-layout="single" data-state="ready"'); // pictures kept while hidden
+  });
+
+  it('the grid has the same shape as Event layouts: count, SHOW ALL / HIDE ALL, an ADD FRAME tile, and every frame tile is clickable', async () => {
+    await rt.initCustomFrames();
+    const a = await rt.createCustomFrame('Alpha'), b = await rt.createCustomFrame('Beta');
+    if (!a.ok || !b.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(a.value.id, 'strip-3', art(3)); await rt.setCustomLayoutArt(b.value.id, 'single', art(1));
+    const h = html();
+    expect(h).toContain('YOUR FRAMES <small>2</small>');
+    expect(h).toContain('aria-label="SHOW ALL YOUR FRAMES"'); expect(h).toContain('aria-label="HIDE ALL YOUR FRAMES"');
+    expect((h.match(/class="fg-tile"/g) ?? []).length).toBe(2);
+    expect(h).toContain('class="fg-tile fg-add"'); expect(h).toContain('ADD FRAME');
+    for (const n of ['ALPHA', 'BETA']) { expect(h).toContain(`aria-label="OPEN FRAME ${n}"`); expect(h).toContain(`>${n}</button>`); } // picture AND name open it
+    expect(h).not.toContain('data-custom-frame='); // the per-layout page is NOT open until a tile is tapped
+  });
+
+  it('SHOW ALL is off when every frame is shown, HIDE ALL is off when none is', async () => {
+    await rt.initCustomFrames();
+    const a = await rt.createCustomFrame('One'); if (!a.ok) throw new Error('create');
+    await rt.setCustomLayoutArt(a.value.id, 'single', art(1));
+    expect(html()).toMatch(/disabled=""[^>]*aria-label="SHOW ALL YOUR FRAMES"/);
+    await rt.setCustomEnabled(a.value.id, false);
+    expect(html()).toMatch(/disabled=""[^>]*aria-label="HIDE ALL YOUR FRAMES"/);
   });
 
   it('shows a loading note before the registry has loaded', () => {
     expect(html()).toContain('Loading your frames');
   });
 
-  it('with nothing stored: explains how to start and offers NEW FRAME', async () => {
+  it('with nothing stored: explains how to start and offers ADD FRAME', async () => {
     await rt.initCustomFrames();
     const h = html();
-    expect(h).toContain('NEW FRAME');
-    expect(h).toContain('You have not made a frame yet');
+    expect(h).toContain('ADD FRAME');
+    expect(h).toContain('You have not added a frame yet');
     expect(h).toContain('see-through');
-    expect(h).not.toContain('data-custom-frame');
+    expect(h).not.toContain('NEW FRAME');
+    expect(h).not.toContain('data-own-frame=');
   });
 
   it('says so, and offers no controls, when this browser cannot store frames', async () => {
@@ -87,16 +116,16 @@ describe('ADMIN > Frames > Your own frames', () => {
     await rt.initCustomFrames();
     const h = html();
     expect(h).toContain(store.MESSAGES.unavailable);
-    expect(h).not.toContain('NEW FRAME');
+    expect(h).not.toContain('ADD FRAME');
   });
 
-  it('lists all six layouts for a frame, marks the uploaded one ready and the others missing, with upload inputs', async () => {
+  it('the frame page (opened from a tile) lists all six layouts, marks the uploaded one ready and the others missing, with upload inputs', async () => {
     await rt.initCustomFrames();
     const c = await rt.createCustomFrame('Summer Party');
     if (!c.ok) throw new Error('create');
     await rt.setCustomLayoutArt(c.value.id, 'strip-3', art(3));
-    const h = html();
-    expect(h).toContain('SUMMER PARTY');
+    const h = editor(c.value.id);
+    expect(h).toContain('SUMMER PARTY'); expect(h).toContain('BACK TO GRID');
     expect(h).toContain(`data-custom-frame="${c.value.id}"`);
     for (const id of ['single', 'strip-2', 'strip-3', 'strip-4', 'grid-2x2', 'classic']) expect(h).toContain(`data-layout="${id}"`);
     expect(h).toContain('data-layout="strip-3" data-state="ready"');
@@ -113,11 +142,12 @@ describe('ADMIN > Frames > Your own frames', () => {
     expect(h).toContain('DELETE FRAME');
   });
 
-  it('a frame with no pictures says guests cannot pick it yet', async () => {
+  it('a frame with no pictures: its tile says NO PICTURES and its page says guests cannot pick it yet', async () => {
     await rt.initCustomFrames();
     const c = await rt.createCustomFrame('Empty');
     if (!c.ok) throw new Error('create');
-    const h = html();
+    expect(html()).toContain('NO PICTURES'); expect(html()).toContain('aria-label="OPEN FRAME EMPTY"');
+    const h = editor(c.value.id);
     expect(h).toContain('Guests cannot pick this frame yet');
     expect(h).toContain('NO PICTURES YET');
     expect((h.match(/data-state="missing"/g) ?? []).length).toBe(6);
@@ -156,9 +186,9 @@ describe('QR spot in the panel (Phase 5)', () => {
     const c = await rt.createCustomFrame('Spot');
     if (!c.ok) throw new Error('create');
     await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
-    expect(html()).not.toContain('QR SPOT SET');
+    expect(editor(c.value.id)).not.toContain('QR SPOT SET');
     await rt.setCustomLayoutQr(c.value.id, 'single', SPOT);
-    expect(html()).toContain('1152 PX WIDE, QR SPOT SET');
+    expect(editor(c.value.id)).toContain('1152 PX WIDE, QR SPOT SET');
   });
 
   it('warns on the row, with the consequence, when a saved spot is now too small for the site address', async () => {
@@ -167,11 +197,11 @@ describe('QR spot in the panel (Phase 5)', () => {
     if (!c.ok) throw new Error('create');
     await rt.setCustomLayoutArt(c.value.id, 'single', art(1));
     await rt.setCustomLayoutQr(c.value.id, 'single', { x: 0.1, y: 0.7, w: 0.1, h: 0.05 });
-    const h = html();
+    const h = editor(c.value.id);
     expect(h).toContain('data-qr-warning="true"');
     expect(h).toContain('printing is blocked on this layout');
     await rt.setCustomLayoutQr(c.value.id, 'single', SPOT);
-    expect(html()).not.toContain('data-qr-warning');
+    expect(editor(c.value.id)).not.toContain('data-qr-warning');
   });
 
   it('ArtPreview draws the saved spot and the spot being drawn, and offers a drawing surface only when asked', () => {

@@ -1,1 +1,1 @@
-USB printer reconnects by itself after a knock or replug. If it stays disconnected while someone is choosing a layout or taking photos, a small popup offers RECONNECT PRINTER (or NOT NOW). The start screen and a failed print also have a one-tap reconnect.
+ADMIN > Frames > Custom Frames now works like Event layouts: your frames show as a grid, tap a frame to open it, ADD FRAME saves a new frame with its first picture, and each frame has a SHOWN switch. Printer reconnect from the earlier updates is included.

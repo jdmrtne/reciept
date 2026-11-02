@@ -4,15 +4,17 @@ import type { BoothSettings } from '../../config/settings';
 import { FramePreview } from '../../frames/FrameLayer';
 import { MESSAGES, NAME_MAX, cleanName } from '../../frames/custom/store';
 import {
-  createCustomFrame, customAsset, customEnabled, customFrameDefs, customIsSpecial, customRecord, customVersion, deleteCustomFrame, getCustomStatus, isPersistent,
+  customAsset, customEnabled, customFrameDefs, customIsSpecial, customLayouts, customRecord, customVersion, deleteCustomFrame, getCustomStatus, isPersistent,
   removeCustomLayoutArt, renameCustomFrame, setCustomEnabled, setCustomLayoutArt, setCustomLayoutQr, subscribeCustom
 } from '../../frames/custom/runtime';
 import { prepareUpload } from '../../frames/custom/upload';
+import { addOwnFrame } from '../../frames/custom/addOwnFrame';
+import { thumbLayout } from '../../frames/custom/groups';
 import { checkQrGeometry } from '../../frames/custom/qrArea';
 import { CUSTOM_LAYOUT_IDS, LIMITS, requiredWindows } from '../../frames/custom/validate';
 import type { CustomLayoutId } from '../../frames/custom/types';
 import { getLayout } from '../../layouts/registry';
-import { ConfirmDialog, Hint, SwitchRow } from './ui';
+import { ConfirmDialog, Hint, Switch, SwitchRow } from './ui';
 import { ArtPreview, FALLBACK_MODULES, QrSpotEditor, qrModulesFor, type SaveSpot } from './QrSpotEditor';
 import type { AdminCtx, CardDef } from './types';
 
@@ -240,78 +242,159 @@ export function FrameEditor({ frameId, s, notify, onBack, onDeleted, onBusyChang
   );
 }
 
+const DEFAULT_ADD_LAYOUT: CustomLayoutId = 'strip-3';
+
+/**
+ * ADMIN > Frames > Custom Frames: the same grid as ADMIN > Events > Event layouts. Each saved frame is a tile (picture, name, SHOWN switch);
+ * tapping the picture or the name opens that frame's page (rename, delete, one picture per layout, QR spot). ADD FRAME saves a new frame
+ * together with its first picture in one step, so only frames that passed the picture check ever appear in the grid.
+ */
 function CustomFrames({ notify, s }: AdminCtx) {
   useSyncExternalStore(subscribeCustom, customVersion, customVersion); // re-render on every registry change
-  const frames = customFrameDefs().filter((f) => !customIsSpecial(f.id)); // normal own frames only: event frames live in their event's group (old event frames are managed in Event layouts)
-  const [selected, setSelected] = useState<string | null>(null);
-  const frame = frames.find((f) => f.id === selected) ?? frames[0] ?? null;
-  const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [nameErr, setNameErr] = useState('');
-  const [busy, setBusy] = useState<string | null>(null);
-  const [editorBusy, setEditorBusy] = useState(false); // the open frame is saving: the list waits, as before the editor was split out
+  const frames = customFrameDefs().filter((f) => !customIsSpecial(f.id)); // normal own frames only: event frames live in their event (old ones are managed in Event layouts)
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [layoutId, setLayoutId] = useState<CustomLayoutId>(DEFAULT_ADD_LAYOUT);
+  const [file, setFile] = useState<Blob | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [notes, setNotes] = useState<string[]>([]);
+  const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
   const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-armed on remount (StrictMode)
 
   const status = getCustomStatus();
   if (status === 'unavailable') return <Hint important>{MESSAGES.unavailable}</Hint>;
   if (status === 'idle' || status === 'loading') return <Hint important>Loading your frames.</Hint>;
-  const wait = !!busy || editorBusy;
 
-  const create = async () => {
-    const name = cleanName(newName);
-    if (!name) { setNameErr(`Type a name for the frame, up to ${NAME_MAX} characters.`); return; }
-    setBusy('frame'); setNameErr('');
+  const open = editing && frames.some((f) => f.id === editing) ? editing : null; // a frame that vanished (deleted) sends you back to the grid
+  const shownCount = frames.filter((f) => customEnabled(f.id)).length;
+  const closeAdd = () => { setAdding(false); setName(''); setLayoutId(DEFAULT_ADD_LAYOUT); setFile(null); setErrors([]); setOver(false); };
+  const back = () => { setEditing(null); setNotes([]); };
+
+  const save = async () => {
+    if (busy) return;
+    setBusy(true); setErrors([]);
     try {
-      const r = await createCustomFrame(name);
+      const r = await addOwnFrame({ name, layoutId, file });
       if (!alive.current) return;
-      if (!r.ok) { setNameErr(r.message); notify('error', 'FRAME NOT CREATED'); return; }
-      setSelected(r.value.id); setNewName(''); setShowNew(false);
-      notify('success', `FRAME ${r.value.name.toUpperCase()} CREATED. NOW ADD ITS PICTURES`);
-    } finally { if (alive.current) setBusy(null); }
+      if (!r.ok) { setErrors(r.errors); notify('error', 'FRAME NOT ADDED'); return; }
+      closeAdd(); setNotes(r.warnings);
+      notify('success', `FRAME ${r.name.toUpperCase()} ADDED: ${r.windows} PHOTO ${r.windows === 1 ? 'WINDOW' : 'WINDOWS'} FOUND. TAP IT TO ADD MORE LAYOUTS`);
+    } finally { if (alive.current) setBusy(false); }
   };
 
+  const toggle = async (id: string, label: string, on: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await setCustomEnabled(id, on);
+      if (!alive.current) return;
+      if (!r.ok) { notify('error', 'COULD NOT CHANGE THIS FRAME'); return; }
+      notify('success', on ? `${label} IS SHOWN. THE NEXT GUEST CAN PICK IT` : `${label} IS HIDDEN. GUESTS NO LONGER SEE IT`);
+    } finally { if (alive.current) setBusy(false); }
+  };
+
+  const setAll = async (show: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      let failed = 0;
+      for (const f of frames) if (customEnabled(f.id) !== show && !(await setCustomEnabled(f.id, show)).ok) failed++;
+      if (!alive.current) return;
+      if (failed) notify('error', `${failed} ${failed === 1 ? 'FRAME' : 'FRAMES'} COULD NOT BE CHANGED`);
+      else notify('success', show ? 'ALL YOUR FRAMES ARE SHOWN' : 'ALL YOUR FRAMES ARE HIDDEN');
+    } finally { if (alive.current) setBusy(false); }
+  };
+
+  if (open) {
+    return (
+      <>
+        {notes.length > 0 && <ul className="cf-warn" aria-label="Notes about the picture">{notes.map((m, i) => <li key={i}>{m}</li>)}</ul>}
+        <FrameEditor key={open} frameId={open} s={s} notify={notify} onBack={back} onDeleted={back} />
+      </>
+    );
+  }
+
+  const openFrame = (id: string) => { setNotes([]); setEditing(id); };
   return (
     <>
-      <Hint>Upload one picture per layout, with see-through holes where the guests{'\u2019'} photos go. The app finds the holes itself.</Hint>
-      <SpecHints />
-
-      <div className="seg cf-frames" role="radiogroup" aria-label="Your frames">
-        {frames.map((f) => (
-          <button key={f.id} type="button" role="radio" aria-checked={frame?.id === f.id} className="seg-o" disabled={wait}
-            onClick={() => { setSelected(f.id); setNameErr(''); }}>{f.name.toUpperCase()}{customEnabled(f.id) ? '' : ' (OFF)'}</button>
-        ))}
-        <button type="button" className="btn ghost" disabled={wait} onClick={() => { setShowNew((v) => !v); setNameErr(''); }}><Icon name="frame" />NEW FRAME</button>
-      </div>
-      {frames.length === 0 && !showNew && <Hint important>You have not made a frame yet. Press NEW FRAME to start.</Hint>}
-
-      {showNew && (
-        <div className="cf-new">
-          <label className={nameErr ? 'field has-err' : 'field'}>
-            <span className="field-top"><span className="field-l">NEW FRAME NAME</span><span className="field-n">{newName.trim().length}/{NAME_MAX}</span></span>
-            <input className="adm-in" value={newName} placeholder="E.G. SUMMER PARTY" aria-invalid={nameErr ? true : undefined} onChange={(e) => { setNewName(e.target.value); setNameErr(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') void create(); }} />
-            {nameErr && <small className="field-err" role="alert">{nameErr}</small>}
-          </label>
-          <div className="test-actions">
-            <button type="button" className="btn" disabled={wait} onClick={() => void create()}>CREATE FRAME</button>
-            <button type="button" className="btn ghost" disabled={wait} onClick={() => { setShowNew(false); setNewName(''); setNameErr(''); }}>CANCEL</button>
+      <Hint>Each frame is a picture with see-through holes where the guests{'\u2019'} photos go; the app finds the holes itself. Press ADD FRAME to save one with its first picture. Tap a frame to open it: add pictures for the other layouts, set the QR spot, rename or delete it.</Hint>
+      {notes.length > 0 && <ul className="cf-warn" aria-label="Notes about the picture">{notes.map((m, i) => <li key={i}>{m}</li>)}</ul>}
+      <div className="lv-group" data-own-frames="true">
+        <div className="lv-head">
+          <h5 className="lv-h">YOUR FRAMES <small>{frames.length}</small></h5>
+          <div className="lv-acts">
+            <button type="button" className="btn ghost" disabled={busy || frames.length === 0 || shownCount === frames.length} onClick={() => void setAll(true)} aria-label="SHOW ALL YOUR FRAMES">SHOW ALL</button>
+            <button type="button" className="btn ghost" disabled={busy || shownCount === 0} onClick={() => void setAll(false)} aria-label="HIDE ALL YOUR FRAMES">HIDE ALL</button>
           </div>
+        </div>
+        {frames.length === 0 && !adding && <Hint important>You have not added a frame yet. Press ADD FRAME to start.</Hint>}
+        <ul className="fg-grid" aria-label="Your frames">
+          {frames.map((f) => {
+            const shown = customEnabled(f.id), label = f.name.toUpperCase(), lay = thumbLayout(customLayouts(f.id), CUSTOM_LAYOUT_IDS);
+            return (
+              <li key={f.id} className="fg-tile" data-shown={shown ? 'true' : 'false'} data-own-frame={f.id}>
+                <button type="button" className="fg-thumb fg-open" aria-label={`OPEN FRAME ${label}`} onClick={() => openFrame(f.id)}>
+                  {lay ? <FramePreview frameId={f.id} layoutId={lay} /> : <span className="cf-none-s">NO PICTURES</span>}
+                </button>
+                <button type="button" className="fg-name fg-open" onClick={() => openFrame(f.id)}>{label}</button>
+                <Switch label={`SHOW FRAME ${label}`} checked={shown} disabled={busy} onChange={(v) => void toggle(f.id, label, v)} />
+              </li>
+            );
+          })}
+          <li className="fg-tile fg-add">
+            <button type="button" className="btn ghost" disabled={busy || adding} onClick={() => { setAdding(true); setErrors([]); setNotes([]); }}><Icon name="frame" />ADD FRAME</button>
+          </li>
+        </ul>
+      </div>
+
+      {adding && (
+        <div className={over ? 'cf-new ef-add over' : 'cf-new ef-add'} data-add-panel="true"
+          onDragOver={(e) => { e.preventDefault(); if (!over) setOver(true); }} onDragLeave={() => setOver(false)}
+          onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer?.files?.[0]; if (f) { setFile(f); setErrors([]); } }}>
+          <label className={errors.length ? 'field has-err' : 'field'}>
+            <span className="field-top"><span className="field-l">FRAME NAME</span><span className="field-n">{name.trim().length}/{NAME_MAX}</span></span>
+            <input className="adm-in" value={name} placeholder="E.G. SUMMER PARTY" aria-label="FRAME NAME" onChange={(e) => { setName(e.target.value); setErrors([]); }} onKeyDown={(e) => { if (e.key === 'Enter') void save(); }} />
+          </label>
+          <div className="field">
+            <span className="field-top"><span className="field-l">LAYOUT OF THIS PICTURE</span></span>
+            <div className="seg" role="radiogroup" aria-label="LAYOUT OF THIS PICTURE">
+              {CUSTOM_LAYOUT_IDS.map((l) => (
+                <button key={l} type="button" role="radio" aria-checked={layoutId === l} className="seg-o" disabled={busy} onClick={() => { setLayoutId(l); setErrors([]); }}>{layoutLabel(l)}</button>
+              ))}
+            </div>
+          </div>
+          <div className="ef-pick">
+            <label className="btn ghost cf-up">
+              <Icon name="up" />{file ? 'CHOOSE ANOTHER PICTURE' : 'CHOOSE PICTURE'}
+              <input type="file" className="cf-file" accept={ACCEPT} disabled={busy} aria-label="CHOOSE PICTURE" onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) { setFile(f); setErrors([]); } }} />
+            </label>
+            <small className="ef-file">{file ? `PICTURE CHOSEN${(file as File).name ? `: ${(file as File).name}` : ''}` : 'NO PICTURE CHOSEN YET. YOU CAN ALSO DROP A FILE HERE'}</small>
+          </div>
+          <SpecHints />
+          {errors.length > 0 && <ul className="cf-err" role="alert">{errors.map((m, i) => <li key={i}>{m}</li>)}</ul>}
+          <div className="test-actions">
+            <button type="button" className="btn" disabled={busy || !cleanName(name) || !file} onClick={() => void save()}>{busy ? 'CHECKING' : 'SAVE FRAME'}</button>
+            <button type="button" className="btn ghost" disabled={busy} onClick={closeAdd}>CANCEL</button>
+          </div>
+          <Hint>The frame is added only if the picture passes the check. After SAVE FRAME it appears in the grid; tap it to add the other layouts.</Hint>
         </div>
       )}
 
-      {frame && <FrameEditor key={frame.id} frameId={frame.id} s={s} notify={notify} onDeleted={() => setSelected(null)} onBusyChange={setEditorBusy} />}
+      <Hint>Guests can pick a frame while it is SHOWN and has a picture for the layout they chose.</Hint>
     </>
   );
 }
 
+/** ADMIN > Frames: your own (normal) frames. Each has a SHOWN switch. */
 export const KEYWORDS = ['toggle', 'on', 'off', 'switch', 'enable', 'disable', 'custom', 'own', 'upload', 'png', 'picture', 'image', 'artwork', 'frame', 'frames', 'transparent', 'window', 'windows', 'holes', 'new frame', 'rename', 'delete', 'remove', 'replace', 'preview'];
 
-/** ADMIN > Frames: your own (normal) frames. Each has an ON/OFF switch. */
 export const customFramesCard: CardDef = {
   id: 'frames-custom', tab: 'custom',
   title: 'Your own frames',
-  description: 'Upload your own frame pictures. Guests pick them like the built in frames; switch each one on or off.',
-  keywords: KEYWORDS,
+  description: 'Add your own frame pictures. Each saved frame appears in the grid: tap it to add pictures for other layouts, then switch it shown or hidden for guests.',
+  keywords: [...KEYWORDS, 'add frame', 'grid', 'shown', 'hidden', 'show all', 'hide all', 'rename', 'delete frame', 'open frame'],
   render: (c) => <CustomFrames {...c} />
 };
