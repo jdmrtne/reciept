@@ -33,7 +33,8 @@ export function versionDefines(root, builtAt = new Date().toISOString()) {
   return {
     __APP_VERSION__: JSON.stringify(readVersion(root)),
     __APP_BUILD__: JSON.stringify(readBuildId(root)),
-    __APP_BUILT_AT__: JSON.stringify(builtAt)
+    __APP_BUILT_AT__: JSON.stringify(builtAt),
+    __APP_NOTES__: JSON.stringify(readNotes(root))
   };
 }
 

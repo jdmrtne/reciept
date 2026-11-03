@@ -76,6 +76,16 @@ Default: `/version.json`, the file deployed next to the app. It is the only sour
 
 A GitHub Release can hold an APK or a zip, but a PWA is not installed from either. Chrome can only update it from the web host, through the service worker. Pointing the version check at a release would let the panel announce a version the host has not deployed yet. If you want GitHub in the loop, let GitHub trigger the deployment (Vercel already deploys from the repository) and keep `version.json` as the source of truth.
 
+## What changed popup (standby)
+
+After the booth restarts into a new version, the STANDBY screen shows a **BOOTH UPDATED** popup with the old and new version and the notes from `release-notes.txt`, so the owner does not need to open ADMIN. Tap OK (or outside the card) to close it; it does not come back for that build.
+
+- The notes are compiled into the app at build time (`__APP_NOTES__`), so the popup works offline and for every way an update lands (ADMIN > INSTALL AND RESTART, or the background swap at standby).
+- It appears only on standby, never during a guest.
+- The booth remembers the last build it showed in `localStorage` (`booth.update.seen.v1`). A device that never recorded one is not treated as updated on its first run; a device updated with ADMIN > INSTALL records the build it came from first, so that update is announced.
+- ADMIN > Updates shows **WHAT IS NEW IN THIS VERSION** (the installed build's notes) without pressing CHECK, and **WHAT IS NEW IN THE UPDATE** while an update is available or downloaded.
+- Write the notes before you push: they are read at build time (`RELEASE_NOTES` in the host environment overrides the file).
+
 ## Files
 
 | File | Role |
@@ -87,6 +97,7 @@ A GitHub Release can hold an APK or a zip, but a PWA is not installed from eithe
 | `src/pwa/updateGate.ts` | Unchanged: applies a waiting update only at standby |
 | `src/kiosk.tsx` | Hands the service worker registration to the updater |
 | `src/screens/admin/UpdatesSection.tsx` | The ADMIN > Updates screen |
+| `src/pwa/whatsNew.ts`, `src/screens/WhatsNewPrompt.tsx` | The "what changed" popup shown on standby after an update |
 
 ## Not verified on real hardware
 

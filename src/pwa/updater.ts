@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { compareBuilds, formatBytes, INSTALLED, ManifestError, parseManifest, showVersion, type BuildInfo, type ManifestFile, type UpdateManifest } from './version';
 import { readSource, type KeyValue } from './updateSource';
+import { readSeen, recordSeen } from './whatsNew';
 
 /**
  * The owner-facing update flow (ADMIN > Updates). This app is a PWA served from a web host and run by Chrome on the tablet, so
@@ -99,6 +100,8 @@ export function createUpdater(deps: Deps) {
       const p = JSON.parse(raw) as { from?: BuildInfo; to?: string };
       if (!p.from || typeof p.from.version !== 'string') return;
       const changed = p.from.version !== deps.installed.version || p.from.build !== deps.installed.build;
+      // A device that never recorded a build (it was updated from a version without the "what changed" popup): remember the build it came FROM, so STANDBY announces this update.
+      if (changed && !readSeen(deps.storage)) recordSeen(p.from, deps.storage);
       state = {
         ...state,
         notice: changed

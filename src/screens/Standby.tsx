@@ -8,6 +8,7 @@ import { usePrinterHealth } from '../hooks/usePrinterHealth';
 import { canOfferReconnect, reconnectUsbPrinter } from '../print/reconnect';
 import { useStandbyPhoto } from '../hooks/useStandbyPhoto';
 import { ADMIN_TAP, useMultiTap } from '../hooks/useMultiTap';
+import { WhatsNewPrompt } from './WhatsNewPrompt';
 
 const HEALTH_LABEL = { ready: 'PRINTER READY', attention: 'CHECK PAPER', offline: 'PRINTER OFFLINE' } as const;
 
@@ -61,6 +62,7 @@ export function Standby() {
       ) : <p className="tap-pill">TAP TO START</p>}
     </button>
     <div className="admin-zone" aria-hidden="true" {...adminTap} />
+    <WhatsNewPrompt />
     {health && (canOfferReconnect(loadSettings().printer, health.level)
       ? <button type="button" className="pdot offline action" disabled={recon === 'busy'} onClick={() => void reconnect()}><i aria-hidden="true" />{recon === 'busy' ? 'CONNECTING\u2026' : recon === 'failed' ? 'COULD NOT CONNECT \u2014 TAP TO TRY AGAIN' : 'PRINTER OFFLINE \u2014 TAP TO RECONNECT'}</button>
       : <p className={`pdot ${health.level}${photo ? ' on-photo' : ''}`} role="status"><i aria-hidden="true" />{HEALTH_LABEL[health.level]}</p>)}

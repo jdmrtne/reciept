@@ -41,6 +41,9 @@ function Check({ s, notify }: AdminCtx) {
   const p = u.progress;
   const pct = p?.total ? Math.min(100, Math.floor((p.loaded / Math.max(1, p.total)) * 100)) : null;
   const showBar = u.phase === 'downloading' || u.phase === 'installing';
+  // Notes of the update being offered; otherwise the notes of the version this booth runs now (compiled in, so they show without pressing CHECK).
+  const incoming = (u.phase === 'available' || u.phase === 'downloading' || u.phase === 'ready' || u.phase === 'installing' || retryDownload) ? u.latest?.notes ?? null : null;
+  const installedNotes = u.installed.notes?.trim() || null;
 
   const askInstall = () => {
     if (unsaved) { notify('error', 'SAVE OR CANCEL THE UNSAVED EVENT OR FRAME TEXT FIRST, THEN INSTALL. RESTARTING WOULD LOSE IT'); return; }
@@ -70,7 +73,8 @@ function Check({ s, notify }: AdminCtx) {
           <button type="button" className="btn" disabled={!canInstall} onClick={askInstall}>INSTALL AND RESTART</button>
         </div>
       </Row>
-      {u.latest?.notes && <Row label="WHAT IS NEW" stack><p className="upd-notes">{u.latest.notes}</p></Row>}
+      {incoming ? <Row label="WHAT IS NEW IN THE UPDATE" stack><p className="upd-notes">{incoming}</p></Row>
+        : installedNotes ? <Row label="WHAT IS NEW IN THIS VERSION" stack><p className="upd-notes">{installedNotes}</p></Row> : null}
       {confirm && (
         <ConfirmDialog title="INSTALL THE UPDATE?" body="THE BOOTH RESTARTS FOR A FEW SECONDS AND COMES BACK ON THE NEW VERSION. YOUR SETTINGS, FRAMES AND LAYOUTS ARE KEPT. DO THIS BETWEEN GUESTS."
           confirmLabel="INSTALL AND RESTART" onCancel={() => setConfirm(false)} onConfirm={() => { setConfirm(false); updater.install(); }} />

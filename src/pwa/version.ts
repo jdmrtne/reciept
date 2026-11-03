@@ -3,12 +3,13 @@
  * The constants are compiled in by vite.config.ts (scripts/version-plugin.mjs); the typeof guards keep tests and tools that
  * do not apply that config from crashing.
  */
-export interface BuildInfo { version: string; build: string; builtAt: string }
+export interface BuildInfo { version: string; build: string; builtAt: string; /** What changed in this build (release-notes.txt, compiled in), so the booth can tell the owner after an update without any network. */ notes?: string }
 
 export const INSTALLED: BuildInfo = {
   version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0',
   build: typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'local',
-  builtAt: typeof __APP_BUILT_AT__ === 'string' ? __APP_BUILT_AT__ : ''
+  builtAt: typeof __APP_BUILT_AT__ === 'string' ? __APP_BUILT_AT__ : '',
+  notes: typeof __APP_NOTES__ === 'string' ? __APP_NOTES__ : ''
 };
 
 interface Parsed { nums: [number, number, number]; pre: string[] | null }

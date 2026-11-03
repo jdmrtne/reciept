@@ -1,1 +1,3 @@
-Fixed: a new event no longer brings back the layouts of a deleted event. Deleting an event now deletes its layouts too, and new events always get a fresh id. Leftover layouts from events deleted earlier stay under UNASSIGNED LAYOUTS until you delete them. Updates: CHECK FOR UPDATES now also finds a new build of the same version number, so any deploy shows up on every device.
+Artwork fix: custom frame artwork is now recovered and shown correctly.
+Print copies: you can now choose how many copies to print.
+Updates: after an update the standby screen shows a popup with what changed, and ADMIN > Updates always lists what is new in the installed version. CHECK FOR UPDATES also finds a new build of the same version number.
