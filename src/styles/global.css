@@ -266,6 +266,9 @@ h1, h2 { color: var(--ink); }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 .done-hint { margin-top: .7em !important; }
 .done-timer { margin-top: 1em; }
+/* DONE on top, PRINT ANOTHER COPY underneath with clear space between them (they used to sit side by side, almost touching). */
+.done-actions { display: flex; flex-direction: column; align-items: center; gap: 1.4em; margin-top: 1.2em; }
+.done-actions .done-hint { margin: 0 !important; }
 .done-timer p { font-size: .72em; letter-spacing: .16em; color: var(--muted); margin-top: .5em !important; }
 .done-bar { height: 6px; border: 1.5px solid var(--edge); border-radius: 3px; overflow: hidden; }
 .done-bar i { display: block; height: 100%; background: var(--ink); transform-origin: left; animation: drain linear forwards; }
@@ -279,6 +282,8 @@ h1, h2 { color: var(--ink); }
   .done .done-timer { margin-top: .6em; }
   .done .done-timer p { margin-top: .3em !important; }
   .done .btn { margin-top: .6em !important; min-height: 42px; }
+  .done .done-actions { gap: .9em; margin-top: .6em; }
+  .done .done-actions .btn { margin-top: 0 !important; }
 }
 
 /* Crash-recovery card (ErrorBoundary): plain black-on-white, no motion, no buttons. */

@@ -1,0 +1,26 @@
+# Release history. Newest first. One "## version" heading per release, then what changed (plain text, up to 800 characters each).
+# This file is read at build time: write the entry for the new version here BEFORE you push. The booth shows every version a device missed.
+
+## 0.1.7
+Reprint: PRINT ANOTHER COPY now sits below the DONE button with clear space between them.
+What is new: after an update the standby screen shows a popup with the changes of every version this booth missed. ADMIN > Updates lists the full version history.
+
+## 0.1.6
+Artwork fix: custom frame artwork is now recovered and shown correctly.
+Print copies: guests can choose how many copies to print, and print another copy from the receipt screen.
+Updates: CHECK FOR UPDATES also finds a new build of the same version number, so any deploy shows up on every device.
+
+## 0.1.5
+Fixed: a new event no longer brings back the layouts of a deleted event. Deleting an event now deletes its layouts too, and new events always get a fresh id. Leftover layouts from events deleted earlier stay under UNASSIGNED LAYOUTS until you delete them.
+
+## 0.1.4
+Custom Frames is now a grid of tiles with an ADD FRAME tile and SHOW ALL / HIDE ALL. Tap a frame to rename it, delete it or change its pictures.
+
+## 0.1.3
+A popup appears when the USB printer disconnects during a session, with RECONNECT PRINTER and NOT NOW.
+
+## 0.1.2
+One-tap reconnect: when the USB printer is offline the standby dot becomes a button that opens the printer list. A failed print offers RECONNECT PRINTER next to RETRY.
+
+## 0.1.1
+The USB printer connects by itself when the app opens and again after it is unplugged and replugged, with no tap.

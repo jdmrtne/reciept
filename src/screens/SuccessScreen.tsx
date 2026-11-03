@@ -47,9 +47,11 @@ export function SuccessScreen() {
           <div className="done-bar"><i style={{ animationDuration: `${seconds}s` }} /></div>
           <p>NEXT GUEST IN {left}</p>
         </div>
-        {editor && printedTotal > 0 && copiesRemaining > 0 && <button className="btn accent" style={{ marginTop: '1em' }} onClick={another}><Icon name="print" />PRINT ANOTHER COPY</button>}
-        {editor && printedTotal > 0 && copiesRemaining === 0 && <p className="receipt-sub done-hint" role="status">COPY LIMIT REACHED</p>}
-        <button className="btn" style={{ marginTop: '1em' }} onClick={() => sessionStore.reset()}><Icon name="check" />DONE</button>
+        <div className="done-actions">
+          <button className="btn" onClick={() => sessionStore.reset()}><Icon name="check" />DONE</button>
+          {editor && printedTotal > 0 && copiesRemaining > 0 && <button className="btn accent" onClick={another}><Icon name="print" />PRINT ANOTHER COPY</button>}
+          {editor && printedTotal > 0 && copiesRemaining === 0 && <p className="receipt-sub done-hint" role="status">COPY LIMIT REACHED</p>}
+        </div>
         <Tear />
       </div>
     </main>

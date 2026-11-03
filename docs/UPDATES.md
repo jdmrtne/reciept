@@ -44,7 +44,7 @@ Old app caches are removed by Workbox (`cleanupOutdatedCaches`) once the new ver
 The rule: **an update exists when the published build is newer than the installed one.** A higher `version` in `package.json` always counts. If the version number is the same but the build is different (a new commit deployed, build id shown as BUILD abc1234), CHECK FOR UPDATES offers it too, so a deploy that forgot `npm version patch` still reaches every device. Bumping the version is still worth doing for a readable changelog and for rollbacks.
 
 1. Make and test your changes. Run the gates in `RELEASE-CHECKLIST.md`.
-2. Optional: write what changed in `release-notes.txt` at the project root (plain text, up to 800 characters). It appears under WHAT IS NEW in the app. You can also set `RELEASE_NOTES` in the host's environment.
+2. Write what changed in `release-history.txt` at the project root: add a `## 0.1.8` heading (the new version) at the top, then plain text (up to 800 characters). Keep the older entries: the booth lists every version a device skipped. You can also set `RELEASE_NOTES` in the host's environment to override the notes of the current version.
 3. Bump the version, commit and tag:
    ```
    npm version patch      # 0.1.0 -> 0.1.1   (use minor or major when it fits)
@@ -76,15 +76,16 @@ Default: `/version.json`, the file deployed next to the app. It is the only sour
 
 A GitHub Release can hold an APK or a zip, but a PWA is not installed from either. Chrome can only update it from the web host, through the service worker. Pointing the version check at a release would let the panel announce a version the host has not deployed yet. If you want GitHub in the loop, let GitHub trigger the deployment (Vercel already deploys from the repository) and keep `version.json` as the source of truth.
 
-## What changed popup (standby)
+## What changed popup (standby) and version history
 
-After the booth restarts into a new version, the STANDBY screen shows a **BOOTH UPDATED** popup with the old and new version and the notes from `release-notes.txt`, so the owner does not need to open ADMIN. Tap OK (or outside the card) to close it; it does not come back for that build.
+After the booth restarts into a new version, the STANDBY screen shows a **BOOTH UPDATED** popup: the old and new version, then **every version the device skipped** with what changed in each (for example a tablet going from 0.1.2 to 0.1.7 lists 0.1.7, 0.1.6, 0.1.5, 0.1.4 and 0.1.3). Tap OK (or outside the card) to close it; it does not come back for that build.
 
-- The notes are compiled into the app at build time (`__APP_NOTES__`), so the popup works offline and for every way an update lands (ADMIN > INSTALL AND RESTART, or the background swap at standby).
+- The history comes from `release-history.txt` and is compiled into the app at build time (`__APP_HISTORY__`) and published in `version.json` (`history`), so the popup works offline and for every way an update lands (ADMIN > INSTALL AND RESTART, or the background swap at standby).
+- Format of `release-history.txt`: one `## 0.1.7` heading per release, newest first, then the changes as plain text. Lines before the first heading are ignored. A version with no entry is simply not listed. The old single-release `release-notes.txt` is only used as a fallback when the current version has no entry.
 - It appears only on standby, never during a guest.
 - The booth remembers the last build it showed in `localStorage` (`booth.update.seen.v1`). A device that never recorded one is not treated as updated on its first run; a device updated with ADMIN > INSTALL records the build it came from first, so that update is announced.
-- ADMIN > Updates shows **WHAT IS NEW IN THIS VERSION** (the installed build's notes) without pressing CHECK, and **WHAT IS NEW IN THE UPDATE** while an update is available or downloaded.
-- Write the notes before you push: they are read at build time (`RELEASE_NOTES` in the host environment overrides the file).
+- ADMIN > Updates shows **WHAT IS NEW IN THE UPDATE** (every version between the installed one and the latest) while an update is available or downloaded, and always shows **VERSION HISTORY** (every release up to the installed one) without pressing CHECK. An older booth that does not publish a history shows just the latest notes.
+- Write the entry before you push: it is read at build time.
 
 ## Files
 
@@ -97,6 +98,7 @@ After the booth restarts into a new version, the STANDBY screen shows a **BOOTH 
 | `src/pwa/updateGate.ts` | Unchanged: applies a waiting update only at standby |
 | `src/kiosk.tsx` | Hands the service worker registration to the updater |
 | `src/screens/admin/UpdatesSection.tsx` | The ADMIN > Updates screen |
+| `release-history.txt` | What changed in each release (read at build time) |
 | `src/pwa/whatsNew.ts`, `src/screens/WhatsNewPrompt.tsx` | The "what changed" popup shown on standby after an update |
 
 ## Not verified on real hardware

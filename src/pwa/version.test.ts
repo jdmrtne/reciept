@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareBuilds, compareVersions, formatBytes, ManifestError, parseManifest, parseVersion, showVersion } from './version';
+import { compareBuilds, compareVersions, historySince, sanitizeHistory, formatBytes, ManifestError, parseManifest, parseVersion, showVersion } from './version';
 
 const O = 'https://booth.test';
 
@@ -32,7 +32,7 @@ describe('parseManifest', () => {
     expect(m.files.map((f) => f.url)).toEqual([`${O}/assets/a.js`, `${O}/b.css`]);
   });
   it('accepts a minimal manifest from any host', () => {
-    expect(parseManifest({ version: '3.0.0' }, O)).toEqual({ version: '3.0.0', build: null, builtAt: null, notes: null, files: [], totalBytes: null });
+    expect(parseManifest({ version: '3.0.0' }, O)).toEqual({ version: '3.0.0', build: null, builtAt: null, notes: null, files: [], totalBytes: null, history: [] });
   });
   it('rejects things that are not a version file, with a plain message', () => {
     for (const bad of [null, [], 'x', {}, { version: 'soon' }, { version: 2 }]) expect(() => parseManifest(bad, O)).toThrow(ManifestError);
@@ -67,5 +67,24 @@ describe('compareBuilds', () => {
   });
   it('is null when the versions cannot be compared', () => {
     expect(compareBuilds(pub({ version: 'banana' }), inst)).toBeNull();
+  });
+});
+
+describe('release history', () => {
+  const H = [{ version: '0.1.2', notes: 'b' }, { version: '0.1.7', notes: 'e' }, { version: '0.1.5', notes: 'd' }, { version: '0.1.6', notes: 'c' }, { version: '0.1.1', notes: 'a' }];
+  it('sanitizeHistory keeps only real entries, newest first', () => {
+    const h = sanitizeHistory([...H, { version: 'banana', notes: 'x' }, { version: '1.0.0', notes: '  ' }, null, 3, { version: 'v0.1.8', notes: ' f ' }]);
+    expect(h.map((e) => e.version)).toEqual(['0.1.8', '0.1.7', '0.1.6', '0.1.5', '0.1.2', '0.1.1']);
+    expect(h[0].notes).toBe('f');
+    expect(sanitizeHistory('nope')).toEqual([]);
+  });
+  it('historySince lists EVERY version a device skipped, not just the latest', () => {
+    expect(historySince(sanitizeHistory(H), '0.1.2', '0.1.7').map((e) => e.version)).toEqual(['0.1.7', '0.1.6', '0.1.5']);
+    expect(historySince(sanitizeHistory(H), '0.1.7', '0.1.7')).toEqual([]);
+    expect(historySince(sanitizeHistory(H), null, '0.1.2').map((e) => e.version)).toEqual(['0.1.2', '0.1.1']);
+    expect(historySince(undefined, '0.1.0', '0.1.7')).toEqual([]);
+  });
+  it('parseManifest carries the published history', () => {
+    expect(parseManifest({ version: '0.1.7', history: H }, O).history.map((e) => e.version)).toEqual(['0.1.7', '0.1.6', '0.1.5', '0.1.2', '0.1.1']);
   });
 });

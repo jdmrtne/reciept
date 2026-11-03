@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { describeStatus, updater, useUpdater } from '../../pwa/updater';
-import { formatBytes, showVersion } from '../../pwa/version';
+import { formatBytes, historySince, showVersion, type HistoryEntry } from '../../pwa/version';
 import { buildDefaultSource, isDefaultSource, isForeignSource, readSource, validateSource, writeSource } from '../../pwa/updateSource';
 import { ConfirmDialog, Hint, Row, TextField } from './ui';
 import { eventEditorStore, isDirty } from './eventEditor';
@@ -16,6 +16,20 @@ function Version({ label, version, build, date, hint }: { label: string; version
     <Row label={label} hint={hint}>
       <output className="upd-ver" aria-label={label}>{version}{extra && <small>{extra}</small>}</output>
     </Row>
+  );
+}
+
+/** Each version with what changed in it, newest first. */
+function Entries({ entries, installed }: { entries: HistoryEntry[]; installed?: string }) {
+  return (
+    <div className="upd-hist">
+      {entries.map((e) => (
+        <div key={e.version}>
+          <p><strong>{showVersion(e.version)}{installed === e.version ? ' (INSTALLED)' : ''}</strong></p>
+          <p className="upd-notes">{e.notes}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -41,9 +55,15 @@ function Check({ s, notify }: AdminCtx) {
   const p = u.progress;
   const pct = p?.total ? Math.min(100, Math.floor((p.loaded / Math.max(1, p.total)) * 100)) : null;
   const showBar = u.phase === 'downloading' || u.phase === 'installing';
-  // Notes of the update being offered; otherwise the notes of the version this booth runs now (compiled in, so they show without pressing CHECK).
-  const incoming = (u.phase === 'available' || u.phase === 'downloading' || u.phase === 'ready' || u.phase === 'installing' || retryDownload) ? u.latest?.notes ?? null : null;
-  const installedNotes = u.installed.notes?.trim() || null;
+  // Every version this device would skip (installed < v <= latest); without a published history, just the latest notes.
+  const offered = u.phase === 'available' || u.phase === 'downloading' || u.phase === 'ready' || u.phase === 'installing' || retryDownload;
+  let incoming: HistoryEntry[] = [];
+  if (offered && u.latest) {
+    incoming = historySince(u.latest.history, u.installed.version, u.latest.version);
+    if (!incoming.length && u.latest.notes) incoming = [{ version: u.latest.version, notes: u.latest.notes }];
+  }
+  // Everything up to the installed version, compiled in, so it shows without pressing CHECK.
+  const past: HistoryEntry[] = u.installed.history?.length ? u.installed.history : u.installed.notes?.trim() ? [{ version: u.installed.version, notes: u.installed.notes.trim() }] : [];
 
   const askInstall = () => {
     if (unsaved) { notify('error', 'SAVE OR CANCEL THE UNSAVED EVENT OR FRAME TEXT FIRST, THEN INSTALL. RESTARTING WOULD LOSE IT'); return; }
@@ -73,8 +93,8 @@ function Check({ s, notify }: AdminCtx) {
           <button type="button" className="btn" disabled={!canInstall} onClick={askInstall}>INSTALL AND RESTART</button>
         </div>
       </Row>
-      {incoming ? <Row label="WHAT IS NEW IN THE UPDATE" stack><p className="upd-notes">{incoming}</p></Row>
-        : installedNotes ? <Row label="WHAT IS NEW IN THIS VERSION" stack><p className="upd-notes">{installedNotes}</p></Row> : null}
+      {incoming.length > 0 && <Row label="WHAT IS NEW IN THE UPDATE" stack><Entries entries={incoming} /></Row>}
+      {past.length > 0 && <Row label="VERSION HISTORY" stack><Entries entries={past} installed={u.installed.version} /></Row>}
       {confirm && (
         <ConfirmDialog title="INSTALL THE UPDATE?" body="THE BOOTH RESTARTS FOR A FEW SECONDS AND COMES BACK ON THE NEW VERSION. YOUR SETTINGS, FRAMES AND LAYOUTS ARE KEPT. DO THIS BETWEEN GUESTS."
           confirmLabel="INSTALL AND RESTART" onCancel={() => setConfirm(false)} onConfirm={() => { setConfirm(false); updater.install(); }} />

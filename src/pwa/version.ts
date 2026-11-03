@@ -3,14 +3,9 @@
  * The constants are compiled in by vite.config.ts (scripts/version-plugin.mjs); the typeof guards keep tests and tools that
  * do not apply that config from crashing.
  */
-export interface BuildInfo { version: string; build: string; builtAt: string; /** What changed in this build (release-notes.txt, compiled in), so the booth can tell the owner after an update without any network. */ notes?: string }
-
-export const INSTALLED: BuildInfo = {
-  version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0',
-  build: typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'local',
-  builtAt: typeof __APP_BUILT_AT__ === 'string' ? __APP_BUILT_AT__ : '',
-  notes: typeof __APP_NOTES__ === 'string' ? __APP_NOTES__ : ''
-};
+/** One release and what changed in it (release-history.txt). */
+export interface HistoryEntry { version: string; notes: string }
+export interface BuildInfo { version: string; build: string; builtAt: string; /** Every release up to this build, newest first (compiled in), so the booth can list all the versions an update skipped, offline. */ history?: HistoryEntry[]; /** What changed in this build (release-notes.txt, compiled in), so the booth can tell the owner after an update without any network. */ notes?: string }
 
 interface Parsed { nums: [number, number, number]; pre: string[] | null }
 
@@ -70,6 +65,36 @@ export function compareBuilds(latest: { version: string; build: string | null; b
   return datesKnown ? Math.sign(a - b) : 0;
 }
 
+const HISTORY_LIMIT = 40;
+
+/** Release history from a build or a version.json: only entries with a real version number and text, newest first, bounded. */
+export function sanitizeHistory(raw: unknown): HistoryEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HistoryEntry[] = [];
+  for (const e of raw.slice(0, HISTORY_LIMIT)) {
+    if (!e || typeof e !== 'object') continue;
+    const { version, notes } = e as Record<string, unknown>;
+    if (typeof version !== 'string' || !parseVersion(version) || typeof notes !== 'string' || !notes.trim()) continue;
+    out.push({ version: version.trim().replace(/^v/, ''), notes: notes.trim().slice(0, 800) });
+  }
+  return out.sort((a, b) => compareVersions(b.version, a.version) ?? 0);
+}
+
+/** The releases a device skipped: newer than `from` (null = all), up to and including `to`, newest first. */
+export function historySince(history: HistoryEntry[] | undefined, from: string | null, to: string): HistoryEntry[] {
+  return (history ?? []).filter((e) => (from === null || (compareVersions(e.version, from) ?? 0) > 0) && (compareVersions(e.version, to) ?? 1) <= 0)
+    .sort((a, b) => compareVersions(b.version, a.version) ?? 0);
+}
+
+// Defined after the helpers above: building it parses the compiled-in history, which needs them initialised.
+export const INSTALLED: BuildInfo = {
+  version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0',
+  build: typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'local',
+  builtAt: typeof __APP_BUILT_AT__ === 'string' ? __APP_BUILT_AT__ : '',
+  notes: typeof __APP_NOTES__ === 'string' ? __APP_NOTES__ : '',
+  history: typeof __APP_HISTORY__ !== 'undefined' ? sanitizeHistory(__APP_HISTORY__) : []
+};
+
 export interface ManifestFile { url: string; size: number }
 
 /** The published description of the newest build (dist/version.json). Only `version` is required: any host can serve a minimal one. */
@@ -78,6 +103,8 @@ export interface UpdateManifest {
   build: string | null;
   builtAt: string | null;
   notes: string | null;
+  /** Every release up to this one, newest first (empty when the host publishes none). */
+  history: HistoryEntry[];
   /** Same-origin files a device downloads for this build, with sizes. Empty = no byte-level progress, only a busy indicator. */
   files: ManifestFile[];
   totalBytes: number | null;
@@ -109,6 +136,7 @@ export function parseManifest(raw: unknown, origin: string): UpdateManifest {
     build: str(r.build, 40),
     builtAt: str(r.builtAt, 40),
     notes: str(r.notes, 800),
+    history: sanitizeHistory(r.history),
     files,
     totalBytes: files.length ? files.reduce((n, f) => n + f.size, 0) : null
   };

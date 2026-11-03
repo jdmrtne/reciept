@@ -70,6 +70,8 @@ class UpdateError extends Error {
 }
 
 const secs = (ms: number) => Math.round(ms / 1000);
+/** What the restart flag needs to remember about a build (not its notes or history). */
+const lean = (b: BuildInfo): BuildInfo => ({ version: b.version, build: b.build, builtAt: b.builtAt });
 
 export function createUpdater(deps: Deps) {
   const base = (): UpdateState => ({ phase: 'idle', installed: deps.installed, latest: null, download: null, checkedAt: null, progress: null, error: null, errorStep: null, notice: null });
@@ -253,7 +255,7 @@ export function createUpdater(deps: Deps) {
   function install(): void {
     if (state.phase !== 'ready') return;
     if (!applyFn || !hasWaiting()) { fail(new UpdateError('install', 'THE DOWNLOADED UPDATE IS NO LONGER WAITING. RUN CHECK FOR UPDATES AND DOWNLOAD IT AGAIN'), 'install'); return; }
-    try { deps.storage?.setItem(PENDING_KEY, JSON.stringify({ from: deps.installed, to: state.latest?.version ?? null, at: deps.now() })); } catch { /* the reload still works; only the "UPDATED FROM" message is lost */ }
+    try { deps.storage?.setItem(PENDING_KEY, JSON.stringify({ from: lean(deps.installed), to: state.latest?.version ?? null, at: deps.now() })); } catch { /* the reload still works; only the "UPDATED FROM" message is lost */ }
     set({ phase: 'installing', error: null, errorStep: null, notice: null, progress: null });
     installTimer = setTimeout(() => {
       installTimer = null;

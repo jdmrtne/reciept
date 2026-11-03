@@ -154,6 +154,14 @@ describe.skipIf(!available)('Copies: real interaction', () => {
       expect(sessionStore.get()).toMatchObject({ screen: 'print', copies: 1, printed: 0, printReturn: 'success' });
     });
 
+    it('puts PRINT ANOTHER COPY below DONE, in one stacked group', () => {
+      withSession({ printedTotal: 1 });
+      const { container } = RTL.render(<SuccessScreen />);
+      const group = container.querySelector('.done-actions')!;
+      const labels = (Array.from(group.querySelectorAll('button')) as HTMLElement[]).map((b) => b.textContent);
+      expect(labels).toEqual(['DONE', 'PRINT ANOTHER COPY']);
+    });
+
     it('shows how many copies came out when more than one', () => {
       withSession({ printedTotal: 4 });
       RTL.render(<SuccessScreen />);

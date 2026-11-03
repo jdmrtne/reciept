@@ -8,8 +8,10 @@ import { join, relative, sep } from 'node:path';
 
 const PRECACHE = /\.(js|css|html|svg|png|webp|woff2)$/i; // same families vite.config.ts precaches
 const SKIP = /^(sw\.js|workbox-[^/]*\.js|version\.json)$/i;
-const NOTES_FILE = 'release-notes.txt';
+const NOTES_FILE = 'release-notes.txt'; // legacy single-release file: only used when release-history.txt has no entry for the current version
+const HISTORY_FILE = 'release-history.txt';
 const NOTES_MAX = 800;
+const HISTORY_MAX = 40;
 
 export function readVersion(root) {
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
@@ -24,9 +26,39 @@ export function readBuildId(root, env = process.env) {
   catch { return 'local'; }
 }
 
+const VERSION = /^v?(\d+)\.(\d+)\.(\d+)/;
+const order = (a, b) => { const x = VERSION.exec(a), y = VERSION.exec(b); for (let i = 1; i <= 3; i++) if (Number(x[i]) !== Number(y[i])) return Number(y[i]) - Number(x[i]); return 0; }; // newest first
+
+/** release-history.txt: one "## 1.2.3" heading per release, then what changed. Anything before the first heading is ignored. */
+export function parseHistory(text) {
+  const out = [];
+  let cur = null;
+  for (const line of String(text ?? '').replace(/\r\n?/g, '\n').split('\n')) {
+    const h = /^##\s+(\S+)/.exec(line);
+    if (h) { cur = VERSION.test(h[1]) ? { version: h[1].replace(/^v/, ''), lines: [] } : null; if (cur) out.push(cur); }
+    else if (cur) cur.lines.push(line);
+  }
+  return out.map((e) => ({ version: e.version, notes: e.lines.join('\n').trim().slice(0, NOTES_MAX) })).filter((e) => e.notes);
+}
+
+/** Every release, newest first. The current version always has an entry: RELEASE_NOTES (host env) wins, then its history entry, then the legacy release-notes.txt. */
+export function readHistory(root, env = process.env) {
+  const file = join(root, HISTORY_FILE);
+  const entries = existsSync(file) ? parseHistory(readFileSync(file, 'utf8')) : [];
+  const current = readVersion(root);
+  const own = entries.find((e) => e.version === current);
+  const override = String(env.RELEASE_NOTES || '').trim().slice(0, NOTES_MAX);
+  const legacy = existsSync(join(root, NOTES_FILE)) ? readFileSync(join(root, NOTES_FILE), 'utf8').trim().slice(0, NOTES_MAX) : '';
+  const notes = override || own?.notes || legacy;
+  const rest = entries.filter((e) => e.version !== current);
+  const all = notes ? [{ version: current, notes }, ...rest] : rest;
+  return all.sort((a, b) => order(a.version, b.version)).slice(0, HISTORY_MAX);
+}
+
+/** Notes of the current release (what the installed build and version.json call "notes"). */
 export function readNotes(root, env = process.env) {
-  const raw = env.RELEASE_NOTES || (existsSync(join(root, NOTES_FILE)) ? readFileSync(join(root, NOTES_FILE), 'utf8') : '');
-  return String(raw).trim().slice(0, NOTES_MAX);
+  const current = readVersion(root);
+  return readHistory(root, env).find((e) => e.version === current)?.notes ?? '';
 }
 
 export function versionDefines(root, builtAt = new Date().toISOString()) {
@@ -34,7 +66,8 @@ export function versionDefines(root, builtAt = new Date().toISOString()) {
     __APP_VERSION__: JSON.stringify(readVersion(root)),
     __APP_BUILD__: JSON.stringify(readBuildId(root)),
     __APP_BUILT_AT__: JSON.stringify(builtAt),
-    __APP_NOTES__: JSON.stringify(readNotes(root))
+    __APP_NOTES__: JSON.stringify(readNotes(root)),
+    __APP_HISTORY__: JSON.stringify(readHistory(root))
   };
 }
 
@@ -68,6 +101,8 @@ export function buildManifest({ root, outDir, builtAt }) {
   };
   const notes = readNotes(root);
   if (notes) manifest.notes = notes;
+  const history = readHistory(root);
+  if (history.length) manifest.history = history;
   return manifest;
 }
 

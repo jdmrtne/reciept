@@ -1,15 +1,16 @@
-import type { BuildInfo } from './version';
+import { historySince, type BuildInfo, type HistoryEntry } from './version';
 import type { KeyValue } from './updateSource';
 
 /**
  * "What changed" popup after an update. The booth remembers the build it last showed the owner; when the running build differs,
- * STANDBY shows a popup with the release notes compiled into this build (release-notes.txt), so the owner does not have to open ADMIN.
+ * STANDBY shows a popup with the changes of EVERY version since the one it last showed (release-history.txt, compiled into this build), so the owner does not have to open ADMIN.
  * Works for every way an update can land (ADMIN > Install, or the background swap at standby), needs no network, and never appears
  * during a guest because only the standby screen renders it.
  */
 export const SEEN_KEY = 'booth.update.seen.v1';
 
-export interface Announcement { from: string | null; to: string; build: string; notes: string }
+/** `entries`: every version the booth skipped, newest first. Never empty when there is anything to say; empty = no notes were written. */
+export interface Announcement { from: string | null; to: string; build: string; entries: HistoryEntry[] }
 
 const safeStore = (): KeyValue | null => { try { return typeof localStorage === 'undefined' ? null : localStorage; } catch { return null; } };
 
@@ -41,5 +42,8 @@ export function pendingAnnouncement(installed: BuildInfo, store: KeyValue | null
   const seen = readSeen(store);
   if (!seen) { recordSeen(installed, store); return null; }
   if (seen.key === buildKey(installed)) return null;
-  return { from: seen.version, to: installed.version, build: installed.build, notes: (installed.notes ?? '').trim() };
+  let entries = historySince(installed.history, seen.version, installed.version);
+  const notes = (installed.notes ?? '').trim();
+  if (!entries.length && notes) entries = [{ version: installed.version, notes }]; // same version number, new build: nothing in the history, so the build's own notes
+  return { from: seen.version, to: installed.version, build: installed.build, entries };
 }
