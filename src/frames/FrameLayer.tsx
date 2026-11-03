@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { pathD, type Prim } from './types';
 import { eventLayoutVersion, subscribeEventLayouts } from './custom/eventRuntime';
+import { customVersion, subscribeCustom } from './custom/runtime';
 import { getFrame, resolveFramed, vectorFrameOf } from './registry';
 import { getFrameAsset, type FrameAsset } from './assets';
 import { framePrims, makeCtx } from './prims';
@@ -45,6 +46,7 @@ const getSampleQr = () => (sampleQr ??= qrMatrix('https://receipt-beta.vercel.ap
  * NCL stub, otherwise a strip below the design with a cut line). Off by default so the editor's pickers are unchanged.
  */
 export function FramePreview({ frameId, layoutId, qr = false, frameText }: { frameId: string; layoutId: string; qr?: boolean; frameText?: FrameTextOverrides }) {
+  useSyncExternalStore(subscribeCustom, customVersion, customVersion); // an own frame's art URL changes when its picture is replaced: redraw with the new one, never keep an old URL
   useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion); // an event layout's windows and art appear the moment the runtime has them (loaded after start, replaced or removed in ADMIN)
   const L = resolveFramed(layoutId, frameId);
   const frame = getFrame(frameId), asset = getFrameAsset(frame, layoutId);

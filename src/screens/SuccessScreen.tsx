@@ -4,6 +4,7 @@ import { Doodles, Scribble, Tear } from '../components/Doodles';
 import { sessionStore, useSession } from '../state/session';
 import { loadSettings } from '../config/settings';
 import { Icon } from '../components/Icon';
+import { copiesLeft } from '../print/copies';
 
 /** Hand-drawn circle + tick that draws itself (pathLength=1 so the dash trick needs no measuring). */
 function Stamp() {
@@ -17,7 +18,9 @@ function Stamp() {
 
 /** End of the flow: take your receipt, then back to standby (auto, or DONE). reset() wipes the whole session. */
 export function SuccessScreen() {
-  const { stamp } = useSession();
+  const { stamp, editor, printedTotal } = useSession();
+  const copiesRemaining = copiesLeft(loadSettings().maxCopies, printedTotal);
+  const another = () => sessionStore.update({ copies: 1, printed: 0, printReturn: 'success', screen: 'print' }); // the same photo and QR, one more copy; the success screen (and its timer) starts fresh afterwards
   const [seconds] = useState(() => Math.max(1, loadSettings().successSeconds));
   const [left, setLeft] = useState(seconds);
   useEffect(() => {
@@ -35,6 +38,7 @@ export function SuccessScreen() {
         <h1 className="tap">TAKE YOUR<br />RECEIPT</h1>
         <Scribble />
         <p className="receipt-sub done-hint">PICK IT UP AT THE PRINTER</p>
+        {printedTotal > 1 && <p className="receipt-sub done-hint">{printedTotal} COPIES PRINTED</p>}
         <hr className="dash" />
         <p className="receipt-row"><span>NO.</span><span>{stamp?.serial ?? '------'}</span></p>
         <Barcode seed={stamp?.serial ?? 'thanks'} />
@@ -43,6 +47,8 @@ export function SuccessScreen() {
           <div className="done-bar"><i style={{ animationDuration: `${seconds}s` }} /></div>
           <p>NEXT GUEST IN {left}</p>
         </div>
+        {editor && printedTotal > 0 && copiesRemaining > 0 && <button className="btn accent" style={{ marginTop: '1em' }} onClick={another}><Icon name="print" />PRINT ANOTHER COPY</button>}
+        {editor && printedTotal > 0 && copiesRemaining === 0 && <p className="receipt-sub done-hint" role="status">COPY LIMIT REACHED</p>}
         <button className="btn" style={{ marginTop: '1em' }} onClick={() => sessionStore.reset()}><Icon name="check" />DONE</button>
         <Tear />
       </div>

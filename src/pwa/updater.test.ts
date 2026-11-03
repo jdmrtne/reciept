@@ -55,6 +55,17 @@ describe('check', () => {
     expect(u.get()).toMatchObject({ phase: 'available', installed: INSTALLED, latest: { version: '1.1.0', totalBytes: 10 }, download: { bytes: 10 } });
     expect(u.get().checkedAt).not.toBeNull();
   });
+  it('offers a new build of the same version number (deploy without a version bump)', async () => {
+    const { u } = make({ ...ok(), '/version.json': () => json(manifest({ version: '1.0.0' })) });
+    await u.check();
+    expect(u.get().phase).toBe('available');
+    expect(describeStatus(u.get()).text).toContain('NEW BUILD bbb2222');
+  });
+  it('does not offer a redeploy of the same commit', async () => {
+    const { u } = make({ ...ok(), '/version.json': () => json(manifest({ version: '1.0.0', build: 'aaa1111' })) });
+    await u.check();
+    expect(u.get().phase).toBe('current');
+  });
   it('asks the source with a cache-busting query and never reuses a cached answer', async () => {
     let seenUrl = '', seenInit: RequestInit | undefined;
     const { u } = make({}, { fetch: async (i, init) => { seenUrl = i; seenInit = init; return json(manifest()); } });
@@ -63,7 +74,7 @@ describe('check', () => {
     expect(seenInit?.cache).toBe('no-store');
   });
   it('same version = up to date; an older source is explained, not offered', async () => {
-    const same = make({ '/version.json': () => json(manifest({ version: '1.0.0' })) });
+    const same = make({ '/version.json': () => json(manifest({ version: '1.0.0', build: 'aaa1111', builtAt: '2026-10-01T00:00:00Z' })) });
     await same.u.check();
     expect(same.u.get().phase).toBe('current');
     const older = make({ '/version.json': () => json(manifest({ version: '0.9.0' })) });

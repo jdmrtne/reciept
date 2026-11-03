@@ -27,6 +27,10 @@ export interface Session {
   stamp: FrameCtx | null; // date/time/serial printed on the frame; fixed when the customer taps start so Edit, Preview and Print agree
   carry: Carry | null; // stickers + filter kept while retaking from the editor
   cameraFacing: 'user' | 'environment';
+  copies: number; // how many copies the guest asked for in the current print run (1 = default)
+  printed: number; // copies of the current run that already came out (a retry after an error continues from here)
+  printedTotal: number; // every copy printed in this session, counted against the owner's max copies
+  printReturn: 'share' | 'success' | null; // where PRINT goes when a run finishes (set by PRINT ANOTHER COPY); null = the normal flow
   share: ShareSession | null; // set when the share screen first runs; wiped with everything else on reset
 }
 
@@ -41,6 +45,10 @@ const fresh = (): Session => ({
   stamp: null,
   carry: null,
   cameraFacing: 'user',
+  copies: 1,
+  printed: 0,
+  printedTotal: 0,
+  printReturn: null,
   share: null
 });
 

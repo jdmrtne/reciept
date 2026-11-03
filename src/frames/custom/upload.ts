@@ -30,6 +30,19 @@ export const browserDecode: DecodeFn = async (blob) => {
 
 const fail = (...errors: string[]): PrepareResult => ({ ok: false, errors });
 
+/**
+ * Copy the picked file into memory NOW. A File from the Android file chooser (Drive, Downloads, Photos) is only a reference to the
+ * original; Chrome can stop serving it later (file moved, synced, or access dropped), and then the object URL made from it loads
+ * nothing: the photo windows stay but the artwork is blank. The copy has no such dependency, and a file that cannot be read fully
+ * fails here, at upload time, instead of silently later. Returns null when the bytes could not be read completely.
+ */
+export async function keepInMemory(file: Blob, mime: string): Promise<Blob | null> {
+  try {
+    const bytes = await file.arrayBuffer();
+    return bytes.byteLength === file.size && bytes.byteLength > 0 ? new Blob([bytes], { type: mime }) : null;
+  } catch { return null; }
+}
+
 /** Never throws. Errors are plain sentences for the owner (same style as validate.ts); warnings do not block the upload. */
 export async function prepareUpload(layoutId: string, file: Blob, decode: DecodeFn = browserDecode): Promise<PrepareResult> {
   if (!isCustomLayoutId(layoutId)) return fail('This layout cannot have a custom frame.');
@@ -38,12 +51,12 @@ export async function prepareUpload(layoutId: string, file: Blob, decode: Decode
   const up = validateUpload(file, head);
   if (!up.ok) return up;
   let img: DecodedImage;
-  try { img = await decode(file); } catch { return fail('This picture could not be opened. Save it again as a PNG and try again.'); }
+  const blob = await keepInMemory(file, up.value.mime); // the stored blob is an in-memory copy that always carries the type the bytes really are (a kiosk picker may declare something else)
+  if (!blob) return fail('This file could not be read. Pick it again.');
+  try { img = await decode(blob); } catch { return fail('This picture could not be opened. Save it again as a PNG and try again.'); }
   if (img.width !== up.value.width || img.height !== up.value.height || img.data.length < img.width * img.height * 4) return fail('This picture could not be read correctly. Save it again as a PNG and try again.');
   const art = validateArtwork(layoutId, img, up.value.mime);
   if (!art.ok) return art;
-  // The stored blob always carries the type the bytes really are (a kiosk picker may declare something else).
-  const blob = file.type === up.value.mime ? file : file.slice(0, file.size, up.value.mime);
   return { ok: true, art: { ...art.value, blob }, warnings: [...up.warnings, ...art.warnings] };
 }
 
@@ -57,10 +70,11 @@ export async function prepareEventLayoutUpload(file: Blob, decode: DecodeFn = br
   const up = validateUpload(file, head);
   if (!up.ok) return up;
   let img: DecodedImage;
-  try { img = await decode(file); } catch { return fail('This picture could not be opened. Save it again as a PNG and try again.'); }
+  const blob = await keepInMemory(file, up.value.mime); // the stored blob is an in-memory copy that always carries the type the bytes really are (a kiosk picker may declare something else)
+  if (!blob) return fail('This file could not be read. Pick it again.');
+  try { img = await decode(blob); } catch { return fail('This picture could not be opened. Save it again as a PNG and try again.'); }
   if (img.width !== up.value.width || img.height !== up.value.height || img.data.length < img.width * img.height * 4) return fail('This picture could not be read correctly. Save it again as a PNG and try again.');
   const art = validateEventLayoutArt(img, up.value.mime);
   if (!art.ok) return art;
-  const blob = file.type === up.value.mime ? file : file.slice(0, file.size, up.value.mime);
   return { ok: true, art: { ...art.value, blob }, warnings: [...up.warnings, ...art.warnings] };
 }

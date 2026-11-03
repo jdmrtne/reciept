@@ -3,6 +3,7 @@ import { CUSTOM_FRAME_PREFIX, type CustomArtMeta, type CustomFrameDef, type Cust
 import * as store from './store';
 import type { StoreResult } from './store';
 import { eventLayoutReady } from './eventRuntime';
+import { artReady, createArtUrl, recoverArtUrl, revokeArtUrl } from './artUrls';
 import { isEventLayoutId } from './eventLayouts';
 
 /**
@@ -29,31 +30,36 @@ export function toFrameDef(d: CustomFrameDef): FrameDef {
   return { id: d.id, name: d.name, type: 'image', image: { dir: d.id, padding: 0 }, headerHeight: 0, footerHeight: 0, border: { style: 'none', width: 0, inset: 0 }, header: { lines: [] }, footer: { lines: [] }, ...(Object.keys(byLayout).length ? { qr: { byLayout } } : {}) };
 }
 
-/** Decodes of every artwork URL, so the editor, preview and print find the image ready (no flash). Best effort; never rejects. */
-const warm = new Map<string, Promise<void>>();
-function warmUp(url: string): void {
-  if (warm.has(url) || typeof Image === 'undefined') return;
-  warm.set(url, new Promise<void>((res) => { try { const im = new Image(); im.src = url; (im.decode ? im.decode() : Promise.resolve()).then(() => res(), () => res()); } catch { res(); } }));
-}
 /** Resolves when the artwork for this frame (all layouts, or one) is decoded. Resolves at once for built-in frames and unknown ids. */
 export function customReady(frameId?: string | null, layoutId?: string): Promise<void> {
   if (isEventLayoutId(frameId)) return eventLayoutReady(frameId); // an event layout's frame id is its layout id
   const e = frameId ? entries.get(frameId) : undefined;
   const urls = e ? (Object.entries(e.urls) as [string, string][]).filter(([k]) => !layoutId || k === layoutId).map(([, u]) => u) : [];
-  return Promise.all([...urls.map((u) => warm.get(u) ?? Promise.resolve()), ...(frameId ? [] : [eventLayoutReady()])]).then(() => undefined); // no frame given = everything, event layouts included
+  return Promise.all([artReady(urls), ...(frameId ? [] : [eventLayoutReady()])]).then(() => undefined); // no frame given = everything, event layouts included
 }
 
-const revoke = (e: Entry | undefined, only?: CustomLayoutId) => {
+const revoke = (e: Entry | undefined) => {
   if (!e) return;
-  for (const k of Object.keys(e.urls) as CustomLayoutId[]) if (!only || only === k) { try { warm.delete(e.urls[k]!); URL.revokeObjectURL(e.urls[k]!); } catch { /* ignore */ } delete e.urls[k]; }
+  for (const k of Object.keys(e.urls) as CustomLayoutId[]) { revokeArtUrl(e.urls[k]); delete e.urls[k]; }
 };
+/**
+ * If the browser cannot decode a picture's object URL (the blob behind it went bad), re-read the SAVED copy from IndexedDB once and swap in a
+ * fresh URL, with no re-upload. Only a URL that really decodes replaces the old one; the screens follow through `bump`.
+ */
+const recoveryFor = (id: string, k: CustomLayoutId, rev: string | undefined) => (url: string): Promise<void> =>
+  recoverArtUrl(
+    async () => { const r = await store.getFrameRecord(id); const a = r.ok ? r.value.layouts[k] : undefined; return a && a.rev === rev ? a.blob : null; },
+    () => entries.get(id)?.urls[k] === url,
+    (u) => { const e = entries.get(id); if (!e) return; revokeArtUrl(url); e.urls[k] = u; bump(); }
+  ).then(() => undefined);
 function install(def: CustomFrameDef): void {
   const old = entries.get(def.id), urls: Entry['urls'] = {};
   for (const [k, art] of Object.entries(def.layouts) as [CustomLayoutId, CustomLayoutArt][]) {
     // keep the object URL while the stored file is unchanged (same rev) (a rename must not invalidate images already decoded from it)
     const prev = old?.def.layouts[k];
     if (prev?.rev && prev.rev === art.rev && old!.urls[k]) { urls[k] = old!.urls[k]; delete old!.urls[k]; continue; }
-    try { urls[k] = URL.createObjectURL(art.blob); warmUp(urls[k]!); } catch { /* an unreadable blob just means no art for that layout */ }
+    const u = createArtUrl(art.blob, recoveryFor(def.id, k, art.rev)); // an unreadable blob just means no art for that layout
+    if (u) urls[k] = u;
   }
   revoke(old);
   entries.set(def.id, { def, frame: toFrameDef(def), urls });

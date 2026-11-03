@@ -5,6 +5,7 @@ import { DEFAULT_THERMAL, LEGACY_THERMAL, PHOTOBOOTH_FACE, TONE_KEYS, type Print
 import { normalizeThermal } from '../print/pipeline';
 import { normalizeFrameText, type FrameTextOverrides } from '../frames/frameText';
 import { normalizeOrder } from './order';
+import { MAX_COPIES_DEFAULT, normalizeMaxCopies } from '../print/copies';
 import {
   DEFAULT_EVENT_NAME,
   DEFAULT_EVENT_PROFILE,
@@ -75,6 +76,8 @@ export interface BoothSettings {
   windowsPrinter: string;
   /** Test aid for the mock printer: fail the first prints with these errors, then work. Shows the error + RETRY screen without hardware. */
   mockFailures: PrinterErrorCode[];
+  /** Most copies of one photo a single guest can print in a session (ADMIN > Printer > Copies). 1 to 30, default 10. */
+  maxCopies: number;
   /** Seconds the "take your receipt" screen stays before returning to standby. */
   successSeconds: number;
   /**
@@ -112,6 +115,7 @@ export const DEFAULT_SETTINGS: BoothSettings = {
   windowsPrinter: 'POS80 10.0.0.11',
   mockFailures: [],
   successSeconds: 10,
+  maxCopies: MAX_COPIES_DEFAULT,
   share: { enabled: false, publicBaseUrl: '' },
   layoutVisibility: { hidden: [] },
   frameVisibility: { hidden: [] },
@@ -170,6 +174,7 @@ export function mergeSettings(raw: unknown): BoothSettings {
     },
     windowsPrinter: typeof r.windowsPrinter === 'string' ? r.windowsPrinter.slice(0, 200) : DEFAULT_SETTINGS.windowsPrinter, // not trimmed here: names contain spaces and this runs on every keystroke
     mockFailures: Array.isArray(r.mockFailures) ? r.mockFailures : [],
+    maxCopies: normalizeMaxCopies(r.maxCopies),
     successSeconds: typeof r.successSeconds === 'number' && r.successSeconds > 0 ? r.successSeconds : DEFAULT_SETTINGS.successSeconds,
     share: {
       enabled: r.share?.enabled === true,

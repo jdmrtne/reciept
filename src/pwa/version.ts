@@ -50,6 +50,25 @@ export function compareVersions(a: string, b: string): number | null {
   return 0;
 }
 
+/**
+ * Is the published build newer than the installed one? Version number first (semver). When the numbers are equal the
+ * build decides, so a deploy that forgot to bump package.json still shows up as an update on every device:
+ *   - different build ids: newer unless the dates prove it is older (missing dates: trust the different id);
+ *   - same id (or both unknown/"local"): only a later build time counts.
+ * Returns null when the version numbers cannot be compared.
+ */
+export function compareBuilds(latest: { version: string; build: string | null; builtAt: string | null }, installed: BuildInfo): number | null {
+  const byVersion = compareVersions(latest.version, installed.version);
+  if (byVersion !== 0) return byVersion;
+  const t = (v: string | null): number => (v ? Date.parse(v) : NaN);
+  const a = t(latest.builtAt), b = t(installed.builtAt);
+  const datesKnown = Number.isFinite(a) && Number.isFinite(b);
+  const known = (id: string | null): id is string => !!id && id !== 'local';
+  if (known(latest.build) && known(installed.build) && latest.build !== installed.build) return datesKnown ? Math.sign(a - b) : 1;
+  if (known(latest.build) && known(installed.build)) return 0; // same commit: a redeploy of identical files is not an update
+  return datesKnown ? Math.sign(a - b) : 0;
+}
+
 export interface ManifestFile { url: string; size: number }
 
 /** The published description of the newest build (dist/version.json). Only `version` is required: any host can serve a minimal one. */

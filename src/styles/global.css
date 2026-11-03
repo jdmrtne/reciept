@@ -321,3 +321,9 @@ body.dp-body, body.dp-body #root { height: auto; min-height: 100%; }
 .dp-img { display: block; width: 100%; height: auto; border-radius: var(--radius-s); background: var(--surface-2); -webkit-touch-callout: default; }
 .dp-dl { text-decoration: none; width: 100%; }
 .dp-hint { margin: 0; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+/* Copies stepper on the preview screen (guest picks how many copies of the photo to print) */
+.copies { display: flex; align-items: center; justify-content: center; gap: 2vmin; }
+.copies-label { font-weight: 700; letter-spacing: .08em; }
+.copies-b { min-width: 64px; min-height: 64px; font-size: 1.6em; padding: 0; }
+.copies-n { min-width: 2.2em; text-align: center; font-size: 1.8em; font-weight: 800; }

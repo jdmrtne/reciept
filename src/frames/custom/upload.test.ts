@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { makeArt, GRID, heightFor, SINGLE, STRIP, W } from './fixtures';
-import { prepareUpload, type DecodeFn } from './upload';
+import { keepInMemory, prepareUpload, prepareEventLayoutUpload, type DecodeFn } from './upload';
 import { requiredWindows } from './validate';
 
-const blobOf = (png: Uint8Array, type = 'image/png') => new Blob([png], { type });
+const blobOf = (png: Uint8Array, type = 'image/png') => new Blob([png as BlobPart], { type });
 const decoderFor = (f: { width: number; height: number; data: Uint8ClampedArray | Uint8Array }): DecodeFn => async () => f;
 const noDash = (m: string) => !/[\u2013\u2014]/.test(m) && !/\p{Extended_Pictographic}/u.test(m);
 
@@ -77,5 +77,44 @@ describe('prepareUpload (Phase 4)', () => {
     const r = await prepareUpload('single', blobOf(f.png, ''), decoderFor(f));
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.art.blob.type).toBe('image/png');
+  });
+});
+
+describe('stored picture is an in-memory copy (blank artwork fix)', () => {
+  it('prepareUpload stores a copy, not the picked file, with the real type and the same bytes', async () => {
+    const f = makeArt(W, heightFor(SINGLE), SINGLE);
+    const picked = blobOf(f.png, 'image/png');
+    const r = await prepareUpload('single', picked, decoderFor(f));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.art.blob).not.toBe(picked);
+    expect(r.art.blob.type).toBe('image/png');
+    expect(new Uint8Array(await r.art.blob.arrayBuffer())).toEqual(new Uint8Array(f.png));
+  });
+
+  it('the decoder gets the in-memory copy, so a file that goes away after the check cannot matter', async () => {
+    const f = makeArt(W, heightFor(SINGLE), SINGLE);
+    const picked = blobOf(f.png);
+    let seen: Blob | null = null;
+    await prepareUpload('single', picked, async (b) => { seen = b; return f; });
+    expect(seen).not.toBeNull();
+    expect(seen).not.toBe(picked);
+  });
+
+  it('a file that cannot be read in full is refused at upload time with a plain sentence', async () => {
+    const f = makeArt(W, heightFor(SINGLE), SINGLE);
+    const real = blobOf(f.png);
+    const flaky = { size: real.size, type: real.type, slice: real.slice.bind(real), arrayBuffer: () => Promise.reject(new Error('NotReadableError')) } as unknown as Blob;
+    const r = await prepareUpload('single', flaky, decoderFor(f));
+    expect(r).toEqual({ ok: false, errors: ['This file could not be read. Pick it again.'] });
+    expect(await keepInMemory(flaky, 'image/png')).toBeNull();
+  });
+
+  it('event layout uploads store a copy too', async () => {
+    const f = makeArt(W, heightFor(STRIP(2)), STRIP(2));
+    const picked = blobOf(f.png);
+    const r = await prepareEventLayoutUpload(picked, decoderFor(f));
+    expect(r.ok).toBe(true);
+    if (r.ok) { expect(r.art.blob).not.toBe(picked); expect(r.art.blob.size).toBe(f.png.length); }
   });
 });

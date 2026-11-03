@@ -12,6 +12,7 @@ import { AdminScreen } from './screens/AdminScreen';
 import { Placeholder } from './screens/Placeholder';
 import { sessionStore, useSession } from './state/session';
 import { useInactivity } from './hooks/useInactivity';
+import { usePrintBusy } from './print/busy';
 import { useWakeLock } from './hooks/useWakeLock';
 import { loadSettings } from './config/settings';
 import { PrinterLostPrompt } from './screens/PrinterLostPrompt';
@@ -20,7 +21,8 @@ export default function App() {
   const { screen, id } = useSession();
   const { inactivitySeconds } = loadSettings();
   const onIdle = useCallback(() => sessionStore.reset(), []);
-  useInactivity(screen !== 'standby', inactivitySeconds, onIdle);
+  const printBusy = usePrintBusy(); // copies are coming out: the guest is watching, not touching
+  useInactivity(screen !== 'standby' && !printBusy, inactivitySeconds, onIdle);
   useWakeLock();
 
   // Leaving ADMIN (EXIT / idle reset) also leaves the /admin URL, so a reload boots to standby.

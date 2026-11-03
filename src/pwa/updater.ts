@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { compareVersions, formatBytes, INSTALLED, ManifestError, parseManifest, showVersion, type BuildInfo, type ManifestFile, type UpdateManifest } from './version';
+import { compareBuilds, formatBytes, INSTALLED, ManifestError, parseManifest, showVersion, type BuildInfo, type ManifestFile, type UpdateManifest } from './version';
 import { readSource, type KeyValue } from './updateSource';
 
 /**
@@ -153,7 +153,7 @@ export function createUpdater(deps: Deps) {
     try {
       if (!deps.online()) throw new UpdateError('check', 'NO INTERNET CONNECTION. CONNECT THE TABLET TO WIFI OR MOBILE DATA AND TRY AGAIN');
       const latest = await readManifest(ctl.signal);
-      const cmp = compareVersions(latest.version, deps.installed.version);
+      const cmp = compareBuilds(latest, deps.installed);
       const checkedAt = deps.now();
       const download = await plan(latest);
       if (hasWaiting()) set({ phase: 'ready', latest, download, checkedAt });
@@ -304,7 +304,7 @@ export function describeStatus(s: UpdateState): { text: string; tone: 'idle' | '
     case 'idle': return { text: 'NOT CHECKED YET. PRESS CHECK FOR UPDATES', tone: 'idle' };
     case 'checking': return { text: 'CHECKING FOR UPDATES', tone: 'busy' };
     case 'current': return { text: s.notice ?? 'YOU HAVE THE LATEST VERSION', tone: 'good' };
-    case 'available': return { text: `UPDATE AVAILABLE: ${s.latest ? showVersion(s.latest.version) : ''}${s.download?.bytes ? ` (${formatBytes(s.download.bytes)} TO DOWNLOAD)` : ''}. PRESS DOWNLOAD UPDATE`, tone: 'good' };
+    case 'available': return { text: `UPDATE AVAILABLE: ${s.latest ? showVersion(s.latest.version) : ''}${s.latest && s.latest.version === s.installed.version && s.latest.build ? ` (NEW BUILD ${s.latest.build})` : ''}${s.download?.bytes ? ` (${formatBytes(s.download.bytes)} TO DOWNLOAD)` : ''}. PRESS DOWNLOAD UPDATE`, tone: 'good' };
     case 'downloading': {
       const p = s.progress;
       if (p?.stage === 'package') return { text: 'INSTALLING THE DOWNLOADED FILES IN THE BACKGROUND', tone: 'busy' };

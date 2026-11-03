@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { sessionStore, useSession } from '../state/session';
 import { LAYOUTS, allLayouts, getLayout } from '../layouts/registry';
 import { visibleEventLayouts } from '../layouts/visibility';
-import { customReady } from '../frames/custom/runtime';
+import { customReady, customVersion, subscribeCustom } from '../frames/custom/runtime';
 import { eventLayoutOfferedFor, eventLayoutVersion, subscribeEventLayouts } from '../frames/custom/eventRuntime';
 import { getFrame, resolveFramed, vectorFrameOf } from '../frames/registry';
 import { frameForLayoutVisible, guestFramesForLayout } from '../frames/visibility';
@@ -53,6 +53,7 @@ export function Edit() {
   const ctx = stamp ?? fallbackCtx;
   useEffect(() => { if (!stamp) ensureSessionStamp(); }, [stamp]); // Standby sets the stamp; if it is missing, store ONE so Preview/Print/Share reuse it
   const svg = useRef<SVGSVGElement>(null);
+  useSyncExternalStore(subscribeCustom, customVersion, customVersion); // own frame art follows the runtime too
   useSyncExternalStore(subscribeEventLayouts, eventLayoutVersion, eventLayoutVersion); // event layout windows and art follow the runtime
   const stage = useRef<SVGGElement>(null); // the drawing group: for a sideways layout it carries the quarter turn, so ITS screen matrix maps pointers straight back to paper space
   const g = useRef<Gesture | null>(null);

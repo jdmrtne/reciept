@@ -3,7 +3,7 @@ import type { FrameDef } from '../types';
 import type { CustomArtMeta, CustomQrArea, CustomLayoutArt } from './types';
 import * as store from './store';
 import type { StoreResult } from './store';
-import { artReady, createArtUrl, revokeArtUrl } from './artUrls';
+import { artReady, createArtUrl, recoverArtUrl, revokeArtUrl } from './artUrls';
 
 /**
  * Runtime registry of EVENT LAYOUTS (EL-2): loaded from IndexedDB at app start (kiosk.tsx), kept in memory, read SYNCHRONOUSLY.
@@ -35,10 +35,17 @@ function install(def: EventLayoutDef): void {
   const old = entries.get(def.id);
   // keep the object URL while the stored file is unchanged (same rev)
   if (old?.url && old.def.art.rev && old.def.art.rev === def.art.rev) { entries.set(def.id, { def, url: old.url, frame: toEventFrameDef(def) }); return; }
-  const url = createArtUrl(def.art.blob);
+  const url = createArtUrl(def.art.blob, recoveryFor(def.id, def.art.rev));
   revokeArtUrl(old?.url);
   entries.set(def.id, { def, url, frame: toEventFrameDef(def) });
 }
+/** If the browser cannot decode the picture's object URL, re-read the SAVED copy once and swap in a fresh URL (no re-upload). Only a URL that really decodes replaces the old one. */
+const recoveryFor = (id: string, rev: string | undefined) => (url: string): Promise<void> =>
+  recoverArtUrl(
+    async () => { const r = await store.getEventLayoutRecord(id); return r.ok && r.value.art.rev === rev ? r.value.art.blob : null; },
+    () => entries.get(id)?.url === url,
+    (u) => { const e = entries.get(id); if (!e) return; revokeArtUrl(url); entries.set(id, { ...e, url: u }); bump(); }
+  ).then(() => undefined);
 const drop = (id: string) => { const e = entries.get(id); if (!e) return; revokeArtUrl(e.url); entries.delete(id); };
 
 /** Load every stored event layout. Safe to call more than once (one load); never rejects. */

@@ -41,7 +41,7 @@ Old app caches are removed by Workbox (`cleanupOutdatedCaches`) once the new ver
 
 ## Publishing a new version
 
-The rule: **an update exists when `version` in `package.json` is higher than the one installed.** Bump it for every release.
+The rule: **an update exists when the published build is newer than the installed one.** A higher `version` in `package.json` always counts. If the version number is the same but the build is different (a new commit deployed, build id shown as BUILD abc1234), CHECK FOR UPDATES offers it too, so a deploy that forgot `npm version patch` still reaches every device. Bumping the version is still worth doing for a readable changelog and for rollbacks.
 
 1. Make and test your changes. Run the gates in `RELEASE-CHECKLIST.md`.
 2. Optional: write what changed in `release-notes.txt` at the project root (plain text, up to 800 characters). It appears under WHAT IS NEW in the app. You can also set `RELEASE_NOTES` in the host's environment.
@@ -60,7 +60,7 @@ Never publish a lower version number: devices will not offer it. Rollback = chec
 
 ### Same version number, changed files
 
-If you redeploy changed files without bumping the version, CHECK says "latest version", but a tablet that reloads still downloads the new files in the background and then offers INSTALL AND RESTART. Bump the version anyway: it is what makes CHECK report the update and what the INSTALLED VERSION line is for.
+CHECK compares the build id (the commit the host built, e.g. Vercel's `VERCEL_GIT_COMMIT_SHA`) and build time when the version numbers are equal, so a new commit deployed under the same version shows as `UPDATE AVAILABLE: v0.1.5 (NEW BUILD abc1234)` on any device. What does not count as an update: redeploying the same commit (same build id), or a published build that is older than the installed one. On a host that gives no commit id the build id is `local` and only a later build time counts.
 
 ## Update source
 

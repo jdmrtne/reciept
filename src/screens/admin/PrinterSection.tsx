@@ -2,6 +2,7 @@ import { Icon } from '../../components/Icon';
 import type { PrinterKind } from '../../print';
 import { Hint, StepperRow, TextField } from './ui';
 import { TestPrintBody } from './TestPrint';
+import { MAX_COPIES_LIMIT, normalizeMaxCopies } from '../../print/copies';
 import type { AdminCtx, SectionDef } from './types';
 
 /** Selectable printers. */
@@ -25,6 +26,16 @@ function PrinterType({ s, set, busy, clearNotice }: AdminCtx) {
         </button>
       ))}
     </div>
+  );
+}
+
+function MaxCopies({ s, set, busy }: AdminCtx) {
+  return (
+    <>
+      <StepperRow label="MAX COPIES PER GUEST" hint={`1 to ${MAX_COPIES_LIMIT}`} value={String(s.maxCopies)} disabled={busy}
+        onMinus={() => set({ maxCopies: normalizeMaxCopies(s.maxCopies - 1) })} onPlus={() => set({ maxCopies: normalizeMaxCopies(s.maxCopies + 1) })} />
+      <Hint>Guests pick how many copies of their photo to print and can print more afterwards, up to this total. Each copy uses paper, so keep it reasonable. Set 1 to turn extra copies off.</Hint>
+    </>
   );
 }
 
@@ -71,6 +82,7 @@ export const printerSection: SectionDef = {
   tabs: [{ id: 'setup', label: 'Printer Setup' }, { id: 'connection', label: 'Connection' }, { id: 'testing', label: 'Testing' }],
   cards: [
     { id: 'printer-type', tab: 'setup', title: 'Printer type', description: 'Choose how this booth reaches its printer.', keywords: ['printer', 'system print', 'windows printer', 'usb', 'network', 'bluetooth', 'test printer', 'mock', 'hardware', 'thermal', 'receipt'], render: (c) => <PrinterType {...c} /> },
+    { id: 'printer-copies', tab: 'setup', title: 'Copies', description: 'How many copies of one photo a guest can print.', keywords: ['copies', 'copy', 'print again', 'print another', 'more copies', 'max copies', 'limit', 'paper'], render: (c) => <MaxCopies {...c} /> },
     { id: 'printer-connection', tab: 'connection', title: 'Connection details', description: 'Only the fields your printer type needs.', keywords: ['windows printer name', 'printer ip', 'bridge url', 'bridge', 'address', 'host', 'bt chunk', 'bt delay ms', 'bluetooth', 'chunk size', 'delay', 'network', 'lan'], render: (c) => <Connection {...c} /> },
     { id: 'printer-test', tab: 'testing', title: 'Check & test', description: 'Confirm the printer is reachable, then print a test page.', keywords: ['test print', 'pair printer', 'check printer', 'pair', 'reachable', 'test page', 'preview'], render: (c) => <TestPrintBody c={c} withConnect /> }
   ]
